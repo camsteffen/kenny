@@ -1,0 +1,8 @@
+[package]
+name = "camcam"
+version = "0.1.0"
+authors = ["Cameron Steffen <cam.steffen94@gmail.com>"]
+
+[dependencies]
+itertools = "0.5.9"
+rand = "0.3.15"
