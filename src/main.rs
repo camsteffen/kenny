@@ -1,5 +1,6 @@
 extern crate itertools;
 extern crate rand;
+extern crate num;
 
 mod board;
 mod solve;
@@ -12,16 +13,16 @@ use std::io::Write;
 fn main() {
     for _ in 1..2 {
         let size = 6;
-        let board = generate_board(size);
+        let (solution, cages) = generate_puzzle(size);
         println!("Values:");
-        print_square(&board.cells, board.size);
+        solution.print();
         println!("Cages Indices:");
-        print_square(&board.cage_indices(), board.size);
+        cage_indices(&cages, size).print();
         println!("Cages:");
-        for (i, cage) in board.cages.iter().enumerate() {
+        for (i, cage) in cages.iter().enumerate() {
             println!(" {:>2}: {} {}", i, operator_symbol(&cage.operator), cage.target);
         }
-        solve(&board);
+        solve(&cages, size);
         stdout().flush().unwrap();
     }
 }

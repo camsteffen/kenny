@@ -16,21 +16,11 @@ impl CellMarkup {
     }
 }
 
-struct BoardMarkup {
-    cells: Vec<CellMarkup>,
-}
-
-impl BoardMarkup {
-    fn from_board(board: &Board) -> BoardMarkup {
-        BoardMarkup {
-            cells: repeat(CellMarkup::new(board.size)).take(board.size.pow(2)).collect_vec(),
-        }
-    }
-}
-
-pub fn solve(board: &Board) {
-    let markup = BoardMarkup::from_board(board);
+pub fn solve(cages: &Vec<Cage>, size: usize) {
+    let markup = Square::new(CellMarkup::new(size), size);
     
+    // clear board
+    let cleared = Square::new(0, size);
 
     // single cell cages
     //board.cages.filter(
