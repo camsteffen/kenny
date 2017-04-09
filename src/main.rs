@@ -22,7 +22,9 @@ fn main() {
         for (i, cage) in cages.iter().enumerate() {
             println!(" {:>2}: {} {}", i, operator_symbol(&cage.operator), cage.target);
         }
-        solve(&cages, size);
+        let solve_soln = solve(&cages, size);
+        println!("Solution:");
+        solve_soln.print();
         stdout().flush().unwrap();
     }
 }

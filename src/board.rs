@@ -10,6 +10,8 @@ use std::ops::Index;
 use std::ops::IndexMut;
 use std::slice::{Chunks, ChunksMut};
 
+pub type Board = Square<i32>;
+
 pub struct Square<T> {
     pub size: usize,
     pub elements: Vec<T>,
@@ -40,7 +42,7 @@ impl<T> Square<T> {
         self.elements.chunks_mut(self.size)
     }
 
-    fn iter(&mut self) -> PosIter<T> {
+    pub fn iter(&mut self) -> PosIter<T> {
         PosIter {
             size: self.size,
             index: 0,
@@ -178,7 +180,7 @@ pub struct Cage {
     pub cells: Vec<usize>,
 }
 
-fn find_cage_operator(cells: &Square<i32>, indices: &[usize]) -> (Operator, i32) {
+fn find_cage_operator(cells: &Board, indices: &[usize]) -> (Operator, i32) {
     let mut rng = thread_rng();
     let mut operators = Vec::with_capacity(4);
     let mut min: i32 = -1;
@@ -225,7 +227,7 @@ fn random_latin_square(size: usize) -> Square<i32> {
     square
 }
 
-fn generate_cages(cells: &Square<i32>) -> Vec<Cage> {
+fn generate_cages(cells: &Board) -> Vec<Cage> {
     let size = cells.size;
     let min_cage_size = 2;
     let max_cage_size = 4;
@@ -295,7 +297,7 @@ fn generate_cages(cells: &Square<i32>) -> Vec<Cage> {
     cages
 }
 
-pub fn generate_puzzle(size: usize) -> (Square<i32>, Vec<Cage>) {
+pub fn generate_puzzle(size: usize) -> (Board, Vec<Cage>) {
     let solution = random_latin_square(size);
     let cages = generate_cages(&solution);
     (solution, cages)
