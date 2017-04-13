@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["Cameron Steffen <cam.steffen94@gmail.com>"]
 
 [dependencies]
+env_logger = "0.4.2"
 itertools = "0.5.9"
-rand = "0.3.15"
+log = "0.3.7"
 num = "0.1.37"
+rand = "0.3.15"

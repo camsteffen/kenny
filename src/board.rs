@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use std::fmt::Debug;
 use itertools::repeat_call;
 use rand::Rng;
 use std::cmp::Ord;
@@ -11,6 +12,42 @@ use std::ops::IndexMut;
 use std::slice::{Chunks, ChunksMut};
 
 pub type Board = Square<i32>;
+
+#[derive(Clone)]
+pub struct Coord([usize; 2]);
+
+impl Coord {
+    pub fn new(x: usize, y: usize) -> Coord {
+        Coord([x, y])
+    }
+
+    pub fn from_index(index: usize, size: usize) -> Coord {
+        Coord([index / size, index % size])
+    }
+
+    pub fn to_index(&self, size: usize) -> usize {
+        self[0] * size + self[1]
+    }
+}
+
+impl Debug for Coord {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}, {})", self.0[0], self.0[1])
+    }
+}
+
+impl Index<usize> for Coord {
+    type Output = usize;
+    fn index(&self, i: usize) -> &usize {
+        &self.0[i]
+    }
+}
+
+impl IndexMut<usize> for Coord {
+    fn index_mut(&mut self, i: usize) -> &mut usize {
+        &mut self.0[i]
+    }
+}
 
 pub struct Square<T> {
     pub size: usize,
@@ -26,6 +63,7 @@ impl<T> Square<T> {
         }
     }
 
+    /*
     fn cols<'a>(&'a self) -> ColIter<'a, T> {
         ColIter(self.rows().collect_vec())
     }
@@ -33,6 +71,7 @@ impl<T> Square<T> {
     fn cols_mut<'a>(&'a mut self) -> ColIterMut<'a, T> {
         ColIterMut(self.rows_mut().collect_vec())
     }
+    */
 
     fn rows(&self) -> Chunks<T> {
         self.elements.chunks(self.size)
@@ -42,8 +81,8 @@ impl<T> Square<T> {
         self.elements.chunks_mut(self.size)
     }
 
-    pub fn iter(&mut self) -> PosIter<T> {
-        PosIter {
+    pub fn iter(&mut self) -> SquareCoordDataIter<T> {
+        SquareCoordDataIter {
             size: self.size,
             index: 0,
             data: self.elements.as_mut_slice(),
@@ -62,16 +101,29 @@ impl<T> Square<T> {
     }
 }
 
-impl<'a, T> Index<&'a [usize; 2]> for Square<T> {
+impl<'a, T> Index<&'a Coord> for Square<T> {
     type Output = T;
-    fn index(&self, coord: &'a [usize; 2]) -> &T {
-        &self.elements[coord[0] * self.size + coord[1]]
+    fn index(&self, coord: &'a Coord) -> &T {
+        &self.elements[coord.to_index(self.size)]
     }
 }
 
-impl<'a, T> IndexMut<&'a [usize; 2]> for Square<T> {
-    fn index_mut(&mut self, coord: &'a [usize; 2]) -> &mut T {
-        &mut self.elements[coord[0] * self.size + coord[1]]
+impl<'a, T> IndexMut<&'a Coord> for Square<T> {
+    fn index_mut(&mut self, coord: &'a Coord) -> &mut T {
+        &mut self.elements[coord.to_index(self.size)]
+    }
+}
+
+impl<T> Index<usize> for Square<T> {
+    type Output = T;
+    fn index(&self, i: usize) -> &T {
+        &self.elements[i]
+    }
+}
+
+impl<T> IndexMut<usize> for Square<T> {
+    fn index_mut(&mut self, i: usize) -> &mut T {
+        &mut self.elements[i]
     }
 }
 
@@ -87,28 +139,58 @@ impl<T: Display> fmt::Display for Square<T> {
     }
 }
 
-struct PosIter<'a, T: 'a> {
+/*
+struct SquareCoordIter {
+    size: usize,
+    i: usize,
+}
+
+impl SquareCoordIter {
+    fn new(size: usize) -> SquareCoordIter {
+        SquareCoordIter {
+            size: size,
+            i: 0,
+        }
+    }
+}
+
+impl Iterator for SquareCoordIter {
+    type Item = Coord;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i == self.size.pow(2) {
+            return None;
+        }
+        let coord = Coord::from_index(self.i, self.size);
+        self.i = self.i + 1;
+        Some(coord)
+    }
+}
+*/
+
+pub struct SquareCoordDataIter<'a, T: 'a> {
     size: usize,
     index: usize,
     data: &'a [T],
 }
 
-impl<'a, T> Iterator for PosIter<'a, T> {
-    type Item = ([usize; 2], &'a T);
+impl<'a, T> Iterator for SquareCoordDataIter<'a, T> {
+    type Item = (Coord, &'a T);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index >= self.size.pow(2) {
             return None
         }
-        let mut data = mem::replace(&mut self.data, &mut []);
+        let data = mem::replace(&mut self.data, &mut []);
         let (first, remaining) = data.split_first().unwrap();
         self.data = remaining;
-        let p = ([self.index / self.size, self.index % self.size], first);
+        let p = (Coord::from_index(self.index, self.size), first);
         self.index = self.index + 1;
         Some(p)
     }
 }
 
+/*
 struct ColIter<'a, T: 'a>(Vec<&'a [T]>);
 
 impl<'a, T> Iterator for ColIter<'a, T> {
@@ -146,16 +228,17 @@ impl<'a, T> Iterator for ColIterMut<'a, T> {
     }
 
 }
+*/
 
 /**
  * Create a square of values where each value represents the index of the cage
  * containing that position
  */
-pub fn cage_indices(cages: &Vec<Cage>, size: usize) -> Square<usize> {
+pub fn cage_indices(cages: &[Cage], size: usize) -> Square<usize> {
     let mut indices = Square::new(0, size);
     for (i, cage) in cages.iter().enumerate() {
-        for cell in cage.cells.iter() {
-            indices.elements[*cell] = i;
+        for j in cage.cells.iter() {
+            indices[*j] = i;
         }
     }
     indices
@@ -186,7 +269,7 @@ fn find_cage_operator(cells: &Board, indices: &[usize]) -> (Operator, i32) {
     let mut min: i32 = -1;
     let mut max: i32 = -1;
     let vals = indices.iter()
-        .map(|i| cells.elements[*i])
+        .map(|i| cells[*i])
         .collect_vec();
     operators.push(Operator::Add);
     operators.push(Operator::Multiply);
@@ -236,7 +319,7 @@ fn generate_cages(cells: &Board) -> Vec<Cage> {
     let mut cage_ids = Square::new(no_cage, cells.size);
     let mut uncaged = num_cells;
     let mut cur_cage = 0;
-    let mut pos = [0, 0];
+    let mut pos = Coord::from_index(0, size);
     let mut rng = thread_rng();
     //let directions = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
     'cages: loop {
@@ -264,12 +347,12 @@ fn generate_cages(cells: &Board) -> Vec<Cage> {
                 .filter(|next| cage_ids[next] == no_cage)
                 .collect_vec();
             match rng.choose(&available_positions) {
-                Some(p) => pos = *p,
+                Some(p) => pos = p.clone(),
                 None => {
                     let index = cage_ids.elements.iter()
                         .position(|c| *c == no_cage)
                         .unwrap();
-                    pos = [index / size, index % size];
+                    pos = Coord::from_index(index, size);
                     break
                 }
             }
@@ -281,8 +364,7 @@ fn generate_cages(cells: &Board) -> Vec<Cage> {
     // for every cage_cells[i][j], cell j is in cage i
     let mut cage_cells = vec![Vec::new(); num_cages];
     for i in 0..num_cells {
-        let cage_index = cage_ids.elements[i] as usize;
-        let val = cells.elements[i];
+        let cage_index = cage_ids[i] as usize;
         cage_cells[cage_index].push(i);
     }
     let mut cages = Vec::with_capacity(num_cages);
