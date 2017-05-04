@@ -1,8 +1,8 @@
 extern crate num;
 
+use puzzle::Puzzle;
 use square::*;
 use board::*;
-use std::string::ToString;
 use itertools::Itertools;
 use std::mem;
 use num::Integer;
@@ -10,53 +10,86 @@ use num::Integer;
 #[derive(Clone)]
 pub enum Unknown {
     Solved(i32),
-    Unsolved(Candidates),
+    Unsolved(Domain),
+}
+
+impl Unknown {
+    /*
+    fn is_solved(&self) -> bool {
+        match self {
+            &Unknown::Solved(_) => true,
+            _ => false,
+        }
+    }
+    */
+
+    fn is_unsolved(&self) -> bool {
+        match self {
+            &Unknown::Unsolved(_) => true,
+            _ => false,
+        }
+
+    }
+
+    fn unwrap_unsolved(&self) -> &Domain {
+        match self {
+            &Unknown::Unsolved(ref d) => d,
+            _ => panic!("Not Unsolved"),
+        }
+    }
+
+    fn unwrap_unsolved_mut(&mut self) -> &mut Domain {
+        match self {
+            &mut Unknown::Unsolved(ref mut d) => d,
+            _ => panic!("Not Unsolved"),
+        }
+    }
 }
 
 fn unknown_from_size(size: usize) -> Unknown {
-    Unknown::Unsolved(Candidates::new(size))
+    Unknown::Unsolved(Domain::new(size))
 }
 
 #[derive(Clone)]
-pub struct Candidates {
+pub struct Domain {
     pub count: usize,
-    pub candidates: Vec<bool>,
+    pub domain: Vec<bool>,
 }
 
-struct CandidateIter<'a> {
-    candidates: &'a [bool],
+pub struct DomainIter<'a> {
+    domain: &'a [bool],
     i: i32,
 }
 
-impl<'a> Iterator for CandidateIter<'a> {
+impl<'a> Iterator for DomainIter<'a> {
     type Item = i32;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let pos = match self.candidates.iter().position(|c| *c) {
+        let pos = match self.domain.iter().position(|c| *c) {
             Some(pos) => pos,
             None => return None,
         };
         self.i = self.i + pos as i32 + 1;
-        let candidates = mem::replace(&mut self.candidates, &mut []);
+        let domain = mem::replace(&mut self.domain, &mut []);
 
-        let (_, remaining) = candidates.split_at(pos + 1);
-        self.candidates = remaining;
+        let (_, remaining) = domain.split_at(pos + 1);
+        self.domain = remaining;
         Some(self.i)
     }
 }
 
-impl Candidates {
-    fn new(size: usize) -> Candidates {
-        Candidates {
+impl Domain {
+    fn new(size: usize) -> Domain {
+        Domain {
             count: size,
-            candidates: vec![true; size],
+            domain: vec![true; size],
         }
     }
 
-    fn not_candidate(&mut self, n: i32) -> bool {
+    fn remove(&mut self, n: i32) -> bool {
         let i = n as usize - 1;
-        if self.candidates[i] {
-            self.candidates[i] = false;
+        if self.domain[i] {
+            self.domain[i] = false;
             self.count = self.count - 1;
             true
         } else {
@@ -64,33 +97,39 @@ impl Candidates {
         }
     }
 
+    fn has(&self, n: i32) -> bool {
+        self.domain[n as usize - 1]
+    }
+
     fn only_value(&self) -> Option<i32> {
         match self.count {
-            1 => Some(self.candidates.iter().position(|p| *p).unwrap() as i32 + 1),
+            1 => Some(self.domain.iter().position(|p| *p).unwrap() as i32 + 1),
             _ => None,
         }
     }
 
-    pub fn iter_candidates<'a>(&'a self) -> CandidateIter<'a> {
-        CandidateIter {
-            candidates: &self.candidates,
+    pub fn iter<'a>(&'a self) -> DomainIter<'a> {
+        DomainIter {
+            domain: &self.domain,
             i: 0,
         }
     }
 }
 
+/*
 #[derive(Clone)]
 struct Vector {
-    pos_candidates: Vec<Unknown>,
+    pos_domain: Vec<Unknown>,
 }
 
 impl Vector {
     fn new(size: usize) -> Vector {
         Vector {
-            pos_candidates: vec![unknown_from_size(size); size],
+            pos_domain: vec![unknown_from_size(size); size],
         }
     }
 }
+*/
 
 pub struct BoardMarkup {
     pub cells: Square<Unknown>,
@@ -105,14 +144,14 @@ impl BoardMarkup {
         }
     }
 
-    fn not_candidate(&mut self, pos: Coord, n: i32) {
-        debug!("BoardMarkup::not_candidate({}, {})", pos, n);
+    fn remove(&mut self, pos: usize, n: i32) {
+        debug!("BoardMarkup::remove({}, {})", pos, n);
 
         // remove cell candidate
         let only_value = match self.cells[pos] {
-            Unknown::Unsolved(ref mut candidates) => {
-                candidates.not_candidate(n);
-                candidates.only_value()
+            Unknown::Unsolved(ref mut domain) => {
+                domain.remove(n);
+                domain.only_value()
             },
             _ => None,
         };
@@ -124,11 +163,11 @@ impl BoardMarkup {
         }
 
         /*
-        // remove vector candidates
+        // remove vector domain
         for i in 0..2 {
-            self.vectors[i][pos[i]].pos_candidates[index] = Unknown::Solved(pos[i]);
+            self.vectors[i][pos[i]].pos_domain[index] = Unknown::Solved(pos[i]);
             for j in 0..self.size() {
-                if let Unknown::Unsolved(ref candidates) = self.vectors[i][j] {
+                if let Unknown::Unsolved(ref domain) = self.vectors[i][j] {
 
                 }
             }
@@ -136,21 +175,19 @@ impl BoardMarkup {
         */
     }
 
-    fn size(&self) -> usize {
-        self.cells.size
-    }
-
-    fn set_value(&mut self, pos: Coord, n: i32) {
+    fn set_value(&mut self, pos: usize, n: i32) {
         self.cells[pos] = Unknown::Solved(n);
         self.on_set_value(pos, n);
     }
 
-    fn on_set_value(&mut self, pos: Coord, n: i32) {
+    fn on_set_value(&mut self, pos: usize, n: i32) {
         debug!("BoardMarkup::on_set_value({}, {})", pos, n);
+        let size = self.cells.size;
+        let pos = Coord::from_index(pos, size);
         // remove possibility from cells in same row or column
-        for i in 0..self.cells.size {
-            self.not_candidate(Coord::new(i, pos[1]), n);
-            self.not_candidate(Coord::new(pos[0], i), n);
+        for i in 0..size {
+            self.remove(Coord::new(i, pos[1]).to_index(size), n);
+            self.remove(Coord::new(pos[0], i).to_index(size), n);
         }
     }
 
@@ -174,30 +211,36 @@ impl BoardMarkup {
     */
 }
 
-pub fn solve(cages: &Vec<Cage>, size: usize) -> BoardMarkup {
-    let mut markup = BoardMarkup::new(size);
+pub fn solve(puzzle: &Puzzle) -> BoardMarkup {
+    let mut markup = BoardMarkup::new(puzzle.size);
     
     // clear board
-    let mut board = Square::new(0, size);
+    let mut board = Square::new(0, puzzle.size);
 
     debug!("solve single cell cages");
-    solve_single_cell_cages(&board, &cages, &mut markup);
-    println!("reduce cell candidates by cage operators");
-    candidates_by_operator(&board, &cages, &mut markup);
+    solve_single_cell_cages(&puzzle, &mut markup);
 
-    println!("Candidates:");
+    debug!("reduce cell domain by binary cage operator consistency");
+    binary_operator_consistency(&puzzle, &mut markup);
+
+    debug!("reduce domain by cage consistency");
+    inner_cages_consistency(&puzzle, &mut markup, 4);
+
+    /*
+    println!("Domain:");
     for (pos, cell_markup) in markup.cells.iter() {
         let vals = match cell_markup {
-            &Unknown::Unsolved(ref candidates) => {
-                candidates.iter_candidates().collect_vec()
+            &Unknown::Unsolved(ref domain) => {
+                domain.iter().collect_vec()
             },
             &Unknown::Solved(val) => vec![val; 1],
         };
-        let candidates = vals.iter().map(ToString::to_string).join(" ");
-        println!("{}: {}", pos, candidates);
+        let domain = vals.iter().map(ToString::to_string).join(" ");
+        println!("{}: {}", pos, domain);
     }
+    */
 
-    for (pos, cell_markup) in markup.cells.iter() {
+    for (pos, cell_markup) in markup.cells.iter_coord() {
         if let &Unknown::Solved(val) = cell_markup {
             board[pos] = val;
         };
@@ -206,51 +249,122 @@ pub fn solve(cages: &Vec<Cage>, size: usize) -> BoardMarkup {
     markup
 }
 
-fn solve_single_cell_cages(board: &Board, cages: &Vec<Cage>, markup: &mut BoardMarkup) {
-    for cage in cages.iter().filter(|cage| cage.cells.len() == 1) {
+fn solve_single_cell_cages(puzzle: &Puzzle, markup: &mut BoardMarkup) {
+    for cage in puzzle.cages.iter().filter(|cage| cage.cells.len() == 1) {
         let index = cage.cells[0];
-        let pos = Coord::from_index(index, board.size);
-        markup.set_value(pos, cage.target)
+        markup.set_value(index, cage.target)
     }
 }
 
-fn candidates_by_operator(board: &Board, cages: &Vec<Cage>, markup: &mut BoardMarkup) {
-    for cage in cages.iter() {
+fn binary_operator_consistency(puzzle: &Puzzle, markup: &mut BoardMarkup) {
+    for cage in puzzle.cages.iter() {
         match &cage.operator {
             &Operator::Add => {
-                for pos in cage.iter_cell_pos(board.size) {
-                    for n in (cage.target + 1)..(board.size as i32 + 1) {
-                        markup.not_candidate(pos, n);
+                for &pos in cage.cells.iter() {
+                    for n in (cage.target + 1)..(puzzle.size as i32 + 1) {
+                        markup.remove(pos, n);
                     }
                 }
             },
-            &Operator::Subtract => (),
             &Operator::Multiply => {
-                let non_factors = (1..board.size as i32 - 1)
+                let non_factors = (1..puzzle.size as i32 - 1)
                     .filter(|n| !cage.target.is_multiple_of(n))
                     .collect_vec();
-                for pos in cage.iter_cell_pos(board.size) {
+                for &pos in cage.cells.iter() {
                     for n in non_factors.iter() {
-                        markup.not_candidate(pos, *n);
+                        markup.remove(pos, *n);
                     }
                 }
             },
-            &Operator::Divide => {
-                let non_multiples = (1..board.size as i32 - 1)
-                    .filter(|n| !n.is_multiple_of(&cage.target))
-                    .collect_vec();
-                for pos in cage.iter_cell_pos(board.size) {
-                    for n in non_multiples.iter() {
-                        markup.not_candidate(pos, *n);
-                    }
-                }
-            },
+            _ => (),
         }
     }
+}
 
-        /*
-        let pos = cage.cells[0];
-        markup.set_value(Coord::from_index(pos, board.size), cage.target)
-        */
+fn inner_cages_consistency(puzzle: &Puzzle, markup: &mut BoardMarkup, max_cage_size: usize) {
+    for cage in puzzle.cages.iter()
+        .filter(|cage| cage.cells.len() <= max_cage_size)
+    {
+        if cage.cells.iter().any(|&pos| markup.cells[pos].is_unsolved()) {
+            inner_cage_consistency(puzzle, markup, cage);
+        }
+    }
+}
+
+fn inner_cage_consistency(puzzle: &Puzzle, markup: &mut BoardMarkup, cage: &Cage) {
+    match cage.operator {
+        Operator::Add => inner_cage_consistency_add(puzzle, markup, cage),
+        _ => (),
+    }
+}
+
+fn inner_cage_consistency_add(puzzle: &Puzzle, markup: &mut BoardMarkup, cage: &Cage) {
+    let solved_sum: i32 = cage.cells.iter()
+        .filter_map(|&i| {
+            match markup.cells[i] {
+                Unknown::Solved(n) => Some(n),
+                _ => None,
+            }
+        })
+        .sum();
+    let remain_sum = cage.target - solved_sum;
+    let unsolved = cage.cells.iter()
+        .cloned()
+        .filter(|&i| markup.cells[i].is_unsolved())
+        .collect_vec();
+    let mut verified_domain = vec![vec![false; puzzle.size + 1]; unsolved.len()];
+    let mut solution = vec![0; unsolved.len() - 1];
+    for i in 0..unsolved.len() {
+        let index = unsolved[i];
+        for n in markup.cells[index].unwrap_unsolved_mut().clone().iter() {
+            if verified_domain[i][n as usize] { continue }
+            let mut others = Vec::with_capacity(unsolved.len() - 1);
+            for j in (0..unsolved.len()).filter(|&j| j != i) {
+                others.push(unsolved[j]);
+            }
+            //let others = unsolved.iter().enumerate().filter(|&(j, n)| j != i).map(|(j, &n)| n).collect_vec();
+            if find_solution(markup, &others, remain_sum - n, &mut solution) {
+                for j in 0..others.len() {
+                    verified_domain[j + 1][solution[j] as usize] = true;
+                }
+            } else {
+                markup.remove(index, n);
+            }
+
+            /*
+            let mut d = (0..unsolved.len())
+                .filter(|&j| j != i)
+                .map(|j| markup.cells[j].unwrap_unsolved().iter().peekable())
+                .collect_vec();
+            // TODO BinaryHeap with peekable domain iterators
+            d.sort_by_key(|&mut iter| iter.peek().cloned().unwrap_or(i32::max_value()))
+            */
+        }
+    }
+}
+
+fn find_solution(markup: &BoardMarkup, pos: &[usize], remain_sum: i32, solution: &mut [i32]) -> bool {
+    if remain_sum <= 0 {
+        false
+    } else if solution.len() == 1 {
+        if remain_sum > markup.cells.size as i32 { return false }
+        if markup.cells[pos[0]].unwrap_unsolved().has(remain_sum) {
+            solution[0] = remain_sum;
+            true
+        } else {
+            false
+        }
+    } else {
+        for n in markup.cells[pos[0]].unwrap_unsolved().iter() {
+            if n >= remain_sum { break }
+            else {
+                solution[0] = n;
+                if find_solution(markup, &pos[1..], remain_sum - n, &mut solution[1..]) {
+                    return true
+                }
+            }
+        }
+        false
+    }
 }
 

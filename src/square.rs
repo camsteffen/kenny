@@ -1,5 +1,4 @@
 use std::cmp::Ord;
-use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt;
 use std::mem;
@@ -7,7 +6,7 @@ use std::ops::Index;
 use std::ops::IndexMut;
 use std::slice::{Chunks, ChunksMut};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct Coord(pub [usize; 2]);
 
 impl Coord {
@@ -75,7 +74,13 @@ impl<T> Square<T> {
         self.elements.chunks_mut(self.size)
     }
 
-    pub fn iter(&self) -> SquareCoordDataIter<T> {
+    /*
+    pub fn iter<'a>(&'a self) -> Box<Iterator<Item=&T> + 'a> {
+        Box::new(self.elements.iter())
+    }
+    */
+
+    pub fn iter_coord(&self) -> SquareCoordDataIter<T> {
         SquareCoordDataIter {
             size: self.size,
             index: 0,
@@ -83,6 +88,7 @@ impl<T> Square<T> {
         }
     }
 
+    /*
     pub fn iter_mut(&mut self) -> SquareCoordDataIter<T> {
         SquareCoordDataIter {
             size: self.size,
@@ -90,6 +96,7 @@ impl<T> Square<T> {
             data: self.elements.as_mut_slice(),
         }
     }
+    */
 
     pub fn print(&self) where T: Display + Ord {
         let len = self.elements.iter().max().unwrap()

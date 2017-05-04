@@ -3,16 +3,7 @@ use square::*;
 use itertools::repeat_call;
 use rand::Rng;
 use rand::thread_rng;
-/*
-use std::cmp::Ord;
-use std::fmt::Debug;
-use std::fmt::Display;
-use std::fmt;
-use std::mem;
-use std::ops::Index;
-use std::ops::IndexMut;
-use std::slice::{Chunks, ChunksMut};
-*/
+use puzzle::*;
 
 pub type Board = Square<i32>;
 
@@ -30,30 +21,34 @@ pub fn cage_map(cages: &[Cage], size: usize) -> Square<usize> {
     indices
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Operator { Add, Subtract, Multiply, Divide }
 
-pub fn operator_symbol(op: &Operator) -> char {
-    match op {
-        &Operator::Add      => '+',
-        &Operator::Subtract => '-',
-        &Operator::Multiply => '*',
-        &Operator::Divide   => '/',
+impl Operator {
+    pub fn symbol(&self) -> char {
+        match self {
+            &Operator::Add      => '+',
+            &Operator::Subtract => '-',
+            &Operator::Multiply => '*',
+            &Operator::Divide   => '/',
+        }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Cage {
     pub operator: Operator,
     pub target: i32,
     pub cells: Vec<usize>,
 }
 
+/*
 impl Cage {
     pub fn iter_cell_pos<'a>(&'a self, board_size: usize) -> Box<Iterator<Item=Coord> + 'a> {
         Box::new(self.cells.iter().map(move |i| Coord::from_index(*i, board_size)))
     }
 }
+*/
 
 fn find_cage_operator(cells: &Board, indices: &[usize]) -> (Operator, i32) {
     let mut rng = thread_rng();
@@ -171,9 +166,13 @@ fn generate_cages(cells: &Board) -> Vec<Cage> {
     cages
 }
 
-pub fn generate_puzzle(size: usize) -> (Board, Vec<Cage>) {
+pub fn generate_puzzle(size: usize) -> Puzzle {
     let solution = random_latin_square(size);
+    debug!("Solution:\n{}", &solution);
     let cages = generate_cages(&solution);
-    (solution, cages)
+    Puzzle {
+        size: size,
+        cages: cages,
+    }
 }
 

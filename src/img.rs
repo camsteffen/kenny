@@ -8,8 +8,10 @@ use rusttype::Scale;
 use square::*;
 use board::*;
 use solve::*;
+use puzzle::*;
 use image::RgbImage;
 use image::Rgb;
+use std::io;
 
 const BLACK: Rgb<u8> = Rgb { data: [0; 3] };
 const WHITE: Rgb<u8> = Rgb { data: [255; 3] };
@@ -18,18 +20,20 @@ const COLOR_CELL_BORDER:  Rgb<u8> = Rgb { data: [205; 3] };
 const COLOR_CAGE_BORDER: Rgb<u8> = BLACK;
 const COLOR_BG: Rgb<u8> = WHITE;
 
-pub fn image(cages: &[Cage], markup: &BoardMarkup, size: usize) {
+pub fn image(puzzle: &Puzzle, markup: Option<&BoardMarkup>, path: &str) -> Result<(), io::Error> {
     let cell_width = 60 as usize;
     let border_width = cell_width / 25;
 
-    let image_width = (cell_width * size + border_width) as u32;
+    let image_width = (cell_width * puzzle.size + border_width) as u32;
     let mut image = RgbImage::from_pixel(image_width, image_width, COLOR_BG);
 
     // draw grid
-    draw_grid(&mut image, size, cell_width as u32, border_width as u32, cages);
-    draw_cage_glyphs(&mut image, cages, markup, size, cell_width, border_width);
+    draw_grid(&mut image, puzzle.size, cell_width as u32, border_width as u32, &puzzle.cages);
+    draw_cage_glyphs(&mut image, &puzzle.cages, markup, puzzle.size, cell_width, border_width);
 
-    image.save("image.png");
+    image.save(path)?;
+
+    Ok(())
 }
 
 fn draw_rectangle(image: &mut RgbImage, x1: u32, y1: u32, x2: u32, y2: u32, color: Rgb<u8>) {
@@ -119,7 +123,7 @@ fn draw_grid(
 fn draw_cage_glyphs(
     image: &mut RgbImage,
     cages: &[Cage],
-    markup: &BoardMarkup,
+    markup: Option<&BoardMarkup>,
     size: usize,
     cell_width: usize,
     border_width: usize)
@@ -132,8 +136,7 @@ fn draw_cage_glyphs(
     let v_metrics = font.v_metrics(scale);
 
     for cage in cages.iter() {
-        let operator_symbol = operator_symbol(&cage.operator);
-        let text = &format!("{}{}", operator_symbol, cage.target);
+        let text = &format!("{}{}", cage.operator.symbol(), cage.target);
 
         let index = *cage.cells.iter().min().unwrap();
         let pos = Coord::from_index(index, size);
@@ -152,37 +155,38 @@ fn draw_cage_glyphs(
         }
     }
 
-    // markup candidates
-    for (pos, cell) in markup.cells.iter() {
-        let candidates = match cell {
-            &Unknown::Unsolved(ref candidates) => draw_cell_candidates(image, pos, candidates, &font, cell_width, border_width),
-            &Unknown::Solved(value) => draw_cell_solution(image, pos, value, &font, cell_width, border_width),
-        };
+    // markup domain
+    if let Some(markup) = markup {
+        for (pos, cell) in markup.cells.iter_coord() {
+            match cell {
+                &Unknown::Unsolved(ref domain) => draw_cell_domain(image, pos, domain, &font, cell_width, border_width),
+                &Unknown::Solved(value) => draw_cell_solution(image, pos, value, &font, cell_width, border_width),
+            };
+        }
     }
 }
 
-fn draw_cell_candidates(
+fn draw_cell_domain(
     image: &mut RgbImage,
     pos: Coord,
-    candidates: &Candidates,
+    domain: &Domain,
     font: &Font,
     cell_width: usize,
     border_width: usize)
 {
-    const max_line_len: usize = 5;
+    const MAX_LINE_LEN: usize = 5;
 
     let scale = Scale::uniform(cell_width as f32 * 0.2);
     let v_metrics = font.v_metrics(scale);
 
-    if candidates.count > max_line_len * 2 { return }
-    let num_lines = (candidates.count - 1) / max_line_len + 1;
+    if domain.count > MAX_LINE_LEN * 2 { return }
     let mut char_x = 0;
     let mut char_y = 0;
-    for candidate in candidates.iter_candidates() {
-        let s = candidate.to_string();
+    for n in domain.iter() {
+        let s = n.to_string();
         let mut chars = s.chars();
         let c = chars.next().unwrap();
-        if let Some(c2) = chars.next() { panic!("Unexpected candidate char: {}", c2) }
+        if let Some(_) = chars.next() { panic!("Expected a single char in {}", s) }
         let point = point(
             ((pos[1] * cell_width + border_width + 1) as f32 + char_x as f32 * v_metrics.ascent),
             ((pos[0] + 1) * cell_width - 2) as f32 - char_y as f32 * v_metrics.ascent);
@@ -196,7 +200,7 @@ fn draw_cell_candidates(
             image.put_pixel(bb.min.x as u32 + x, bb.min.y as u32 + y, Rgb { data: [v; 3] });
         });
         char_x += 1;
-        if char_x == max_line_len {
+        if char_x == MAX_LINE_LEN {
             char_x = 0;
             char_y += 1;
         }
@@ -218,7 +222,7 @@ fn draw_cell_solution(
     let mut chars = s.chars();
     let c = chars.next().unwrap();
     if let Some(c2) = chars.next() { panic!("Unexpected char: {}", c2) }
-    let glyph = font.glyph(c).expect(&format!("No glyph for {}", c))
+    let glyph = font.glyph(c).unwrap_or_else(|| panic!("No glyph for {}", c))
         .scaled(scale);
     let h_metrics = glyph.h_metrics();
     let x = (pos[1] * cell_width + border_width) as f32 + ((cell_width - border_width) as f32 - h_metrics.advance_width) / 2.0;
