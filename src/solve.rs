@@ -38,12 +38,14 @@ impl Unknown {
         }
     }
 
+    /*
     fn unwrap_unsolved_mut(&mut self) -> &mut Domain {
         match self {
             &mut Unknown::Unsolved(ref mut d) => d,
             _ => panic!("Not Unsolved"),
         }
     }
+    */
 }
 
 fn unknown_from_size(size: usize) -> Unknown {
@@ -312,59 +314,57 @@ fn inner_cage_consistency_add(puzzle: &Puzzle, markup: &mut BoardMarkup, cage: &
         .cloned()
         .filter(|&i| markup.cells[i].is_unsolved())
         .collect_vec();
-    let mut verified_domain = vec![vec![false; puzzle.size + 1]; unsolved.len()];
-    let mut solution = vec![0; unsolved.len() - 1];
+    let mut solutions = Vec::new();
+    let mut solution = vec![0; unsolved.len()];
+    find_cage_solutions(0, markup, &unsolved, remain_sum, &mut solution, &mut solutions);
+    let mut domain = vec![vec![false; puzzle.size]; unsolved.len()];
+    for solution in solutions {
+        for i in 0..unsolved.len() {
+            domain[i][solution[i] as usize - 1] = true;
+        }
+    }
     for i in 0..unsolved.len() {
         let index = unsolved[i];
-        for n in markup.cells[index].unwrap_unsolved_mut().clone().iter() {
-            if verified_domain[i][n as usize] { continue }
-            let mut others = Vec::with_capacity(unsolved.len() - 1);
-            for j in (0..unsolved.len()).filter(|&j| j != i) {
-                others.push(unsolved[j]);
-            }
-            //let others = unsolved.iter().enumerate().filter(|&(j, n)| j != i).map(|(j, &n)| n).collect_vec();
-            if find_solution(markup, &others, remain_sum - n, &mut solution) {
-                for j in 0..others.len() {
-                    verified_domain[j + 1][solution[j] as usize] = true;
-                }
-            } else {
-                markup.remove(index, n);
-            }
-
-            /*
-            let mut d = (0..unsolved.len())
-                .filter(|&j| j != i)
-                .map(|j| markup.cells[j].unwrap_unsolved().iter().peekable())
-                .collect_vec();
-            // TODO BinaryHeap with peekable domain iterators
-            d.sort_by_key(|&mut iter| iter.peek().cloned().unwrap_or(i32::max_value()))
-            */
+        let no_solutions = markup.cells[index].unwrap_unsolved().iter()
+            .filter(|&n| domain[i][n as usize - 1] == false)
+            .collect_vec();
+        for n in no_solutions {
+            markup.remove(index, n);
         }
     }
 }
 
-fn find_solution(markup: &BoardMarkup, pos: &[usize], remain_sum: i32, solution: &mut [i32]) -> bool {
-    if remain_sum <= 0 {
-        false
-    } else if solution.len() == 1 {
-        if remain_sum > markup.cells.size as i32 { return false }
-        if markup.cells[pos[0]].unwrap_unsolved().has(remain_sum) {
-            solution[0] = remain_sum;
-            true
-        } else {
-            false
-        }
+fn find_cage_solutions(
+    i: usize,
+    markup: &BoardMarkup,
+    pos: &[usize],
+    remain_sum: i32,
+    solution: &mut [i32],
+    solutions: &mut Vec<Vec<i32>>)
+{
+    let size = markup.cells.size;
+    let collides = |n: i32, solution: &[i32]| {
+        (0..i).filter(|&j| solution[j] == n)
+            .any(|j| have_shared_vector(pos[j], pos[i], size))
+    };
+    if remain_sum <= 0 { return }
+    if i == solution.len() - 1 {
+        if remain_sum > markup.cells.size as i32 { return }
+        let domain = markup.cells[pos[i]].unwrap_unsolved();
+        if domain.has(remain_sum) == false { return }
+        if collides(remain_sum, solution) { return }
+        solution[i] = remain_sum;
+        solutions.push(solution.to_vec());
     } else {
-        for n in markup.cells[pos[0]].unwrap_unsolved().iter() {
+        for n in markup.cells[pos[i]].unwrap_unsolved().iter() {
             if n >= remain_sum { break }
-            else {
-                solution[0] = n;
-                if find_solution(markup, &pos[1..], remain_sum - n, &mut solution[1..]) {
-                    return true
-                }
-            }
+            if collides(n, solution) { continue }
+            solution[i] = n;
+            find_cage_solutions(i + 1, markup, pos, remain_sum - n, solution, solutions);
         }
-        false
     }
 }
 
+fn have_shared_vector(pos1: usize, pos2: usize, size: usize) -> bool {
+    pos1 / size == pos2 / size || pos1 % size == pos2 % size
+}
