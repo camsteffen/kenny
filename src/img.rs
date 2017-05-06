@@ -28,7 +28,7 @@ pub fn image(puzzle: &Puzzle, markup: Option<&BoardMarkup>, path: &str) -> Resul
     let mut image = RgbImage::from_pixel(image_width, image_width, COLOR_BG);
 
     // draw grid
-    draw_grid(&mut image, puzzle.size, cell_width as u32, border_width as u32, &puzzle.cages);
+    draw_grid(&mut image, puzzle, cell_width as u32, border_width as u32);
     draw_cage_glyphs(&mut image, &puzzle.cages, markup, puzzle.size, cell_width, border_width);
 
     image.save(path)?;
@@ -46,13 +46,12 @@ fn draw_rectangle(image: &mut RgbImage, x1: u32, y1: u32, x2: u32, y2: u32, colo
 
 fn draw_grid(
     image: &mut RgbImage,
-    size: usize,
+    puzzle: &Puzzle,
     cell_width: u32,
-    border_width: u32,
-    cages: &[Cage])
+    border_width: u32)
 {
-    let image_width = cell_width * size as u32 + border_width;
-    let cells_width = cell_width * size as u32;
+    let image_width = cell_width * puzzle.size as u32 + border_width;
+    let cells_width = cell_width * puzzle.size as u32;
 
     // draw outer border
     draw_rectangle(image, 0, 0, cells_width, border_width, COLOR_CAGE_BORDER);
@@ -60,11 +59,11 @@ fn draw_grid(
     draw_rectangle(image, border_width, cells_width, image_width, image_width, COLOR_CAGE_BORDER);
     draw_rectangle(image, 0, border_width, border_width, image_width, COLOR_CAGE_BORDER);
 
-    let cage_map = cage_map(cages, size);
+    let cage_map = puzzle.cage_map();
 
     // draw horizontal line segments
-    for i in 1..size { // row
-        for j in 0..size { // col
+    for i in 1..puzzle.size { // row
+        for j in 0..puzzle.size { // col
             let pos1 = Coord([i - 1, j]);
             let pos2 = Coord([i, j]);
             let color = if cage_map[pos1] == cage_map[pos2] {
@@ -80,8 +79,8 @@ fn draw_grid(
         }
     }
     // draw vertical line segments
-    for i in 0..size { // row
-        for j in 1..size { // col
+    for i in 0..puzzle.size { // row
+        for j in 1..puzzle.size { // col
             let pos1 = Coord([i, j - 1]);
             let pos2 = Coord([i, j]);
             let color = if cage_map[pos1] == cage_map[pos2] {
@@ -98,8 +97,8 @@ fn draw_grid(
     }
 
     // draw intersections
-    for i in 1..size {
-        for j in 1..size {
+    for i in 1..puzzle.size {
+        for j in 1..puzzle.size {
             let first = cage_map[Coord([i - 1, j - 1])];
             let pos = [
                 Coord([i - 1, j]),
@@ -159,8 +158,8 @@ fn draw_cage_glyphs(
     if let Some(markup) = markup {
         for (pos, cell) in markup.cells.iter_coord() {
             match cell {
-                &Unknown::Unsolved(ref domain) => draw_cell_domain(image, pos, domain, &font, cell_width, border_width),
-                &Unknown::Solved(value) => draw_cell_solution(image, pos, value, &font, cell_width, border_width),
+                &Variable::Unsolved(ref domain) => draw_cell_domain(image, pos, domain, &font, cell_width, border_width),
+                &Variable::Solved(value) => draw_cell_solution(image, pos, value, &font, cell_width, border_width),
             };
         }
     }

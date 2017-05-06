@@ -1,3 +1,5 @@
+#![feature(retain_hash_collection)]
+
 extern crate env_logger;
 extern crate itertools;
 extern crate png;
@@ -151,7 +153,7 @@ fn do_main() -> Result<(), io::Error> {
 
     if log_enabled!(LogLevel::Info) {
         info!("Cage Indices:");
-        cage_map(&puzzle.cages, puzzle.size).print();
+        puzzle.cage_map().print();
         info!("Cages:");
         for (i, cage) in puzzle.cages.iter().enumerate() {
             info!(" {:>2}: {} {}", i, &cage.operator.symbol(), cage.target);

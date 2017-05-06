@@ -7,20 +7,6 @@ use puzzle::*;
 
 pub type Board = Square<i32>;
 
-/**
- * Create a square of values where each value represents the index of the cage
- * containing that position
- */
-pub fn cage_map(cages: &[Cage], size: usize) -> Square<usize> {
-    let mut indices = Square::new(0, size);
-    for (i, cage) in cages.iter().enumerate() {
-        for j in cage.cells.iter() {
-            indices[*j] = i;
-        }
-    }
-    indices
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Operator { Add, Subtract, Multiply, Divide }
 
