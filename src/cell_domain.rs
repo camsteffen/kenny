@@ -48,7 +48,7 @@ impl CellDomain {
 
     pub fn only_value(&self) -> Option<i32> {
         match self.size {
-            1 => Some(self.iter().next().unwrap() as i32 + 1),
+            1 => Some(self.iter().next().unwrap()),
             _ => None,
         }
     }

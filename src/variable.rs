@@ -20,6 +20,13 @@ impl Variable {
         Variable::Unsolved(CellDomain::with_all(size))
     }
 
+    pub fn is_solved(&self) -> bool {
+        match self {
+            &Variable::Solved(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_unsolved(&self) -> bool {
         match self {
             &Variable::Unsolved(_) => true,

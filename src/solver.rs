@@ -30,16 +30,13 @@ pub struct Solver<'a> {
     pub cells: Square<Variable>,
     pub cages: Vec<CageMarkup>,
     pub cage_map: Square<usize>,
-    pub dirty_cages: BTreeSet<usize>,
+    pub dirty_cages: HashSet<usize>,
     //vectors: [Vec<Vector>; 2],
 }
 
 impl<'a> Solver<'a> {
     pub fn new(puzzle: &Puzzle) -> Solver {
-        let mut dirty_cages = BTreeSet::new();
-        for i in 0..puzzle.cages.len() {
-            dirty_cages.insert(i);
-        }
+        let dirty_cages = (0..puzzle.cages.len()).collect();
         Solver {
             puzzle: puzzle,
             cells: Square::new(Variable::unsolved_with_all(puzzle.size), puzzle.size),
@@ -91,7 +88,9 @@ impl<'a> Solver<'a> {
         // remove cell candidate
         let (removed, only_value) = match self.cells[pos] {
             Variable::Unsolved(ref mut domain) => {
-                (domain.remove(n), domain.only_value())
+                let removed = domain.remove(n);
+                let only_value = domain.only_value();
+                (removed, only_value)
             },
             _ => (false, None),
         };
@@ -99,11 +98,9 @@ impl<'a> Solver<'a> {
         // mark cell solved if one candidate remains
         if let Some(value) = only_value {
             self.solve_cell(pos, value);
-        }
-
-        if removed {
+        } else if removed {
             let cage_index = self.cage_map[pos];
-            self.dirty_cages.insert(cage_index);
+            self.on_update_cage(cage_index);
         }
 
         /*
@@ -122,16 +119,29 @@ impl<'a> Solver<'a> {
     fn solve_cell(&mut self, pos: usize, value: i32) {
         self.cells[pos] = Variable::Solved(value);
         self.on_solve_cell(pos, value);
+        let cage_index = self.cage_map[pos];
+        self.on_update_cage(cage_index);
     }
 
     fn on_solve_cell(&mut self, pos: usize, value: i32) {
         debug!("Solver::on_solve_cell({}, {})", pos, value);
         let size = self.cells.size;
         let pos = Coord::from_index(pos, size);
+
         // remove possibility from cells in same row or column
         for i in 0..size {
             self.remove(Coord::new(i, pos[1]).to_index(size), value);
             self.remove(Coord::new(pos[0], i).to_index(size), value);
+        }
+    }
+
+    fn on_update_cage(&mut self, cage_index: usize) {
+        if self.puzzle.cages[cage_index].cells.iter()
+            .all(|&p| self.cells[p].is_solved())
+        {
+            self.dirty_cages.remove(&cage_index);
+        } else {
+            self.dirty_cages.insert(cage_index);
         }
     }
 
@@ -184,8 +194,11 @@ impl<'a> Solver<'a> {
                     .map(|domain| domain.len() as i32)
                     .product();
                 if cage_rank == 1 {
+                    panic!("dirty cage is solved");
+                    /*
                     to_remove.push(cage_index);
                     continue
+                    */
                 }
                 let better = match best_cage {
                     Some((_, best_cage_rank)) => cage_rank < best_cage_rank,
@@ -227,7 +240,7 @@ impl<'a> Solver<'a> {
             .filter_map(|&i| self.cells[i].solved())
             .sum();
         let remain_sum = cage.target - solved_sum;
-        let unsolved = cage.cells.iter()
+        let mut unsolved = cage.cells.iter()
             .cloned()
             .filter(|&i| self.cells[i].is_unsolved())
             .collect_vec();
@@ -238,25 +251,49 @@ impl<'a> Solver<'a> {
         self.find_cage_solutions(0, &unsolved, remain_sum, &mut solution, &mut solutions);
 
         // assemble domain for each unsolved cell from cell solutions
-        let mut domain = vec![CellDomain::with_none(self.puzzle.size); unsolved.len()];
+        let mut soln_domain = vec![CellDomain::with_none(self.puzzle.size); unsolved.len()];
         for solution in solutions.iter() {
             for i in 0..unsolved.len() {
-                domain[i].insert(solution[i]);
+                soln_domain[i].insert(solution[i]);
             }
         }
 
         // remove values from cell domains that are not in a cage solution
+        let mut to_remove = Vec::new();
         for i in 0..unsolved.len() {
             let index = unsolved[i];
-            let no_solutions = self.cells[index].unwrap_unsolved().iter()
-                .filter(|&n| domain[i].contains(n) == false)
-                .collect_vec();
+            let no_solutions;
+            {
+                let domain = match self.cells[index].unsolved() {
+                    Some(domain) => domain,
+                    None => {
+                        to_remove.push(i);
+                        continue
+                    },
+                };
+                no_solutions = domain.iter()
+                    .filter(|&n| soln_domain[i].contains(n) == false)
+                    .collect_vec();
+            }
             for n in no_solutions {
                 self.remove(index, n);
             }
         }
-
-        // find cage-vector-values
+        if to_remove.is_empty() == false {
+            let mut to_remove = to_remove.iter().peekable();
+            unsolved = unsolved.into_iter()
+                .enumerate()
+                .filter(|&(ref i, _)| {
+                    if to_remove.peek().map_or(false, |&r| r == i) {
+                        to_remove.next();
+                        false
+                    } else {
+                        true
+                    }
+                })
+                .map(|(_, i)| i)
+                .collect()
+        }
 
         let mut vectors = HashMap::new();
         for i in 0..unsolved.len() {
