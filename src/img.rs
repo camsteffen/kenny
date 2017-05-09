@@ -1,13 +1,14 @@
 extern crate png;
 extern crate image;
 
+use variable::Variable;
+use cell_domain::CellDomain;
 use rusttype::Font;
 use rusttype::FontCollection;
 use rusttype::point;
 use rusttype::Scale;
 use square::*;
-use board::*;
-use solve::*;
+use solver::Solver;
 use puzzle::*;
 use image::RgbImage;
 use image::Rgb;
@@ -20,7 +21,7 @@ const COLOR_CELL_BORDER:  Rgb<u8> = Rgb { data: [205; 3] };
 const COLOR_CAGE_BORDER: Rgb<u8> = BLACK;
 const COLOR_BG: Rgb<u8> = WHITE;
 
-pub fn image(puzzle: &Puzzle, markup: Option<&BoardMarkup>, path: &str) -> Result<(), io::Error> {
+pub fn image(puzzle: &Puzzle, solver: Option<&Solver>, path: &str) -> Result<(), io::Error> {
     let cell_width = 60 as usize;
     let border_width = cell_width / 25;
 
@@ -29,7 +30,7 @@ pub fn image(puzzle: &Puzzle, markup: Option<&BoardMarkup>, path: &str) -> Resul
 
     // draw grid
     draw_grid(&mut image, puzzle, cell_width as u32, border_width as u32);
-    draw_cage_glyphs(&mut image, &puzzle.cages, markup, puzzle.size, cell_width, border_width);
+    draw_cage_glyphs(&mut image, &puzzle.cages, solver, puzzle.size, cell_width, border_width);
 
     image.save(path)?;
 
@@ -122,7 +123,7 @@ fn draw_grid(
 fn draw_cage_glyphs(
     image: &mut RgbImage,
     cages: &[Cage],
-    markup: Option<&BoardMarkup>,
+    solver: Option<&Solver>,
     size: usize,
     cell_width: usize,
     border_width: usize)
@@ -155,8 +156,8 @@ fn draw_cage_glyphs(
     }
 
     // markup domain
-    if let Some(markup) = markup {
-        for (pos, cell) in markup.cells.iter_coord() {
+    if let Some(solver) = solver {
+        for (pos, cell) in solver.cells.iter_coord() {
             match cell {
                 &Variable::Unsolved(ref domain) => draw_cell_domain(image, pos, domain, &font, cell_width, border_width),
                 &Variable::Solved(value) => draw_cell_solution(image, pos, value, &font, cell_width, border_width),
@@ -168,7 +169,7 @@ fn draw_cage_glyphs(
 fn draw_cell_domain(
     image: &mut RgbImage,
     pos: Coord,
-    domain: &Domain,
+    domain: &CellDomain,
     font: &Font,
     cell_width: usize,
     border_width: usize)
@@ -178,7 +179,7 @@ fn draw_cell_domain(
     let scale = Scale::uniform(cell_width as f32 * 0.2);
     let v_metrics = font.v_metrics(scale);
 
-    if domain.count > MAX_LINE_LEN * 2 { return }
+    if domain.len() > MAX_LINE_LEN * 2 { return }
     let mut char_x = 0;
     let mut char_y = 0;
     for n in domain.iter() {

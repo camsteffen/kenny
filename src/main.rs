@@ -1,5 +1,12 @@
 #![feature(retain_hash_collection)]
 
+mod cell_domain;
+mod img;
+mod puzzle;
+mod solver;
+mod square;
+mod variable;
+
 extern crate env_logger;
 extern crate itertools;
 extern crate png;
@@ -14,20 +21,12 @@ extern crate rand;
 #[macro_use]
 extern crate log;
 
-mod puzzle;
-mod square;
-mod solve;
-mod board;
-mod img;
-
-use puzzle::*;
+use puzzle::Puzzle;
 use log::LogLevel;
 use itertools::Itertools;
 use getopts::Options;
 use img::image;
 use std::fs::File;
-use board::*;
-use solve::*;
 use std::io::prelude::*;
 use std::io;
 use std::env;
@@ -140,7 +139,7 @@ fn do_main() -> Result<(), io::Error> {
             file.read_to_string(&mut buf)?;
             deserialize_puzzle(&buf)
         } else if let Some(gen_params) = params.generate {
-            let puzzle = generate_puzzle(gen_params.size);
+            let puzzle = Puzzle::generate(gen_params.size);
             if let Some(path) = gen_params.output_file {
                 let cages_json = serde_json::to_string(&puzzle).expect("serialize cages");
                 let mut file = File::create(path)?;
@@ -161,7 +160,7 @@ fn do_main() -> Result<(), io::Error> {
     }
 
     let markup = if params.solve {
-        let markup = solve(&puzzle);
+        let markup = puzzle.solve();
         if log_enabled!(LogLevel::Info) {
             let result = if markup.solved() {
                 "Fail"
