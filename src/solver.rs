@@ -86,17 +86,17 @@ impl<'a> Solver<'a> {
         debug!("Solver::remove({}, {})", pos, n);
 
         // remove cell candidate
-        let (removed, only_value) = match self.cells[pos] {
+        let (removed, solution) = match self.cells[pos] {
             Variable::Unsolved(ref mut domain) => {
                 let removed = domain.remove(n);
-                let only_value = domain.only_value();
-                (removed, only_value)
+                let solution = domain.single_value();
+                (removed, solution)
             },
             _ => (false, None),
         };
 
         // mark cell solved if one candidate remains
-        if let Some(value) = only_value {
+        if let Some(value) = solution {
             self.solve_cell(pos, value);
         } else if removed {
             let cage_index = self.cage_map[pos];

@@ -21,6 +21,10 @@ impl CellDomain {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.size
+    }
+
     pub fn insert(&mut self, n: i32) -> bool {
         let index = Self::hash(n);
         let existed = self.domain[index];
@@ -46,7 +50,7 @@ impl CellDomain {
         self.domain[Self::hash(n)]
     }
 
-    pub fn only_value(&self) -> Option<i32> {
+    pub fn single_value(&self) -> Option<i32> {
         match self.size {
             1 => Some(self.iter().next().unwrap()),
             _ => None,
@@ -58,10 +62,6 @@ impl CellDomain {
             domain: &self.domain,
             i: 0,
         }
-    }
-
-    pub fn len(&self) -> usize {
-        self.size
     }
 
     #[inline]
