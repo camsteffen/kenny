@@ -15,14 +15,14 @@ extern crate serde_derive;
 extern crate serde_json;
 
 mod cell_domain;
-mod img;
+mod image;
 mod puzzle;
 mod solver;
 mod square;
 mod variable;
 
+use image::AsImage;
 use getopts::Options;
-use img::image;
 use itertools::Itertools;
 use log::LogLevel;
 use puzzle::Puzzle;
@@ -156,23 +156,27 @@ fn do_main() -> Result<(), std::io::Error> {
         }
     }
 
-    let markup = if params.solve {
-        let markup = puzzle.solve();
+    let solver = if params.solve {
+        let solver = puzzle.solve();
         if log_enabled!(LogLevel::Info) {
-            let result = if markup.solved() {
+            let result = if solver.solved() {
                 "Fail"
             } else {
                 "Success"
             };
             info!("Result: {}", result);
         }
-        Some(markup)
+        Some(solver)
     } else {
         None
     };
 
     if let Some(path) = params.output_image {
-        image(&puzzle, markup.as_ref(), &path)?;
+        let image = match solver {
+            Some(solver) => solver.as_image(),
+            None => puzzle.as_image(),
+        };
+        image.save(path);
     }
 
     Ok(())

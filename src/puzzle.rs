@@ -1,3 +1,4 @@
+use image::*;
 use itertools::Itertools;
 use solver::Solver;
 use square::*;
@@ -187,4 +188,14 @@ impl Cage {
     }
 }
 */
+
+impl AsImage for Puzzle {
+    fn as_image(&self) -> RgbImage {
+        let info = PuzzleImageInfo::from_puzzle_size_default(self.size);
+        let mut image = RgbImage::from_pixel(info.image_width, info.image_width, COLOR_BG);
+        draw_grid(&mut image, &info, self);
+        draw_cage_glyphs(&mut image, &info, self);
+        image
+    }
+}
 
