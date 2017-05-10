@@ -1,18 +1,18 @@
 extern crate png;
 extern crate image;
 
-use variable::Variable;
 use cell_domain::CellDomain;
+use image::Rgb;
+use image::RgbImage;
+use puzzle::{Puzzle, Cage};
 use rusttype::Font;
 use rusttype::FontCollection;
-use rusttype::point;
 use rusttype::Scale;
-use square::*;
+use rusttype::point;
 use solver::Solver;
-use puzzle::*;
-use image::RgbImage;
-use image::Rgb;
+use square::Coord;
 use std::io;
+use variable::Variable;
 
 const BLACK: Rgb<u8> = Rgb { data: [0; 3] };
 const WHITE: Rgb<u8> = Rgb { data: [255; 3] };
@@ -28,7 +28,6 @@ pub fn image(puzzle: &Puzzle, solver: Option<&Solver>, path: &str) -> Result<(),
     let image_width = (cell_width * puzzle.size + border_width) as u32;
     let mut image = RgbImage::from_pixel(image_width, image_width, COLOR_BG);
 
-    // draw grid
     draw_grid(&mut image, puzzle, cell_width as u32, border_width as u32);
     draw_cage_glyphs(&mut image, &puzzle.cages, solver, puzzle.size, cell_width, border_width);
 
@@ -158,9 +157,9 @@ fn draw_cage_glyphs(
     // markup domain
     if let Some(solver) = solver {
         for (pos, cell) in solver.cells.iter_coord() {
-            match cell {
-                &Variable::Unsolved(ref domain) => draw_cell_domain(image, pos, domain, &font, cell_width, border_width),
-                &Variable::Solved(value) => draw_cell_solution(image, pos, value, &font, cell_width, border_width),
+            match *cell {
+                Variable::Unsolved(ref domain) => draw_cell_domain(image, pos, domain, &font, cell_width, border_width),
+                Variable::Solved(value) => draw_cell_solution(image, pos, value, &font, cell_width, border_width),
             };
         }
     }
@@ -186,7 +185,7 @@ fn draw_cell_domain(
         let s = n.to_string();
         let mut chars = s.chars();
         let c = chars.next().unwrap();
-        if let Some(_) = chars.next() { panic!("Expected a single char in {}", s) }
+        if chars.next().is_some() { panic!("Expected a single char in {}", s) }
         let point = point(
             ((pos[1] * cell_width + border_width + 1) as f32 + char_x as f32 * v_metrics.ascent),
             ((pos[0] + 1) * cell_width - 2) as f32 - char_y as f32 * v_metrics.ascent);
@@ -231,9 +230,11 @@ fn draw_cell_solution(
     println!("pos {} point {} {}, a {}, b {}", pos, x, y, cell_width - border_width, v_metrics.ascent);
     let glyph = glyph.positioned(point);
     let bb = glyph.pixel_bounding_box().unwrap();
-    glyph.draw(|x, y, v| {
-        if v == 0.0 { return };
-        let v = ((1.0 - v) * 255.0) as u8;
-        image.put_pixel(bb.min.x as u32 + x, bb.min.y as u32 + y, Rgb { data: [v; 3] });
+    glyph.draw(|x, y, val| {
+        if val == 0.0 { return };
+        let val = ((1.0 - val) * 255.0) as u8;
+        image.put_pixel(bb.min.x as u32 + x,
+                        bb.min.y as u32 + y,
+                        Rgb { data: [val; 3] });
     });
 }

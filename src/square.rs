@@ -1,3 +1,4 @@
+use std::slice;
 use std::cmp::Ord;
 use std::fmt::Display;
 use std::fmt;
@@ -74,11 +75,9 @@ impl<T> Square<T> {
         self.elements.chunks_mut(self.size)
     }
 
-    /*
-    pub fn iter<'a>(&'a self) -> Box<Iterator<Item=&T> + 'a> {
-        Box::new(self.elements.iter())
+    pub fn iter(&self) -> slice::Iter<T> {
+        self.elements.iter()
     }
-    */
 
     pub fn iter_coord(&self) -> SquareCoordDataIter<T> {
         SquareCoordDataIter {
@@ -200,11 +199,11 @@ impl<'a, T> Iterator for SquareCoordDataIter<'a, T> {
         if self.index >= self.size.pow(2) {
             return None
         }
-        let data = mem::replace(&mut self.data, &mut []);
+        let data = mem::replace(&mut self.data, &[]);
         let (first, remaining) = data.split_first().unwrap();
         self.data = remaining;
         let p = (Coord::from_index(self.index, self.size), first);
-        self.index = self.index + 1;
+        self.index += 1;
         Some(p)
     }
 }

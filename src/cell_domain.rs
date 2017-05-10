@@ -39,7 +39,7 @@ impl CellDomain {
         let i = Self::hash(n);
         if self.domain[i] {
             self.domain[i] = false;
-            self.size = self.size - 1;
+            self.size -= 1;
             true
         } else {
             false
@@ -57,7 +57,7 @@ impl CellDomain {
         }
     }
 
-    pub fn iter<'a>(&'a self) -> Iter<'a> {
+    pub fn iter(&self) -> Iter {
         Iter {
             domain: &self.domain,
             i: 0,
@@ -84,11 +84,10 @@ impl<'a> Iterator for Iter<'a> {
             None => return None,
         };
         self.i = self.i + pos as i32 + 1;
-        let domain = mem::replace(&mut self.domain, &mut []);
+        let domain = mem::replace(&mut self.domain, &[]);
 
         let (_, remaining) = domain.split_at(pos + 1);
         self.domain = remaining;
         Some(self.i)
     }
 }
-

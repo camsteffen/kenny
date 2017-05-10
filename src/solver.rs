@@ -76,7 +76,7 @@ impl<'a> Solver<'a> {
         */
 
         for (pos, cell_markup) in self.cells.iter_coord() {
-            if let &Variable::Solved(val) = cell_markup {
+            if let Variable::Solved(val) = *cell_markup {
                 board[pos] = val;
             };
         }
@@ -146,8 +146,8 @@ impl<'a> Solver<'a> {
     }
 
     pub fn solved(&self) -> bool {
-        self.cells.elements.iter().all(|u| match u {
-            &Variable::Solved(_) => true,
+        self.cells.elements.iter().all(|u| match *u {
+            Variable::Solved(_) => true,
             _ => false,
         })
     }
@@ -160,21 +160,21 @@ impl<'a> Solver<'a> {
     }
 
     fn binary_operator_consistency(&mut self) {
-        for cage in self.puzzle.cages.iter() {
-            match &cage.operator {
-                &Operator::Add => {
-                    for &pos in cage.cells.iter() {
+        for cage in &self.puzzle.cages {
+            match cage.operator {
+                Operator::Add => {
+                    for &pos in &cage.cells {
                         for n in (cage.target + 1)..(self.puzzle.size as i32 + 1) {
                             self.remove(pos, n);
                         }
                     }
                 },
-                &Operator::Multiply => {
+                Operator::Multiply => {
                     let non_factors = (1..self.puzzle.size as i32 - 1)
                         .filter(|n| !cage.target.is_multiple_of(n))
                         .collect_vec();
-                    for &pos in cage.cells.iter() {
-                        for n in non_factors.iter() {
+                    for &pos in &cage.cells {
+                        for n in &non_factors {
                             self.remove(pos, *n);
                         }
                     }
@@ -186,9 +186,9 @@ impl<'a> Solver<'a> {
 
     fn inner_cages_consistency(&mut self) {
         let mut to_remove = Vec::new();
-        while self.dirty_cages.is_empty() == false {
+        while !self.dirty_cages.is_empty() {
             let mut best_cage = None;
-            for &cage_index in self.dirty_cages.iter() {
+            for &cage_index in &self.dirty_cages {
                 let cage_rank: i32 = self.puzzle.cages[cage_index].cells.iter()
                     .filter_map(|&cell_index| self.cells[cell_index].unsolved())
                     .map(|domain| domain.len() as i32)
@@ -211,7 +211,7 @@ impl<'a> Solver<'a> {
             let (best_cage_index, _) = best_cage.unwrap();
             to_remove.push(best_cage_index);
             for index in to_remove.drain(..) {
-                if self.dirty_cages.remove(&index) == false {
+                if !self.dirty_cages.remove(&index) {
                     panic!("expected {} in dirty cages", index)
                 }
             }
@@ -252,7 +252,7 @@ impl<'a> Solver<'a> {
 
         // assemble domain for each unsolved cell from cell solutions
         let mut soln_domain = vec![CellDomain::with_none(self.puzzle.size); unsolved.len()];
-        for solution in solutions.iter() {
+        for solution in &solutions {
             for i in 0..unsolved.len() {
                 soln_domain[i].insert(solution[i]);
             }
@@ -272,14 +272,14 @@ impl<'a> Solver<'a> {
                     },
                 };
                 no_solutions = domain.iter()
-                    .filter(|&n| soln_domain[i].contains(n) == false)
+                    .filter(|&n| !soln_domain[i].contains(n))
                     .collect_vec();
             }
             for n in no_solutions {
                 self.remove(index, n);
             }
         }
-        if to_remove.is_empty() == false {
+        if !to_remove.is_empty() {
             let mut to_remove = to_remove.iter().peekable();
             unsolved = unsolved.into_iter()
                 .enumerate()
@@ -296,9 +296,11 @@ impl<'a> Solver<'a> {
         }
 
         let mut vectors = HashMap::new();
-        for i in 0..unsolved.len() {
-            for &vector_id in vector_ids(unsolved[i], self.puzzle.size).into_iter() {
-                vectors.entry(vector_id).or_insert(BTreeSet::new()).insert(i);
+        for (i, &pos) in unsolved.iter().enumerate() {
+            for &vector_id in &vector_ids(pos, self.puzzle.size) {
+                vectors.entry(vector_id)
+                    .or_insert_with(BTreeSet::new)
+                    .insert(i);
             }
         }
         vectors.retain(|_, unsolved_ids| unsolved_ids.len() > 1);
@@ -310,7 +312,7 @@ impl<'a> Solver<'a> {
                 .map(|&unsolved_id| solution[unsolved_id])
                 .filter(|n| {
                     self.cages[cage_index].vector_vals.get(&vector_id)
-                        .map_or(true, |vals| vals.contains(n) == false)
+                        .map_or(true, |vals| !vals.contains(n))
                 })
                 .collect();
             for solution in solutions_iter {
@@ -323,7 +325,7 @@ impl<'a> Solver<'a> {
                 //mem::swap(&mut values, &mut next_values);
             }
             self.cages[cage_index].vector_vals.entry(vector_id)
-                .or_insert(HashSet::new())
+                .or_insert_with(HashSet::new)
                 .extend(values.iter());
             for n in values {
                 for pos in self.iter_vector(vector_id) {
@@ -351,7 +353,7 @@ impl<'a> Solver<'a> {
         if i == solution.len() - 1 {
             if remain_sum > self.cells.size as i32 { return }
             let domain = self.cells[pos[i]].unwrap_unsolved();
-            if domain.contains(remain_sum) == false { return }
+            if !domain.contains(remain_sum) { return }
             if collides(remain_sum, &solution[..i]) { return }
             solution[i] = remain_sum;
             solutions.push(solution.to_vec());

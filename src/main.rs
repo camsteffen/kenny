@@ -116,7 +116,7 @@ fn read_puzzle_stdin() -> Puzzle {
 }
 
 fn deserialize_puzzle(s: &str) -> Puzzle {
-    serde_json::from_str(&s).unwrap_or_else(|e| {
+    serde_json::from_str(s).unwrap_or_else(|e| {
         panic!("Unable to parse Puzzle: {}", e);
     })
 }

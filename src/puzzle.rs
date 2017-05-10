@@ -19,7 +19,7 @@ impl Puzzle {
     pub fn cage_map(&self) -> Square<usize> {
         let mut indices = Square::new(0, self.size);
         for (i, cage) in self.cages.iter().enumerate() {
-            for j in cage.cells.iter() {
+            for j in &cage.cells {
                 indices[*j] = i;
             }
         }
@@ -60,28 +60,28 @@ fn generate_cages(cells: &Square<i32>) -> Vec<Cage> {
         let cage_size = rng.gen_range(min_cage_size, max_cage_size + 1);
         for _ in 0..cage_size {
             cage_ids[pos] = cur_cage;
-            uncaged = uncaged - 1;
+            uncaged -= 1;
             if uncaged == 0 {
                 break 'cages
             }
             let mut available_positions = Vec::with_capacity(4);
             for i in 0..2 {
                 if pos[i] > 0 {
-                    pos[i] = pos[i] - 1;
-                    available_positions.push(pos.clone());
-                    pos[i] = pos[i] + 1;
+                    let mut available_pos = pos;
+                    available_pos[i] -= 1;
+                    available_positions.push(available_pos);
                 }
                 if pos[i] < size - 1 {
-                    pos[i] = pos[i] + 1;
-                    available_positions.push(pos.clone());
-                    pos[i] = pos[i] - 1;
+                    let mut available_pos = pos;
+                    available_pos[i] += 1;
+                    available_positions.push(available_pos);
                 }
             }
             available_positions = available_positions.into_iter()
                 .filter(|next| cage_ids[*next] == no_cage)
                 .collect_vec();
             match rng.choose(&available_positions) {
-                Some(p) => pos = p.clone(),
+                Some(p) => pos = *p,
                 None => {
                     let index = cage_ids.elements.iter()
                         .position(|c| *c == no_cage)
@@ -91,18 +91,17 @@ fn generate_cages(cells: &Square<i32>) -> Vec<Cage> {
                 }
             }
         }
-        cur_cage = cur_cage + 1;
+        cur_cage += 1;
     }
     let num_cages = cur_cage as usize + 1;
 
     // for every cage_cells[i][j], cell j is in cage i
     let mut cage_cells = vec![Vec::new(); num_cages];
-    for i in 0..num_cells {
-        let cage_index = cage_ids[i] as usize;
-        cage_cells[cage_index].push(i);
+    for (cell, cage_index) in cage_ids.iter().map(|&i| i as usize).enumerate() {
+        cage_cells[cage_index].push(cell);
     }
     let mut cages = Vec::with_capacity(num_cages);
-    for cage_cells in cage_cells.into_iter() {
+    for cage_cells in cage_cells {
         let (operator, target) = find_cage_operator(cells, &cage_cells);
         cages.push(Cage {
             operator: operator,
@@ -165,11 +164,11 @@ pub enum Operator { Add, Subtract, Multiply, Divide }
 
 impl Operator {
     pub fn symbol(&self) -> char {
-        match self {
-            &Operator::Add      => '+',
-            &Operator::Subtract => '-',
-            &Operator::Multiply => '*',
-            &Operator::Divide   => '/',
+        match *self {
+            Operator::Add      => '+',
+            Operator::Subtract => '-',
+            Operator::Multiply => '*',
+            Operator::Divide   => '/',
         }
     }
 }
