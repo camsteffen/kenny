@@ -37,13 +37,12 @@ impl CellDomain {
 
     pub fn remove(&mut self, n: i32) -> bool {
         let i = Self::hash(n);
-        if self.domain[i] {
+        let existed = self.domain[i];
+        if existed {
             self.domain[i] = false;
             self.size -= 1;
-            true
-        } else {
-            false
         }
+        existed
     }
 
     pub fn contains(&self, n: i32) -> bool {
@@ -85,7 +84,6 @@ impl<'a> Iterator for Iter<'a> {
         };
         self.i = self.i + pos as i32 + 1;
         let domain = mem::replace(&mut self.domain, &[]);
-
         let (_, remaining) = domain.split_at(pos + 1);
         self.domain = remaining;
         Some(self.i)
