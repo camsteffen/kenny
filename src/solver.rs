@@ -27,10 +27,10 @@ impl Vector {
 
 pub struct Solver<'a> {
     puzzle: &'a Puzzle,
-    pub cells: Square<Variable>,
-    pub cages: Vec<CageMarkup>,
-    pub cage_map: Square<usize>,
-    pub dirty_cages: HashSet<usize>,
+    cells: Square<Variable>,
+    cages: Vec<CageMarkup>,
+    cage_map: Square<usize>,
+    dirty_cages: HashSet<usize>,
     //vectors: [Vec<Vector>; 2],
 }
 

@@ -149,7 +149,10 @@ fn draw_cage_glyphs(
             glyph.draw(|x, y, v| {
                 if v == 0.0 { return };
                 let v = ((1.0 - v) * 255.0) as u8;
-                image.put_pixel(bb.min.x as u32 + x, bb.min.y as u32 + y, Rgb { data: [v; 3] });
+                image.put_pixel(
+                    bb.min.x as u32 + x,
+                    bb.min.y as u32 + y,
+                    Rgb { data: [v; 3] });
             });
         }
     }
@@ -158,8 +161,12 @@ fn draw_cage_glyphs(
     if let Some(solver) = solver {
         for (pos, cell) in solver.cells.iter_coord() {
             match *cell {
-                Variable::Unsolved(ref domain) => draw_cell_domain(image, pos, domain, &font, cell_width, border_width),
-                Variable::Solved(value) => draw_cell_solution(image, pos, value, &font, cell_width, border_width),
+                Variable::Unsolved(ref domain) => {
+                    draw_cell_domain(image, pos, domain, &font, cell_width, border_width)
+                },
+                Variable::Solved(value) => {
+                    draw_cell_solution(image, pos, value, &font, cell_width, border_width)
+                },
             };
         }
     }
@@ -196,7 +203,10 @@ fn draw_cell_domain(
         glyph.draw(|x, y, v| {
             if v == 0.0 { return };
             let v = ((1.0 - v) * 255.0) as u8;
-            image.put_pixel(bb.min.x as u32 + x, bb.min.y as u32 + y, Rgb { data: [v; 3] });
+            image.put_pixel(
+                bb.min.x as u32 + x,
+                bb.min.y as u32 + y,
+                Rgb { data: [v; 3] });
         });
         char_x += 1;
         if char_x == MAX_LINE_LEN {

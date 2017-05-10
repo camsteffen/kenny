@@ -96,17 +96,6 @@ impl<T> Square<T> {
         }
     }
     */
-
-    pub fn print(&self) where T: Display + Ord {
-        let len = self.elements.iter().max().unwrap()
-            .to_string().len();
-        for row in self.rows() {
-            for element in row {
-                print!("{:>1$} ", element, len);
-            }
-            println!();
-        }
-    }
 }
 
 impl<T> Index<Coord> for Square<T> {
@@ -145,13 +134,16 @@ impl<T> IntoIterator for Square<T> {
 }
 */
 
-impl<T: Display> fmt::Display for Square<T> {
+impl<T> fmt::Display for Square<T>
+where T: Display + Ord {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let len = self.elements.iter().max().unwrap()
+            .to_string().len();
         for row in self.rows() {
             for element in row {
-                write!(f, "{:>2} ", element).unwrap();
+                write!(f, "{:>1$} ", element, len)?;
             }
-            write!(f, "\n").unwrap();
+            writeln!(f)?;
         }
         Ok(())
     }
