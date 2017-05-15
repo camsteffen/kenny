@@ -1,10 +1,10 @@
-use image::*;
 use itertools::Itertools;
-use solver::Solver;
-use square::*;
 use itertools::repeat_call;
 use rand::Rng;
 use rand::thread_rng;
+use solve::Solver;
+use square::Coord;
+use square::Square;
 
 #[derive(Deserialize, Serialize)]
 pub struct Puzzle {
@@ -20,8 +20,8 @@ impl Puzzle {
     pub fn cage_map(&self) -> Square<usize> {
         let mut indices = Square::new(0, self.size);
         for (i, cage) in self.cages.iter().enumerate() {
-            for j in &cage.cells {
-                indices[*j] = i;
+            for &j in &cage.cells {
+                indices[j] = i;
             }
         }
         indices
@@ -138,7 +138,7 @@ fn find_cage_operator(cells: &Square<i32>, indices: &[usize]) -> (Operator, i32)
     let mut min: i32 = -1;
     let mut max: i32 = -1;
     let vals = indices.iter()
-        .map(|i| cells[*i])
+        .map(|&i| cells[i])
         .collect_vec();
     operators.push(Operator::Add);
     operators.push(Operator::Multiply);
@@ -188,14 +188,4 @@ impl Cage {
     }
 }
 */
-
-impl AsImage for Puzzle {
-    fn as_image(&self) -> RgbImage {
-        let info = PuzzleImageInfo::from_puzzle_size_default(self.size);
-        let mut image = RgbImage::from_pixel(info.image_width, info.image_width, COLOR_BG);
-        draw_grid(&mut image, &info, self);
-        draw_cage_glyphs(&mut image, &info, self);
-        image
-    }
-}
 

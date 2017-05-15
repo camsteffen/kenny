@@ -78,7 +78,7 @@ impl<'a> Iterator for Iter<'a> {
     type Item = i32;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let pos = match self.domain.iter().position(|c| *c) {
+        let pos = match self.domain.iter().position(|&c| c) {
             Some(pos) => pos,
             None => return None,
         };

@@ -1,4 +1,5 @@
-#![feature(retain_hash_collection)]
+#![feature(inclusive_range_syntax)]
+#![feature(slice_patterns)]
 
 extern crate env_logger;
 extern crate getopts;
@@ -17,9 +18,8 @@ extern crate serde_json;
 mod cell_domain;
 mod image;
 mod puzzle;
-mod solver;
+mod solve;
 mod square;
-mod variable;
 
 use image::AsImage;
 use getopts::Options;
@@ -159,11 +159,7 @@ fn do_main() -> Result<(), std::io::Error> {
     let solver = if params.solve {
         let solver = puzzle.solve();
         if log_enabled!(LogLevel::Info) {
-            let result = if solver.solved() {
-                "Fail"
-            } else {
-                "Success"
-            };
+            let result = if solver.solved() { "Success" } else { "Fail" };
             info!("Result: {}", result);
         }
         Some(solver)
@@ -176,7 +172,7 @@ fn do_main() -> Result<(), std::io::Error> {
             Some(solver) => solver.as_image(),
             None => puzzle.as_image(),
         };
-        image.save(path);
+        image.save(path)?;
     }
 
     Ok(())

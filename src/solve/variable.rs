@@ -48,6 +48,13 @@ impl Variable {
         }
     }
 
+    pub fn unwrap_solved(&self) -> i32 {
+        match *self {
+            Variable::Solved(val) => val,
+            _ => panic!("Not Solved"),
+        }
+    }
+
     pub fn unwrap_unsolved(&self) -> &CellDomain {
         match *self {
             Variable::Unsolved(ref d) => d,
@@ -56,7 +63,7 @@ impl Variable {
     }
 
     /*
-    fn unwrap_unsolved_mut(&mut self) -> &mut CellDomain {
+    pub fn unwrap_unsolved_mut(&mut self) -> &mut CellDomain {
         match self {
             &mut Variable::Unsolved(ref mut d) => d,
             _ => panic!("Not Unsolved"),
