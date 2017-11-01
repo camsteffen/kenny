@@ -1,31 +1,15 @@
-#![feature(inclusive_range_syntax)]
-#![feature(slice_patterns)]
-
+extern crate camcam;
 extern crate env_logger;
 extern crate getopts;
-extern crate itertools;
-#[macro_use]
-extern crate log;
-extern crate num;
-extern crate png;
-extern crate rand;
-extern crate rusttype;
+#[macro_use] extern crate log;
 extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 extern crate serde_json;
 
-mod cell_domain;
-mod image;
-mod puzzle;
-mod solve;
-mod square;
-
-use image::AsImage;
+use camcam::image::AsImage;
 use getopts::Options;
-use itertools::Itertools;
+//use itertools::Itertools;
 use log::LogLevel;
-use puzzle::Puzzle;
+use camcam::puzzle::Puzzle;
 use std::env;
 use std::fs::File;
 use std::io::Read;
@@ -53,7 +37,7 @@ struct GenerateParams {
 }
 
 fn parse_args() -> Result<Params, String> {
-    let args = env::args().collect_vec();
+    let args: Vec<_> = env::args().collect();
 
     let mut opts = Options::new();
     opts.optflag("h", "help", "show this help");
@@ -151,7 +135,7 @@ fn do_main() -> Result<(), std::io::Error> {
     if log_enabled!(LogLevel::Info) {
         info!("Cage Indices:\n{}", puzzle.cage_map());
         info!("Cages:");
-        for (i, cage) in puzzle.cages.iter().enumerate() {
+        for (i, cage) in puzzle.cages().iter().enumerate() {
             info!(" {:>2}: {} {}", i, &cage.operator.symbol(), cage.target);
         }
     }

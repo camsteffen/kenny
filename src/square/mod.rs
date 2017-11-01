@@ -1,3 +1,5 @@
+//! Modlue for the `Square` struct
+
 mod coord;
 pub mod vector;
 
@@ -14,31 +16,42 @@ use std::ops::IndexMut;
 use std::slice::Chunks;
 use std::slice::ChunksMut;
 
+/// A container of elements represented in a square grid
 pub struct Square<T> {
-    pub size: usize,
-    pub elements: Vec<T>,
+    width: usize,
+    elements: Vec<T>,
 }
 
 impl<T> Square<T> {
-    pub fn new(val: T, size: usize) -> Square<T>
+
+    /// Create a new `Square` of a specified width and fill with a specified value
+    pub fn new(val: T, width: usize) -> Square<T>
         where T: Clone {
         Square {
-            size: size,
-            elements: vec![val; size.pow(2)],
+            width: width,
+            elements: vec![val; width.pow(2)],
         }
     }
 
+    /// Returns the width (and height) of the grid
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    /// Returns an iterator over the rows of the square
     pub fn rows(&self) -> Chunks<T> {
-        self.elements.chunks(self.size)
+        self.elements.chunks(self.width)
     }
 
+    /// Returns a mutable iterator over the rows of the square
     pub fn rows_mut(&mut self) -> ChunksMut<T> {
-        self.elements.chunks_mut(self.size)
+        self.elements.chunks_mut(self.width)
     }
 
-    pub fn iter_coord(&self) -> SquareCoordDataIter<T> {
-        SquareCoordDataIter {
-            size: self.size,
+    /// Returns an iterator over every element, paired with its `Coord`
+    pub fn iter_coord(&self) -> CoordIter<T> {
+        CoordIter {
+            size: self.width,
             index: 0,
             data: self.elements.as_slice(),
         }
@@ -62,13 +75,13 @@ impl<T> DerefMut for Square<T> {
 impl<T> Index<Coord> for Square<T> {
     type Output = T;
     fn index(&self, coord: Coord) -> &T {
-        &self.elements[coord.to_index(self.size)]
+        &self.elements[coord.to_index(self.width)]
     }
 }
 
 impl<T> IndexMut<Coord> for Square<T> {
     fn index_mut(&mut self, coord: Coord) -> &mut T {
-        &mut self.elements[coord.to_index(self.size)]
+        &mut self.elements[coord.to_index(self.width)]
     }
 }
 
@@ -100,13 +113,15 @@ where T: Display + Ord {
     }
 }
 
-pub struct SquareCoordDataIter<'a, T: 'a> {
+/// An iterator over the elements of a `Square` where each item is a tuple
+/// with the `Coord` of the element
+pub struct CoordIter<'a, T: 'a> {
     size: usize,
     index: usize,
     data: &'a [T],
 }
 
-impl<'a, T> Iterator for SquareCoordDataIter<'a, T> {
+impl<'a, T> Iterator for CoordIter<'a, T> {
     type Item = (Coord, &'a T);
 
     fn next(&mut self) -> Option<Self::Item> {
