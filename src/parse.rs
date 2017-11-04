@@ -3,7 +3,7 @@
 use puzzle::Cage;
 use puzzle::Operator;
 use puzzle::Puzzle;
-use std::collections::HashMap;
+use std::ascii::AsciiExt;
 use std::str;
 use std::iter::once;
 use std::fmt;
@@ -124,32 +124,29 @@ pub fn parse_puzzle(s: &str) -> Puzzle {
 }
 
 fn read_cage_cells(s: &mut Iterator<Item=IndexedChar>, size: usize) -> Vec<Vec<usize>> {
-    let mut cages = HashMap::new();
+    let mut cages: Vec<Vec<usize>> = Vec::new();
     let mut cell = 0 as usize;
-    let mut len = 0;
     loop {
         let (i, id) = s.next().unwrap();
-        let id = match id {
-            Token::Letter(l) => l,
+        let cage_index = match id {
+            Token::Letter(l) => {
+                if !l.is_ascii_uppercase() {
+                    panic!("Invalid cage id: {}, ({})", id, i)
+                }
+                ((l as u8) - ('A' as u8)) as usize
+            },
             _ => panic!("Invalid cage id: {}, ({})", id, i)
         };
-        let v = cages.entry(id).or_insert_with(|| {
-            /*
-            if len == size {
-                panic!("too many cages: '{}': {}:{}", id, (indexed_char.0).0, (indexed_char.0).1)
-            }
-            */
-            len += 1;
-            Vec::new()
-        });
-        v.push(cell as usize);
+        if cage_index >= cages.len() {
+            cages.resize_default(cage_index + 1);
+        }
+        cages[cage_index].push(cell as usize);
         cell += 1;
         if cell == size * size {
             break
         }
     }
-    let a = cages.drain().map(|(_, v)| v);
-    a.collect()
+    cages
 }
 
 fn read_cage_targets(s: &mut Iterator<Item=IndexedChar>, num_cages: usize) -> Vec<(u32, Operator)> {

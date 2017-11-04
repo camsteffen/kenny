@@ -1,7 +1,6 @@
 extern crate num;
 
 use cell_domain::CellDomain;
-use image::AsImage;
 use itertools::Itertools;
 use num::Integer;
 use puzzle::Operator;
@@ -15,6 +14,7 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::HashSet;
 use super::cage_markup::CageMarkup;
+use super::state_writer::StateWriter;
 use super::variable::Variable;
 
 pub struct Solver<'a> {
@@ -49,6 +49,7 @@ impl<'a> Solver<'a> {
         Coord::from_index(self.puzzle.cages()[cage_index].cells[0], self.size())
     }
 
+    /// retrives the sum of the number of values in the domain of every cell
     fn total_domain(&self) -> usize {
         self.cells.iter()
             .map(|v| match *v {
@@ -216,8 +217,8 @@ impl<'a> Solver<'a> {
 
     fn solve_cages(&mut self) {
         debug!("solving cages");
+        let mut state_writer = StateWriter::new();
 
-        let mut state_num = 1;
         let mut total_domain = 0;
         //let mut to_remove = Vec::new();
         while !self.dirty_cages.is_empty() {
@@ -225,10 +226,7 @@ impl<'a> Solver<'a> {
             let next_total_domain = self.total_domain();
             if next_total_domain != total_domain {
                 total_domain = next_total_domain;
-                let filename = format!("state/state{}.png", state_num);
-                debug!("Writing {}", filename);
-                self.as_image().save(filename).unwrap();
-                state_num += 1;
+                state_writer.write(&self);
             }
 
             let mut best_cage = None;
@@ -576,4 +574,3 @@ fn shared_vector(pos1: usize, pos2: usize, size: usize) -> Option<VectorId> {
         None
     }
 }
-

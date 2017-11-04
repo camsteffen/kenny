@@ -1,9 +1,11 @@
 //! Generate and solve KenKen puzzles
 
+#![cfg_attr(feature="cargo-clippy", allow(doc_markdown))]
+#![feature(ascii_ctype)]
 #![feature(inclusive_range_syntax)]
 #![feature(slice_patterns)]
+#![feature(vec_resize_default)]
 #![warn(missing_docs)]
-#![cfg_attr(feature="cargo-clippy", allow(doc_markdown))]
 
 #[macro_use] extern crate log;
 extern crate itertools;
