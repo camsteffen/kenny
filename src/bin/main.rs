@@ -1,20 +1,22 @@
 extern crate camcam;
 extern crate env_logger;
-extern crate getopts;
-#[macro_use] extern crate log;
-extern crate serde;
-extern crate serde_json;
+#[macro_use]
+extern crate log;
+extern crate clap;
 
 use camcam::image::AsImage;
-use getopts::Options;
+// use getopts::Options;
 //use itertools::Itertools;
 use log::LogLevel;
 use camcam::puzzle::Puzzle;
-use std::env;
+use camcam::parse::parse_puzzle;
+// use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
-use std::io::{stderr, stdin};
+use std::io::stderr;
+
+const DEFAULT_SIZE: usize = 4;
 
 fn main() {
     env_logger::init().unwrap();
@@ -24,6 +26,7 @@ fn main() {
     });
 }
 
+/*
 struct Params {
     generate: Option<GenerateParams>,
     solve: bool,
@@ -35,73 +38,44 @@ struct GenerateParams {
     size: usize,
     output_file: Option<String>,
 }
+*/
 
-fn parse_args() -> Result<Params, String> {
-    let args: Vec<_> = env::args().collect();
-
-    let mut opts = Options::new();
-    opts.optflag("h", "help", "show this help");
-    opts.optflag("g", "generate", "generate a CamCam puzzle");
-    opts.optflag("s", "solve", "attempt to solve the puzzle");
-    opts.optopt("w", "size", "set the size of the puzzle", "5");
-    opts.optopt("o", "output", "write the generated puzzle to a file", "puzzle.json");
-    opts.optopt("", "image", "render a PNG image of the result", "puzzle.png");
-
-    let matches = match opts.parse(&args[1..]) {
-        Ok(m) => m,
-        Err(f) => return Err(f.to_string()),
-    };
-
-    if matches.opt_present("h") {
-        return Err(opts.usage("Usage: camcam -g"));
-    }
-
-    let generate = if matches.opt_present("g") {
-        let size = match matches.opt_str("w") {
-            Some(s) => match s.parse() {
-                Ok(s) => s,
-                Err(e) => return Err(format!("Unable to parse size: {}", e)),
-            },
-            None => return Err("Please provide a size".to_string()),
-        };
-        let output_file = matches.opt_str("o");
-        let params = GenerateParams {
-            size: size,
-            output_file: output_file,
-        };
-        Some(params)
-    } else {
-        None
-    };
-    
-    let solve = matches.opt_present("s");
-
-    let input_file = None;
-
-    let output_image = matches.opt_str("image");
-
-    let params = Params {
-        generate: generate,
-        solve: solve,
-        input_file: input_file,
-        output_image: output_image,
-    };
-    Ok(params)
-}
-
+/*
 fn read_puzzle_stdin() -> Puzzle {
     let mut buf = String::new();
     stdin().read_to_string(&mut buf).unwrap();
-    deserialize_puzzle(&buf)
+    parse_puzzle(&buf)
 }
-
-fn deserialize_puzzle(s: &str) -> Puzzle {
-    serde_json::from_str(s).unwrap_or_else(|e| {
-        panic!("Unable to parse Puzzle: {}", e);
-    })
-}
+*/
 
 fn do_main() -> Result<(), std::io::Error> {
+    let matches = clap::App::new("CamCam")
+            .author("Cameron Steffen <cam.steffen94@gmail.com>")
+            .about("Solve KenKen Puzzles")
+            .arg(clap::Arg::with_name("generate")
+                    .short("g")
+                    .help("Generates a KenKen puzzle"))
+            .arg(clap::Arg::with_name("solve")
+                    .short("s")
+                    .help("Solves a KenKen puzzle"))
+            .arg(clap::Arg::with_name("input")
+                    .short("i")
+                    .takes_value(true)
+                    .value_name("FILE")
+                    .help("Reads a KenKen puzzle from a file"))
+            .arg(clap::Arg::with_name("size")
+                    .short("w")
+                    .takes_value(true)
+                    .value_name("SIZE")
+                    .help("Sets the width/height for the generated puzzle"))
+            .arg(clap::Arg::with_name("output_image")
+                    .short("o")
+                    .takes_value(true)
+                    .value_name("OUT_IMAGE")
+                    .help("Writes the puzzle to a PNG image"))
+            .get_matches();
+
+    /*
     let params = match parse_args() {
         Ok(params) => params,
         Err(e) => {
@@ -109,27 +83,32 @@ fn do_main() -> Result<(), std::io::Error> {
             return Ok(())
         },
     };
+    */
 
-    if params.input_file.is_some() && params.generate.is_some() {
+    if matches.is_present("input") && matches.is_present("generate") {
         panic!("Cannot use input file and generate puzzle");
     }
 
     let puzzle =
-        if let Some(path) = params.input_file {
+        if let Some(path) = matches.value_of("input") {
             let mut file = File::open(path)?;
             let mut buf = String::new();
             file.read_to_string(&mut buf)?;
-            deserialize_puzzle(&buf)
-        } else if let Some(gen_params) = params.generate {
-            let puzzle = Puzzle::generate(gen_params.size);
-            if let Some(path) = gen_params.output_file {
-                let cages_json = serde_json::to_string(&puzzle).expect("serialize cages");
+            parse_puzzle(&buf)
+        } else if matches.is_present("generate") {
+            let size = matches.value_of("size")
+                .map(|s| s.parse::<usize>().expect("invalid size"))
+                .unwrap_or(DEFAULT_SIZE);
+            let puzzle = Puzzle::generate(size);
+            if let Some(path) = matches.value_of("output_file") {
+                // let cages_json = serde_json::to_string(&puzzle).expect("serialize cages");
+                let cages_json = String::new();
                 let mut file = File::create(path)?;
                 file.write_all(cages_json.into_bytes().as_slice())?;
             }
             puzzle
         } else {
-            read_puzzle_stdin()
+            panic!("nothing to do")
         };
 
     if log_enabled!(LogLevel::Info) {
@@ -140,18 +119,19 @@ fn do_main() -> Result<(), std::io::Error> {
         }
     }
 
-    let solver = if params.solve {
-        let solver = puzzle.solve();
-        if log_enabled!(LogLevel::Info) {
-            let result = if solver.solved() { "Success" } else { "Fail" };
-            info!("Result: {}", result);
-        }
-        Some(solver)
-    } else {
-        None
-    };
+    let solver =
+        if matches.is_present("solve") {
+            let solver = puzzle.solve();
+            if log_enabled!(LogLevel::Info) {
+                let result = if solver.solved() { "Success" } else { "Fail" };
+                info!("Result: {}", result);
+            }
+            Some(solver)
+        } else {
+            None
+        };
 
-    if let Some(path) = params.output_image {
+    if let Some(path) = matches.value_of("output_image") {
         let image = match solver {
             Some(solver) => solver.as_image(),
             None => puzzle.as_image(),

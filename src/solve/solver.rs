@@ -171,13 +171,13 @@ impl<'a> Solver<'a> {
             match cage.operator {
                 Operator::Add => {
                     for &pos in &cage.cells {
-                        for n in cage.target - cage.cells.len() as i32 + 2...self.size() as i32 {
+                        for n in cage.target - cage.cells.len() as i32 + 2..=self.size() as i32 {
                             self.remove(pos, n, false);
                         }
                     }
                 },
                 Operator::Multiply => {
-                    let non_factors = (2...self.size() as i32)
+                    let non_factors = (2..=self.size() as i32)
                         .filter(|n| !cage.target.is_multiple_of(n))
                         .collect_vec();
                     for &pos in &cage.cells {
@@ -190,7 +190,7 @@ impl<'a> Solver<'a> {
                     let size = self.size() as i32;
                     if cage.target > size / 2 {
                         for &pos in &cage.cells {
-                            for n in size - cage.target + 1...cage.target {
+                            for n in size - cage.target + 1..=cage.target {
                                 self.remove(pos, n, false);
                             }
                         }
@@ -198,7 +198,7 @@ impl<'a> Solver<'a> {
                 },
                 Operator::Divide => {
                     let mut non_domain = CellDomain::with_all(self.size());
-                    for n in 1...self.size() as i32 / cage.target {
+                    for n in 1..=self.size() as i32 / cage.target {
                         non_domain.remove(n);
                         non_domain.remove(n * cage.target);
                     }

@@ -6,7 +6,6 @@
 #![cfg_attr(feature="cargo-clippy", allow(doc_markdown))]
 
 #[macro_use] extern crate log;
-#[macro_use] extern crate serde_derive;
 extern crate itertools;
 extern crate num;
 extern crate png;
@@ -16,7 +15,7 @@ extern crate rusttype;
 pub mod square;
 pub mod puzzle;
 pub mod image;
+pub mod parse;
 
 mod cell_domain;
 mod solve;
-

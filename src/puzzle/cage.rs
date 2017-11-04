@@ -1,6 +1,6 @@
 /// A cage in a KenKen puzzle. Every cell in a KenKen puzzle belongs to a cage.
 /// Every cage has an operator and a target number.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug)]
 pub struct Cage {
 
     /// The target number that must be produced using the numbers in this cage
@@ -16,7 +16,7 @@ pub struct Cage {
 
 /// The `Operator` enum represents each of the possible math operators
 /// that can be in a cage.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 #[allow(missing_docs)]
 pub enum Operator { Add, Subtract, Multiply, Divide }
 
@@ -30,5 +30,17 @@ impl Operator {
             Operator::Multiply => '*',
             Operator::Divide   => '/',
         }
+    }
+
+    /// Retrieve an `Operator` from its corresponding symbol
+    pub fn from_symbol(c: char) -> Option<Operator> {
+        let o = match c {
+            '+' => Operator::Add,
+            '-' => Operator::Subtract,
+            '*' => Operator::Multiply,
+            '/' => Operator::Divide,
+            _ => return None
+        };
+        Some(o)
     }
 }

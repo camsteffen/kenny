@@ -14,10 +14,13 @@ use square::Coord;
 use square::Square;
 
 /// An unsolved KenKen puzzle
-#[derive(Deserialize, Serialize)]
 pub struct Puzzle {
-    size: usize,
-    cages: Vec<Cage>,
+
+    /// the width and height of the puzzle
+    pub size: usize,
+
+    /// set of cages in the puzzle
+    pub cages: Vec<Cage>,
 }
 
 impl Puzzle {

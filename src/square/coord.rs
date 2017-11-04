@@ -4,7 +4,7 @@ use std::ops::Deref;
 use std::ops::DerefMut;
 
 /// A `Coord` struct represents coordinates of an element in a `Square`.
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy)]
 pub struct Coord(pub [usize; 2]);
 
 impl Coord {

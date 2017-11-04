@@ -179,14 +179,15 @@ fn draw_cage_glyphs(
     let v_metrics = info.font.v_metrics(scale);
 
     for cage in puzzle.cages() {
-        let text = &format!("{}{}", cage.operator.symbol(), cage.target);
+        let text = &format!("{}{}", cage.target, cage.operator.symbol());
 
         let index = *cage.cells.iter().min().unwrap();
         let pos = Coord::from_index(index, puzzle.size());
 
+        let pad = info.cell_width / 16;
         let offset = point(
-            ((pos[1] as u32 * info.cell_width) + info.border_width) as f32,
-            ((pos[0] as u32 * info.cell_width) + info.border_width) as f32 + v_metrics.ascent);
+            ((pos[1] as u32 * info.cell_width) + info.border_width + pad) as f32,
+            ((pos[0] as u32 * info.cell_width) + info.border_width + pad) as f32 + v_metrics.ascent);
 
         for glyph in info.font.layout(text, scale, offset) {
             let bb = glyph.pixel_bounding_box().expect("glyph bounding box");

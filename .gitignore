@@ -1,3 +1,8 @@
+puzzles/
+state/
 target
 Cargo.lock
 *.swp
+.vscode/
+.DS_Store
+output/
