@@ -13,13 +13,32 @@ pub enum VectorId {
 }
 
 impl VectorId {
+    /// Retrives the index of the vector in its respective dimension
+    pub fn index(&self) -> usize {
+        match *self {
+            Row(i) => i,
+            Col(i) => i,
+        }
+    }
+
+    /// Retrieves the VectorId as a number. Each vector in a square has a unique number in the range from 0 to 2 * size - 1
     pub fn as_number(&self, size: usize) -> usize {
         match *self {
             Row(i) => i,
             Col(i) => size + i,
         }
     }
+    
 
+    /// Retrieves the vector that intersects this vector at a given position
+    pub fn intersecting_at(&self, pos: usize) -> VectorId {
+        match *self {
+            Row(_) => Col(pos),
+            Col(_) => Row(pos),
+        }
+    }
+
+    /// Calculates the position of a cell with respect to a vector, given the position of the cell with respect to the square.
     pub fn sq_pos_to_vec_pos(&self, pos: usize, size: usize) -> usize {
         match *self {
             Row(i) => {
@@ -33,6 +52,7 @@ impl VectorId {
         }
     }
 
+    /// Calculates the position of a cell with respect to a square, given the position of the cell with respect to a vector.
     pub fn vec_pos_to_sq_pos(&self, pos: usize, size: usize) -> usize {
         match *self {
             Row(i) => i * size + pos,

@@ -49,7 +49,7 @@ impl RangeDomain {
         self.domain[n]
     }
 
-    pub fn single_value(&self) -> Option<i32> {
+    pub fn single_value(&self) -> Option<usize> {
         match self.size {
             1 => Some(self.iter().next().unwrap()),
             _ => None,
@@ -66,19 +66,19 @@ impl RangeDomain {
 
 pub struct Iter<'a> {
     domain: &'a [bool],
-    i: i32,
+    i: usize,
 }
 
 impl<'a> Iterator for Iter<'a> {
-    type Item = i32;
+    type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
         let pos = match self.domain.iter().position(|&c| c) {
             Some(pos) => pos,
             None => return None,
         };
-        let res = Some(self.i + pos as i32);
-        self.i += pos as i32 + 1;
+        let res = Some(self.i + pos);
+        self.i += pos + 1;
         let domain = mem::replace(&mut self.domain, &[]);
         let (_, remaining) = domain.split_at(pos + 1);
         self.domain = remaining;
@@ -112,7 +112,7 @@ impl CellDomain {
     }
 
     pub fn iter<'a>(&'a self) -> Box<Iterator<Item=i32> + 'a> {
-        Box::new(self.rd.iter().map(|i| i + 1))
+        Box::new(self.rd.iter().map(|i| i as i32 + 1))
     }
 
     pub fn remove(&mut self, n: i32) -> bool {
@@ -124,6 +124,6 @@ impl CellDomain {
     }
 
     pub fn single_value(&self) -> Option<i32> {
-        self.rd.single_value()
+        self.rd.single_value().map(|n| n as i32 + 1)
     }
 }

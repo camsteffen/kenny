@@ -105,58 +105,89 @@ impl<'a> Solver<'a> {
         ]
     }
 
-    fn remove(&mut self, pos: usize, n: i32, mark_cage_dirty: bool) {
-        let removed;
-        let solution;
-
+    fn remove_from_cell_domain(&mut self, pos: usize, n: i32) -> bool {
         // remove n from cell domain
         match self.cells[pos] {
             Variable::Unsolved(ref mut domain) => {
-                removed = domain.remove(n);
-                solution = domain.single_value();
+                if !domain.remove(n) {
+                    return false
+                }
             },
-            _ => return,
+            _ => return false,
         };
 
-        if removed {
-            debug!("removed {} from cell {} domain", n, Coord::from_index(pos, self.size() as usize));
-        }
+        debug!("removed {} from cell {} domain", n, Coord::from_index(pos, self.size() as usize));
 
         // update vector value domains
-        for &v in &vectors_intersecting_at(pos, self.size()) {
+        let vectors = vectors_intersecting_at(pos, self.size());
+        for v in &vectors {
             let vec_pos = {
                 let vid = v.as_number(self.puzzle.size);
                 let dom = &mut self.vec_val_doms[vid][n as usize - 1];
                 let vec_pos = v.sq_pos_to_vec_pos(pos, self.puzzle.size);
-                dom.remove(vec_pos);
-                dom.single_value()
+                if dom.remove(vec_pos) {
+                    dom.single_value()
+                } else {
+                    None
+                }
             };
             if let Some(vec_pos) = vec_pos {
                 let sq_pos = v.vec_pos_to_sq_pos(vec_pos as usize, self.puzzle.size);
-                self.solve_cell(sq_pos, n, true);
+                debug!("the single remaining possible position for {} in {} is {}", n, v, vec_pos);
+                { // remove possible values from other vector value domain
+                    let v2 = v.intersecting_at(vec_pos);
+                    let dom2 = &mut self.vec_val_doms[v2.as_number(self.puzzle.size)][n as usize - 1];
+                    for j in (0..self.puzzle.size).filter(|&j| j != v.index()) {
+                        dom2.remove(j);
+                    }
+                }
+                self.solve_cell(sq_pos, n);
             }
         }
 
-        // mark cell solved if one candidate remains
-        if let Some(value) = solution {
-            self.solve_cell(pos, value, mark_cage_dirty);
-        } else if removed {
+        true
+    }
+
+    fn remove_and_solve(&mut self, pos: usize, n: i32, mark_cage_dirty: bool) -> bool {
+        let removed = self.remove_from_cell_domain(pos, n);
+        if removed {
+            self.solve_cell_from_domain(pos, mark_cage_dirty);
+        }
+        removed
+    }
+
+    // mark cell solved if one candidate remains
+    fn solve_cell_from_domain(&mut self, pos: usize, mark_cage_dirty: bool) -> bool {
+        if let Some(value) = self.cells[pos].unwrap_unsolved().single_value() {
+            self.solve_cell_complete(pos, value, mark_cage_dirty);
+            true
+        } else {
             let cage_index = self.cage_map[pos];
             self.on_update_cage(cage_index, mark_cage_dirty);
+            false
         }
     }
 
-    fn solve_cell(&mut self, pos: usize, value: i32, mark_cage_dirty: bool) {
-        debug_assert!(self.cells[pos].is_unsolved());
-        let size = self.size();
+    fn solve_cell(&mut self, pos: usize, value: i32) {
+        let to_remove = self.cells[pos].unwrap_unsolved().iter().filter(|&n| n != value).collect::<Vec<_>>();
+        for n in to_remove {
+            self.remove_from_cell_domain(pos, n);
+        }
+        self.solve_cell_complete(pos, value, true);
+    }
+
+    fn solve_cell_complete(&mut self, pos: usize, value: i32, mark_cage_dirty: bool) {
+        debug_assert!(self.cells[pos].unwrap_unsolved().single_value().is_some());
+
+        let size = self.size() as usize;
         self.cells[pos] = Variable::Solved(value);
-        debug!("solved cell at {}, value={}", Coord::from_index(pos, size as usize), value);
+        debug!("solved cell at {}, value={}", Coord::from_index(pos, size), value);
 
         // remove possibility from cells in same row or column
-        for pos in vectors_intersecting_at(pos, size as usize).iter()
-            .flat_map(|&vector_id| iter_vector(vector_id, size as usize))
-        {
-            self.remove(pos, value, true);
+        for &vector_id in vectors_intersecting_at(pos, size).iter() {
+            for pos in iter_vector(vector_id, size) {
+                self.remove_and_solve(pos, value, true);
+            }
         }
 
         let cage_index = self.cage_map[pos];
@@ -184,7 +215,7 @@ impl<'a> Solver<'a> {
 
         for cage in self.puzzle.cages.iter().filter(|cage| cage.cells.len() == 1) {
             let index = cage.cells[0];
-            self.solve_cell(index, cage.target, false)
+            self.solve_cell(index, cage.target);
         }
     }
 
@@ -196,7 +227,7 @@ impl<'a> Solver<'a> {
                 Operator::Add => {
                     for &pos in &cage.cells {
                         for n in cage.target - cage.cells.len() as i32 + 2..=self.size() as i32 {
-                            self.remove(pos, n, false);
+                            self.remove_and_solve(pos, n, false);
                         }
                     }
                 },
@@ -206,7 +237,7 @@ impl<'a> Solver<'a> {
                         .collect_vec();
                     for &pos in &cage.cells {
                         for &n in &non_factors {
-                            self.remove(pos, n, false);
+                            self.remove_and_solve(pos, n, false);
                         }
                     }
                 },
@@ -215,7 +246,7 @@ impl<'a> Solver<'a> {
                     if cage.target > size / 2 {
                         for &pos in &cage.cells {
                             for n in size - cage.target + 1..=cage.target {
-                                self.remove(pos, n, false);
+                                self.remove_and_solve(pos, n, false);
                             }
                         }
                     }
@@ -229,7 +260,7 @@ impl<'a> Solver<'a> {
                     if non_domain.size() > 0 {
                         for &pos in &cage.cells {
                             for n in non_domain.iter() {
-                                self.remove(pos, n, false);
+                                self.remove_and_solve(pos, n, false);
                             }
                         }
                     }
@@ -336,7 +367,7 @@ impl<'a> Solver<'a> {
                     .collect_vec();
             }
             for n in no_solutions {
-                self.remove(index, n, false);
+                self.remove_and_solve(index, n, false);
             }
         }
 
@@ -420,7 +451,7 @@ impl<'a> Solver<'a> {
             debug!("value {} exists in cage at {}, in {}", n, self.cage_first_coord(cage_index), vector_id);
 
             for &pos in &remove_from {
-                self.remove(pos, n, true);
+                self.remove_and_solve(pos, n, true);
             }
         }
     }
