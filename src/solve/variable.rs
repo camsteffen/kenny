@@ -1,4 +1,4 @@
-use cell_domain::CellDomain;
+use range_domain::CellDomain;
 
 #[derive(Clone)]
 pub enum Variable {
@@ -63,7 +63,7 @@ impl Variable {
     }
 
     /*
-    pub fn unwrap_unsolved_mut(&mut self) -> &mut CellDomain {
+    pub fn unwrap_unsolved_mut(&mut self) -> &mut RangeDomain {
         match self {
             &mut Variable::Unsolved(ref mut d) => d,
             _ => panic!("Not Unsolved"),

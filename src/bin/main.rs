@@ -114,7 +114,7 @@ fn do_main() -> Result<(), std::io::Error> {
     if log_enabled!(LogLevel::Info) {
         info!("Cage Indices:\n{}", puzzle.cage_map());
         info!("Cages:");
-        for (i, cage) in puzzle.cages().iter().enumerate() {
+        for (i, cage) in puzzle.cages.iter().enumerate() {
             info!(" {:>2}: {} {}", i, &cage.operator.symbol(), cage.target);
         }
     }

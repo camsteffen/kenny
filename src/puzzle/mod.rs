@@ -29,7 +29,7 @@ impl Puzzle {
      * containing that position
      */
     pub fn cage_map(&self) -> Square<usize> {
-        let mut indices = Square::new(0, self.size);
+        let mut indices = Square::new(0, self.size as usize);
         for (i, cage) in self.cages.iter().enumerate() {
             for &j in &cage.cells {
                 indices[j] = i;
@@ -55,16 +55,6 @@ impl Puzzle {
         let mut solver = Solver::new(self);
         solver.solve();
         solver
-    }
-
-    /// Returns the size (width and height) of the puzzle
-    pub fn size(&self) -> usize {
-        self.size
-    }
-
-    /// Returns the cages in the puzzle
-    pub fn cages(&self) -> &[Cage] {
-        &self.cages
     }
 
 }

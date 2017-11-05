@@ -103,7 +103,12 @@ pub fn parse_puzzle(s: &str) -> Puzzle {
     // let mut s = s.chars()/*.filter(move |c| !c.is_whitespace())*/;
     let mut s = StringTokenIterator::new(s);
     let size = match s.next().unwrap() {
-        (_, Token::Number(n)) => n as usize,
+        (_, Token::Number(n)) => {
+            if n > (('Z' as u8) - ('A' as u8) + 1) as u32 {
+                panic!("size is too big");
+            }
+            n as usize
+        },
         _ => panic!("Expected size"),
     };
     let mut cage_cells = read_cage_cells(&mut s, size);
@@ -125,8 +130,7 @@ pub fn parse_puzzle(s: &str) -> Puzzle {
 
 fn read_cage_cells(s: &mut Iterator<Item=IndexedChar>, size: usize) -> Vec<Vec<usize>> {
     let mut cages: Vec<Vec<usize>> = Vec::new();
-    let mut cell = 0 as usize;
-    loop {
+    for cell in 0..(size * size) as usize {
         let (i, id) = s.next().unwrap();
         let cage_index = match id {
             Token::Letter(l) => {
@@ -140,11 +144,7 @@ fn read_cage_cells(s: &mut Iterator<Item=IndexedChar>, size: usize) -> Vec<Vec<u
         if cage_index >= cages.len() {
             cages.resize_default(cage_index + 1);
         }
-        cages[cage_index].push(cell as usize);
-        cell += 1;
-        if cell == size * size {
-            break
-        }
+        cages[cage_index].push(cell);
     }
     cages
 }

@@ -1,6 +1,6 @@
 extern crate num;
 
-use cell_domain::CellDomain;
+use range_domain::{CellDomain,RangeDomain};
 use itertools::Itertools;
 use num::Integer;
 use puzzle::Operator;
@@ -13,6 +13,7 @@ use square::vector::vectors_intersecting_at;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::HashSet;
+use puzzle::Cage;
 use super::cage_markup::CageMarkup;
 use super::state_writer::StateWriter;
 use super::variable::Variable;
@@ -23,45 +24,50 @@ pub struct Solver<'a> {
     cages: Vec<CageMarkup>,
     cage_map: Square<usize>,
     dirty_cages: HashSet<usize>,
+
+    // for every vec_val_dom[i][j][k], cell k is a possible position for value j in vector i
+    vec_val_doms: Vec<Vec<RangeDomain>>,
     //vectors: [Vec<Vector>; 2],
 }
 
 impl<'a> Solver<'a> {
     pub fn new(puzzle: &Puzzle) -> Solver {
-        let dirty_cages = (0..puzzle.cages().len()).collect();
+        let dirty_cages = (0..puzzle.cages.len()).collect();
+        let size = puzzle.size;
         Solver {
             puzzle: puzzle,
-            cells: Square::new(Variable::unsolved_with_all(puzzle.size()), puzzle.size()),
-            //cages: (0..puzzle.cages().len()).map(|i| CageMarkup::new(puzzle, i)).collect_vec(),
-            cages: vec![CageMarkup::new(); puzzle.cages().len()],
+            cells: Square::new(Variable::unsolved_with_all(size), size as usize),
+            //cages: (0..puzzle.cages.len()).map(|i| CageMarkup::new(puzzle, i)).collect_vec(),
+            cages: vec![CageMarkup::new(); puzzle.cages.len()],
             cage_map: puzzle.cage_map(),
             dirty_cages: dirty_cages,
+            vec_val_doms: vec![vec![RangeDomain::with_all(size); size]; 2 * size],
             //vectors: [vec![Vector::new(size); size], vec![Vector::new(size); size]],
         }
     }
 
     #[inline]
     fn size(&self) -> usize {
-        self.puzzle.size()
+        self.puzzle.size
     }
 
     fn cage_first_coord(&self, cage_index: usize) -> Coord {
-        Coord::from_index(self.puzzle.cages()[cage_index].cells[0], self.size())
+        Coord::from_index(self.puzzle.cages[cage_index].cells[0], self.size() as usize)
     }
 
     /// retrives the sum of the number of values in the domain of every cell
-    fn total_domain(&self) -> usize {
+    fn total_domain(&self) -> u32 {
         self.cells.iter()
             .map(|v| match *v {
                 Variable::Solved(_) => 1,
-                Variable::Unsolved(ref domain) => domain.len(),
+                Variable::Unsolved(ref domain) => domain.size() as u32,
             })
             .sum()
     }
 
     pub fn solve(&mut self) {
         // clear board
-        let mut board = Square::new(0, self.size());
+        let mut board = Square::new(0, self.size() as usize);
 
         self.solve_single_cell_cages();
         self.reduce_domains_by_cage();
@@ -89,7 +95,7 @@ impl<'a> Solver<'a> {
     }
 
     fn two_cell_cage_domains(&self, cage_index: usize) -> [&CellDomain; 2] {
-        let cage = &self.puzzle.cages()[cage_index];
+        let cage = &self.puzzle.cages[cage_index];
         debug_assert_eq!(2, cage.cells.len());
         let index = cage.cells[1];
         let (left, right) = self.cells.split_at(index);
@@ -113,7 +119,22 @@ impl<'a> Solver<'a> {
         };
 
         if removed {
-            debug!("removed {} from cell {} domain", n, Coord::from_index(pos, self.size()));
+            debug!("removed {} from cell {} domain", n, Coord::from_index(pos, self.size() as usize));
+        }
+
+        // update vector value domains
+        for &v in &vectors_intersecting_at(pos, self.size()) {
+            let vec_pos = {
+                let vid = v.as_number(self.puzzle.size);
+                let dom = &mut self.vec_val_doms[vid][n as usize - 1];
+                let vec_pos = v.sq_pos_to_vec_pos(pos, self.puzzle.size);
+                dom.remove(vec_pos);
+                dom.single_value()
+            };
+            if let Some(vec_pos) = vec_pos {
+                let sq_pos = v.vec_pos_to_sq_pos(vec_pos as usize, self.puzzle.size);
+                self.solve_cell(sq_pos, n, true);
+            }
         }
 
         // mark cell solved if one candidate remains
@@ -129,11 +150,11 @@ impl<'a> Solver<'a> {
         debug_assert!(self.cells[pos].is_unsolved());
         let size = self.size();
         self.cells[pos] = Variable::Solved(value);
-        debug!("solved cell at {}, value={}", Coord::from_index(pos, size), value);
+        debug!("solved cell at {}, value={}", Coord::from_index(pos, size as usize), value);
 
         // remove possibility from cells in same row or column
-        for pos in vectors_intersecting_at(pos, size).iter()
-            .flat_map(|&vector_id| iter_vector(vector_id, size))
+        for pos in vectors_intersecting_at(pos, size as usize).iter()
+            .flat_map(|&vector_id| iter_vector(vector_id, size as usize))
         {
             self.remove(pos, value, true);
         }
@@ -143,9 +164,7 @@ impl<'a> Solver<'a> {
     }
 
     fn on_update_cage(&mut self, cage_index: usize, mark_cage_dirty: bool) {
-        if self.puzzle.cages()[cage_index].cells.iter()
-            .all(|&p| self.cells[p].is_solved())
-        {
+        if self.is_cage_solved(&self.puzzle.cages[cage_index]) {
             self.dirty_cages.remove(&cage_index);
         } else if mark_cage_dirty && self.dirty_cages.insert(cage_index) {
             debug!("marked cage at {} dirty", self.cage_first_coord(cage_index));
@@ -156,10 +175,14 @@ impl<'a> Solver<'a> {
         self.cells.iter().all(|v| v.is_solved())
     }
 
+    fn is_cage_solved(&self, cage: &Cage) -> bool {
+        cage.cells.iter().all(|&p| self.cells[p].is_solved())
+    }
+
     fn solve_single_cell_cages(&mut self) {
         debug!("solving single cell cages");
 
-        for cage in self.puzzle.cages().iter().filter(|cage| cage.cells.len() == 1) {
+        for cage in self.puzzle.cages.iter().filter(|cage| cage.cells.len() == 1) {
             let index = cage.cells[0];
             self.solve_cell(index, cage.target, false)
         }
@@ -168,7 +191,7 @@ impl<'a> Solver<'a> {
     fn reduce_domains_by_cage(&mut self) {
         debug!("reducing cell domains by cage-specific info");
 
-        for cage in self.puzzle.cages() {
+        for cage in &self.puzzle.cages {
             match cage.operator {
                 Operator::Add => {
                     for &pos in &cage.cells {
@@ -203,7 +226,7 @@ impl<'a> Solver<'a> {
                         non_domain.remove(n);
                         non_domain.remove(n * cage.target);
                     }
-                    if non_domain.len() > 0 {
+                    if non_domain.size() > 0 {
                         for &pos in &cage.cells {
                             for n in non_domain.iter() {
                                 self.remove(pos, n, false);
@@ -231,9 +254,9 @@ impl<'a> Solver<'a> {
 
             let mut best_cage = None;
             for &cage_index in &self.dirty_cages {
-                let cage_rank: i32 = self.puzzle.cages()[cage_index].cells.iter()
+                let cage_rank: i32 = self.puzzle.cages[cage_index].cells.iter()
                     .filter_map(|&cell_index| self.cells[cell_index].unsolved())
-                    .map(|domain| domain.len() as i32)
+                    .map(|domain| domain.size() as i32)
                     .product();
                 if cage_rank == 1 {
                     panic!("dirty cage is solved");
@@ -260,7 +283,7 @@ impl<'a> Solver<'a> {
             self.solve_cage(best_cage_index);
         }
         /*
-        for cage in puzzle.cages().iter()
+        for cage in puzzle.cages.iter()
             .filter(|cage| cage.cells.len() <= max_cage_size)
         {
             if cage.cells.iter().any(|&pos| solver.cells[pos].is_unsolved()) {
@@ -272,14 +295,14 @@ impl<'a> Solver<'a> {
     fn solve_cage(&mut self, cage_index: usize) {
         debug!("solving cage at {}", self.cage_first_coord(cage_index));
 
-        let cage = &self.puzzle.cages()[cage_index];
+        let cage = &self.puzzle.cages[cage_index];
         let mut unsolved = cage.cells.iter()
             .cloned()
             .filter(|&pos| self.cells[pos].is_unsolved())
             .collect_vec();
 
         // find all solutions for the cage
-        let solutions = match self.puzzle.cages()[cage_index].operator {
+        let solutions = match self.puzzle.cages[cage_index].operator {
             Operator::Add => self.cage_solutions_add(cage_index, &unsolved),
             Operator::Multiply => self.cage_solutions_multiply(cage_index, &unsolved),
             Operator::Subtract => self.cage_solutions_subtract(cage_index, &unsolved),
@@ -334,13 +357,13 @@ impl<'a> Solver<'a> {
         }
 
         if unsolved.len() == 2 {
-            let vector_id = shared_vector(unsolved[0], unsolved[1], self.size()).unwrap();
+            let vector_id = shared_vector(unsolved[0], unsolved[1], self.size() as usize).unwrap();
             let unsolved_indices = (0..unsolved.len()).collect_vec();
             self.find_vector_values(cage_index, vector_id, &unsolved_indices, &solutions);
         } else {
             let mut vectors = BTreeMap::new();
             for (i, &pos) in unsolved.iter().enumerate() {
-                for &vector_id in &vectors_intersecting_at(pos, self.size()) {
+                for &vector_id in &vectors_intersecting_at(pos, self.size() as usize) {
                     vectors.entry(vector_id)
                         .or_insert_with(BTreeSet::new)
                         .insert(i);
@@ -390,7 +413,7 @@ impl<'a> Solver<'a> {
                 .extend(&values);
         }
 
-        let remove_from = iter_vector(vector_id, self.size())
+        let remove_from = iter_vector(vector_id, self.size() as usize)
             .filter(|&pos| self.cage_map[pos] != cage_index)
             .collect_vec();
         for n in values {
@@ -403,7 +426,7 @@ impl<'a> Solver<'a> {
     }
 
     fn cage_solutions_add(&self, cage_index: usize, unsolved: &[usize]) -> Vec<Vec<i32>> {
-        let cage = &self.puzzle.cages()[cage_index];
+        let cage = &self.puzzle.cages[cage_index];
         let solved_sum: i32 = cage.cells.iter()
             .filter_map(|&i| self.cells[i].solved())
             .sum();
@@ -415,7 +438,7 @@ impl<'a> Solver<'a> {
     }
 
     fn cage_solutions_multiply(&self, cage_index: usize, unsolved: &[usize]) -> Vec<Vec<i32>> {
-        let cage = &self.puzzle.cages()[cage_index];
+        let cage = &self.puzzle.cages[cage_index];
         let solved_product: i32 = cage.cells.iter()
             .filter_map(|&i| self.cells[i].solved())
             .product();
@@ -427,7 +450,7 @@ impl<'a> Solver<'a> {
     }
 
     fn cage_solutions_subtract(&self, cage_index: usize, unsolved: &[usize]) -> Vec<Vec<i32>> {
-        let cage = &self.puzzle.cages()[cage_index];
+        let cage = &self.puzzle.cages[cage_index];
         let mut solutions = Vec::new();
         if unsolved.len() == 1 {
             let known_val;
@@ -465,7 +488,7 @@ impl<'a> Solver<'a> {
 
     fn cage_solutions_divide(&self, cage_index: usize, unsolved: &[usize]) -> Vec<Vec<i32>> {
         let size = self.size() as i32;
-        let cage = &self.puzzle.cages()[cage_index];
+        let cage = &self.puzzle.cages[cage_index];
         let mut solutions = Vec::new();
         if unsolved.len() == 1 {
             let known_val;
@@ -486,7 +509,7 @@ impl<'a> Solver<'a> {
                 solutions.push(vec![n; 1]);
             }
         } else {
-            let cells = &self.puzzle.cages()[cage_index].cells;
+            let cells = &self.puzzle.cages[cage_index].cells;
             debug_assert_eq!(2, cells.len());
             let domains = self.two_cell_cage_domains(cage_index);
             for n in domains[0].iter() {
@@ -514,7 +537,7 @@ impl<'a> Solver<'a> {
         let size = self.size();
         let collides = |n: i32, vals: &[i32]| {
             (0..i).filter(|&j| vals[j] == n)
-                .any(|j| shared_vector(pos[j], pos[i], size).is_some())
+                .any(|j| shared_vector(pos[j], pos[i], size as usize).is_some())
         };
         if remain_sum <= 0 { return }
         if i == solution.len() - 1 {
@@ -544,7 +567,7 @@ impl<'a> Solver<'a> {
         let size = self.size();
         let collides = |n: i32, vals: &[i32]| {
             (0..i).filter(|&j| vals[j] == n)
-                .any(|j| shared_vector(pos[j], pos[i], size).is_some())
+                .any(|j| shared_vector(pos[j], pos[i], size as usize).is_some())
         };
         if remain_product <= 0 { return }
         if i == solution.len() - 1 {

@@ -3,8 +3,7 @@
 extern crate png;
 extern crate image;
 
-use self::image::Rgb;
-use self::image::RgbImage;
+use self::image::{Rgb, RgbImage};
 
 const BLACK: Rgb<u8> = Rgb { data: [0; 3] };
 const WHITE: Rgb<u8> = Rgb { data: [255; 3] };
@@ -13,7 +12,7 @@ const COLOR_CELL_BORDER:  Rgb<u8> = Rgb { data: [205; 3] };
 const COLOR_CAGE_BORDER: Rgb<u8> = BLACK;
 const COLOR_BG: Rgb<u8> = WHITE;
 
-use cell_domain::CellDomain;
+use range_domain::CellDomain;
 use puzzle::Puzzle;
 use rusttype::Font;
 use rusttype::FontCollection;
@@ -38,10 +37,10 @@ struct PuzzleImageInfo<'a> {
 }
 
 impl<'a> PuzzleImageInfo<'a> {
-    pub fn from_puzzle_size_default(puzzle_size: usize) -> PuzzleImageInfo<'a> {
-        let cell_width = 60 as u32;
+    pub fn from_puzzle_size_default(puzzle_size: u32) -> PuzzleImageInfo<'a> {
+        let cell_width = 60;
         let border_width = cell_width / 25;
-        let image_width = cell_width * puzzle_size as u32 + border_width;
+        let image_width = cell_width * puzzle_size + border_width;
 
         let font_data = include_bytes!("/Library/Fonts/Verdana.ttf");
         let font_collection = FontCollection::from_bytes(font_data as &[u8]);
@@ -62,7 +61,7 @@ impl<'a> PuzzleImageInfo<'a> {
 
 impl AsImage for Puzzle {
     fn as_image(&self) -> RgbImage {
-        let info = PuzzleImageInfo::from_puzzle_size_default(self.size());
+        let info = PuzzleImageInfo::from_puzzle_size_default(self.size as u32);
         let mut buffer = info.buffer();
         render_puzzle(&mut buffer, &info, self);
         buffer
@@ -71,7 +70,7 @@ impl AsImage for Puzzle {
 
 impl<'a> AsImage for Solver<'a> {
     fn as_image(&self) -> RgbImage {
-        let info = PuzzleImageInfo::from_puzzle_size_default(self.puzzle.size());
+        let info = PuzzleImageInfo::from_puzzle_size_default(self.puzzle.size as u32);
         let mut buffer = info.buffer();
         render_puzzle(&mut buffer, &info, self.puzzle);
         render_solver(&mut buffer, &info, self);
@@ -101,8 +100,8 @@ fn draw_grid(
     info: &PuzzleImageInfo,
     puzzle: &Puzzle)
 {
-    let image_width = info.cell_width * puzzle.size() as u32 + info.border_width;
-    let cells_width = info.cell_width * puzzle.size() as u32;
+    let image_width = info.cell_width * puzzle.size as u32 + info.border_width;
+    let cells_width = info.cell_width * puzzle.size as u32;
 
     // draw outer border
     draw_rectangle(buffer, 0, 0, cells_width, info.border_width, COLOR_CAGE_BORDER);
@@ -113,8 +112,8 @@ fn draw_grid(
     let cage_map = puzzle.cage_map();
 
     // draw horizontal line segments
-    for i in 1..puzzle.size() { // row
-        for j in 0..puzzle.size() { // col
+    for i in 1..puzzle.size as usize { // row
+        for j in 0..puzzle.size as usize { // col
             let pos1 = Coord([i - 1, j]);
             let pos2 = Coord([i, j]);
             let color = if cage_map[pos1] == cage_map[pos2] {
@@ -130,8 +129,8 @@ fn draw_grid(
         }
     }
     // draw vertical line segments
-    for i in 0..puzzle.size() { // row
-        for j in 1..puzzle.size() { // col
+    for i in 0..puzzle.size as usize { // row
+        for j in 1..puzzle.size as usize { // col
             let pos1 = Coord([i, j - 1]);
             let pos2 = Coord([i, j]);
             let color = if cage_map[pos1] == cage_map[pos2] {
@@ -148,8 +147,8 @@ fn draw_grid(
     }
 
     // draw intersections
-    for i in 1..puzzle.size() {
-        for j in 1..puzzle.size() {
+    for i in 1..puzzle.size as usize {
+        for j in 1..puzzle.size as usize {
             let first = cage_map[Coord([i - 1, j - 1])];
             let pos = [
                 Coord([i - 1, j]),
@@ -178,11 +177,11 @@ fn draw_cage_glyphs(
     let scale = Scale::uniform(info.cell_width as f32 * 0.25);
     let v_metrics = info.font.v_metrics(scale);
 
-    for cage in puzzle.cages() {
+    for cage in &puzzle.cages {
         let text = &format!("{}{}", cage.target, cage.operator.symbol());
 
         let index = *cage.cells.iter().min().unwrap();
-        let pos = Coord::from_index(index, puzzle.size());
+        let pos = Coord::from_index(index, puzzle.size as usize);
 
         let pad = info.cell_width / 16;
         let offset = point(
@@ -211,7 +210,7 @@ fn draw_markup(
     for (pos, cell) in solver.cells.iter_coord() {
         match *cell {
             Variable::Unsolved(ref domain) => {
-                draw_cell_domain(buffer, info, pos, domain)
+                draw_range_domain(buffer, info, pos, domain)
             },
             Variable::Solved(value) => {
                 draw_cell_solution(buffer, info, pos, value)
@@ -220,18 +219,18 @@ fn draw_markup(
     }
 }
 
-fn draw_cell_domain(
+fn draw_range_domain(
     buffer: &mut RgbImage,
     info: &PuzzleImageInfo,
     pos: Coord,
     domain: &CellDomain)
 {
-    const MAX_LINE_LEN: usize = 5;
+    const MAX_LINE_LEN: u32 = 5;
 
     let scale = Scale::uniform(info.cell_width as f32 * 0.2);
     let v_metrics = info.font.v_metrics(scale);
 
-    if domain.len() > MAX_LINE_LEN * 2 { return }
+    if domain.size() as u32 > MAX_LINE_LEN * 2 { return }
     let mut char_x = 0;
     let mut char_y = 0;
     for n in domain.iter() {
