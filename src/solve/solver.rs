@@ -1,6 +1,6 @@
 extern crate num;
 
-use range_domain::{CellDomain,RangeDomain};
+use range_domain::CellDomain;
 use itertools::Itertools;
 use num::Integer;
 use puzzle::Operator;
@@ -8,12 +8,12 @@ use puzzle::Puzzle;
 use square::Coord;
 use square::Square;
 use square::vector::VectorId;
-use square::vector::iter_vector;
 use square::vector::vectors_intersecting_at;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::HashSet;
 use puzzle::Cage;
+use super::vector_value_domain::VectorValueDomainSet;
 use super::cage_markup::CageMarkup;
 use super::state_writer::StateWriter;
 use super::variable::Variable;
@@ -26,7 +26,7 @@ pub struct Solver<'a> {
     dirty_cages: HashSet<usize>,
 
     // for every vec_val_dom[i][j][k], cell k is a possible position for value j in vector i
-    vec_val_doms: Vec<Vec<RangeDomain>>,
+    vec_val_doms: VectorValueDomainSet,
     //vectors: [Vec<Vector>; 2],
 }
 
@@ -41,7 +41,7 @@ impl<'a> Solver<'a> {
             cages: vec![CageMarkup::new(); puzzle.cages.len()],
             cage_map: puzzle.cage_map(),
             dirty_cages: dirty_cages,
-            vec_val_doms: vec![vec![RangeDomain::with_all(size); size]; 2 * size],
+            vec_val_doms: VectorValueDomainSet::new(size),
             //vectors: [vec![Vector::new(size); size], vec![Vector::new(size); size]],
         }
     }
@@ -106,6 +106,8 @@ impl<'a> Solver<'a> {
     }
 
     fn remove_from_cell_domain(&mut self, pos: usize, n: i32) -> bool {
+        let size = self.puzzle.size;
+
         // remove n from cell domain
         match self.cells[pos] {
             Variable::Unsolved(ref mut domain) => {
@@ -119,28 +121,21 @@ impl<'a> Solver<'a> {
         debug!("removed {} from cell {} domain", n, Coord::from_index(pos, self.size() as usize));
 
         // update vector value domains
-        let vectors = vectors_intersecting_at(pos, self.size());
-        for v in &vectors {
-            let vec_pos = {
-                let vid = v.as_number(self.puzzle.size);
-                let dom = &mut self.vec_val_doms[vid][n as usize - 1];
-                let vec_pos = v.sq_pos_to_vec_pos(pos, self.puzzle.size);
+        for &v in &vectors_intersecting_at(pos, self.size()) {
+            let vec_pos = self.vec_val_doms[v][n as usize - 1].as_mut().and_then(|dom| {
+                let vec_pos = v.sq_pos_to_vec_pos(pos, size);
                 if dom.remove(vec_pos) {
                     dom.single_value()
                 } else {
                     None
                 }
-            };
+            });
             if let Some(vec_pos) = vec_pos {
                 let sq_pos = v.vec_pos_to_sq_pos(vec_pos as usize, self.puzzle.size);
-                debug!("the single remaining possible position for {} in {} is {}", n, v, vec_pos);
-                { // remove possible values from other vector value domain
-                    let v2 = v.intersecting_at(vec_pos);
-                    let dom2 = &mut self.vec_val_doms[v2.as_number(self.puzzle.size)][n as usize - 1];
-                    for j in (0..self.puzzle.size).filter(|&j| j != v.index()) {
-                        dom2.remove(j);
-                    }
-                }
+                debug!("the only possible position for {} in {} is {}", n, v, Coord::from_index(pos, self.puzzle.size));
+                let v2 = v.intersecting_at(vec_pos);
+                self.vec_val_doms.remove_vector_value(v, n);
+                self.vec_val_doms.remove_vector_value(v2, n);
                 self.solve_cell(sq_pos, n);
             }
         }
@@ -158,7 +153,15 @@ impl<'a> Solver<'a> {
 
     // mark cell solved if one candidate remains
     fn solve_cell_from_domain(&mut self, pos: usize, mark_cage_dirty: bool) -> bool {
+        if self.cells[pos].is_solved() {
+            return false
+        }
         if let Some(value) = self.cells[pos].unwrap_unsolved().single_value() {
+            /*
+            for &v in &vectors_intersecting_at(pos, self.size()) {
+                self.vec_val_doms.remove_vector_value(v, value);
+            }
+            */
             self.solve_cell_complete(pos, value, mark_cage_dirty);
             true
         } else {
@@ -169,6 +172,9 @@ impl<'a> Solver<'a> {
     }
 
     fn solve_cell(&mut self, pos: usize, value: i32) {
+        if self.cells[pos].is_solved() {
+            return
+        }
         let to_remove = self.cells[pos].unwrap_unsolved().iter().filter(|&n| n != value).collect::<Vec<_>>();
         for n in to_remove {
             self.remove_from_cell_domain(pos, n);
@@ -177,15 +183,26 @@ impl<'a> Solver<'a> {
     }
 
     fn solve_cell_complete(&mut self, pos: usize, value: i32, mark_cage_dirty: bool) {
+        if self.cells[pos].is_solved() {
+            return
+        }
         debug_assert!(self.cells[pos].unwrap_unsolved().single_value().is_some());
 
         let size = self.size() as usize;
         self.cells[pos] = Variable::Solved(value);
+        /*
+        for &v in &vectors_intersecting_at(pos, size) {
+            self.vec_val_doms.remove_vector_value(v, value);
+        }
+        */
         debug!("solved cell at {}, value={}", Coord::from_index(pos, size), value);
+        if pos == 10 {
+            debug!("yer!");
+        }
 
         // remove possibility from cells in same row or column
         for &vector_id in vectors_intersecting_at(pos, size).iter() {
-            for pos in iter_vector(vector_id, size) {
+            for pos in (0..size).map(|n| vector_id.vec_pos_to_sq_pos(n, size)) {
                 self.remove_and_solve(pos, value, true);
             }
         }
@@ -444,7 +461,7 @@ impl<'a> Solver<'a> {
                 .extend(&values);
         }
 
-        let remove_from = iter_vector(vector_id, self.size() as usize)
+        let remove_from = vector_id.iter_sq_pos(self.size())
             .filter(|&pos| self.cage_map[pos] != cage_index)
             .collect_vec();
         for n in values {

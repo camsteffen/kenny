@@ -7,7 +7,7 @@ use self::VectorId::{Col, Row};
 /// A row or column and its index
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(missing_docs)]
-pub enum VectorId {
+pub enum VectorId { // TODO refactor as struct with enum + usize
     Row(usize),
     Col(usize),
 }
@@ -19,6 +19,12 @@ impl VectorId {
             Row(i) => i,
             Col(i) => i,
         }
+    }
+
+    /// Creates an iterator over the positions of the cells in this vector with respect to the square
+    pub fn iter_sq_pos(&self, size: usize) -> impl Iterator<Item=usize> {
+        let v = *self;
+        (0..size).map(move |n| v.vec_pos_to_sq_pos(n, size))
     }
 
     /// Retrieves the VectorId as a number. Each vector in a square has a unique number in the range from 0 to 2 * size - 1
@@ -78,21 +84,3 @@ pub fn vectors_intersecting_at(pos: usize, size: usize) -> [VectorId; 2] {
         Col(pos % size),
     ]
 }
-
-/// Returns an iterator over the positions of the elements in a vector
-pub fn iter_vector(vector_id: VectorId, size: usize) -> impl Iterator<Item=usize> {
-    let start;
-    let inc;
-    match vector_id {
-        Row(index) => {
-            start = index * size;
-            inc = 1;
-        },
-        Col(index) => {
-            start = index;
-            inc = size;
-        },
-    }
-    (0..size).map(move |i| start + inc * i)
-}
-
