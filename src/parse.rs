@@ -19,9 +19,10 @@ impl fmt::Display for SIndex {
 type IndexedChar = (SIndex, Token);
 
 enum Token {
+    Letter(char),
     Number(u32),
     Operator(Operator),
-    Letter(char),
+    Space,
 }
 
 impl fmt::Display for Token {
@@ -30,6 +31,7 @@ impl fmt::Display for Token {
             Token::Number(ref n) => write!(f, "{}", n),
             Token::Operator(ref o) => write!(f, "{}", o.symbol()),
             Token::Letter(ref l) => write!(f, "{}", l),
+            Token::Space => write!(f, " "),
         }
     }
 }
@@ -62,19 +64,25 @@ impl<'a> Iterator for StringTokenIterator<'a> {
                 Some(c) => c,
                 None => return None,
             };
-            while c.is_whitespace() {
-                if c == '\n' {
-                    self.line += 1;
-                    self.col = 1;
-                } else {
-                    self.col += 1;
+            if c.is_whitespace() {
+                loop {
+                    if c == '\n' {
+                        self.line += 1;
+                        self.col = 1;
+                    } else {
+                        self.col += 1;
+                    }
+                    c = match chars.next() {
+                        Some(c) => c,
+                        None => break,
+                    };
+                    if !c.is_whitespace() {
+                        break
+                    }
                 }
-                c = match chars.next() {
-                    Some(c) => c,
-                    None => return None,
-                };
-            }
-            if c.is_digit(10) {
+                decrement_take = true;
+                Token::Space
+            } else if c.is_digit(10) {
                 let tail = chars.take_while(|c| c.is_digit(10));
                 let s = once(c).chain(tail).collect::<String>();
                 let n = s.parse().unwrap_or_else(|_| panic!("Unable to parse number: {}", s));
