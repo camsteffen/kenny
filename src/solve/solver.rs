@@ -175,7 +175,9 @@ impl<'a> Solver<'a> {
         if self.cells[pos].is_solved() {
             return
         }
-        let to_remove = self.cells[pos].unwrap_unsolved().iter().filter(|&n| n != value).collect::<Vec<_>>();
+        let to_remove = self.cells[pos].unwrap_unsolved().iter()
+                .filter(|&n| n != value)
+                .collect::<Vec<_>>();
         for n in to_remove {
             self.remove_from_cell_domain(pos, n);
         }
