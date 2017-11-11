@@ -196,9 +196,6 @@ impl<'a> Solver<'a> {
         }
         */
         debug!("solved cell at {}, value={}", Coord::from_index(pos, size), value);
-        if pos == 10 {
-            debug!("yer!");
-        }
 
         // remove possibility from cells in same row or column
         for &vector_id in vectors_intersecting_at(pos, size).iter() {
@@ -404,30 +401,22 @@ impl<'a> Solver<'a> {
                 .collect()
         }
 
-        if unsolved.len() == 2 {
-            let vector_id = shared_vector(unsolved[0], unsolved[1], self.size() as usize).unwrap();
-            let unsolved_indices = (0..unsolved.len()).collect_vec();
-            self.find_vector_values(cage_index, vector_id, &unsolved_indices, &solutions);
-        } else {
-            let mut vectors = BTreeMap::new();
-            for (i, &pos) in unsolved.iter().enumerate() {
-                for &vector_id in &vectors_intersecting_at(pos, self.size() as usize) {
-                    vectors.entry(vector_id)
-                        .or_insert_with(BTreeSet::new)
-                        .insert(i);
-                }
-            }
-            let vectors = vectors.into_iter()
-                .filter(|&(_, ref unsolved_indices)| unsolved_indices.len() > 1)
-                .map(|(vector_id, unsolved_indices)| {
-                    (vector_id, unsolved_indices.into_iter().collect_vec())
-                });
-
-            for (vector_id, unsolved_indices) in vectors {
-                self.find_vector_values(cage_index, vector_id, &unsolved_indices, &solutions);
+        let mut vectors = BTreeMap::new();
+        for ((i1, &p1), (i2, &p2)) in unsolved.iter().enumerate().tuple_combinations() {
+            if let Some(vector_id) = shared_vector(p1, p2, self.size()) {
+                let vector_positions = vectors.entry(vector_id).or_insert_with(BTreeSet::new);
+                vector_positions.insert(i1);
+                vector_positions.insert(i2);
             }
         }
+        let vectors = vectors.into_iter()
+            .map(|(vector_id, unsolved_indices)| {
+                (vector_id, unsolved_indices.into_iter().collect_vec())
+            });
 
+        for (vector_id, unsolved_indices) in vectors {
+            self.find_vector_values(cage_index, vector_id, &unsolved_indices, &solutions);
+        }
     }
 
     fn find_vector_values(&mut self,
