@@ -4,9 +4,10 @@ use puzzle::Cage;
 use puzzle::Operator;
 use puzzle::Puzzle;
 use std::ascii::AsciiExt;
-use std::str;
-use std::iter::once;
+use std::collections::BTreeMap;
 use std::fmt;
+use std::iter::once;
+use std::str;
 
 struct SIndex(u32, u32);
 
@@ -16,18 +17,34 @@ impl fmt::Display for SIndex {
     }
 }
 
-type IndexedChar = (SIndex, Token);
-
 enum Token {
+    Invalid(String),
     Letter(char),
     Number(u32),
     Operator(Operator),
     Space,
 }
 
+impl Token {
+    fn letter(&self) -> Option<char> {
+        match *self {
+            Token::Letter(l) => Some(l),
+            _ => None,
+        }
+    }
+
+    fn number(&self) -> Option<u32> {
+        match *self {
+            Token::Number(n) => Some(n),
+            _ => None,
+        }
+    }
+}
+
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
+            Token::Invalid(ref s) => write!(f, "{}", s),
             Token::Number(ref n) => write!(f, "{}", n),
             Token::Operator(ref o) => write!(f, "{}", o.symbol()),
             Token::Letter(ref l) => write!(f, "{}", l),
@@ -50,12 +67,25 @@ impl<'a> StringTokenIterator<'a> {
             col: 1,
         }
     }
+
+    fn next_skip_space(&mut self) -> Option<(SIndex, Token)> {
+        loop {
+            let (i, t) = match self.next() {
+                Some(s) => s,
+                None => return None,
+            };
+            match t {
+                Token::Space => continue,
+                _ => return Some((i, t)),
+            }
+        }
+    }
 }
 
 impl<'a> Iterator for StringTokenIterator<'a> {
     type Item = (SIndex, Token);
 
-    fn next(&mut self) -> Option<(SIndex, Token)> {
+    fn next(&mut self) -> Option<Self::Item> {
         let mut take = 0;
         let mut decrement_take = false;
         let token = {
@@ -85,15 +115,17 @@ impl<'a> Iterator for StringTokenIterator<'a> {
             } else if c.is_digit(10) {
                 let tail = chars.take_while(|c| c.is_digit(10));
                 let s = once(c).chain(tail).collect::<String>();
-                let n = s.parse().unwrap_or_else(|_| panic!("Unable to parse number: {}", s));
                 decrement_take = true;
-                Token::Number(n)
+                match s.parse() {
+                    Ok(n) => Token::Number(n),
+                    Err(_) => Token::Invalid(s),
+                }
             } else if let Some(o) = Operator::from_symbol(c) {
                 Token::Operator(o)
             } else if c >= 'A' && c <= 'Z' {
                 Token::Letter(c)
             } else {
-                panic!("Invalid token: '{}':{}", c, SIndex(self.line, self.col))
+                Token::Invalid(c.to_string())
             }
         };
         if decrement_take { take -= 1; }
@@ -103,74 +135,72 @@ impl<'a> Iterator for StringTokenIterator<'a> {
 }
 
 /// parse a `Puzzle` from a string
-pub fn parse_puzzle(s: &str) -> Puzzle {
-    // let mut s = s.lines().enumerate().flat_map(|(i, l)| {
-        // let i = i + 1;
-        // l.chars().enumerate().map(move |(j, c)| (SIndex(i, j), c))
-    // });
-    // let mut s = s.chars()/*.filter(move |c| !c.is_whitespace())*/;
+pub fn parse_puzzle(s: &str) -> Result<Puzzle, String> {
     let mut s = StringTokenIterator::new(s);
-    let size = match s.next().unwrap() {
-        (_, Token::Number(n)) => {
-            if n > (('Z' as u8) - ('A' as u8) + 1) as u32 {
-                panic!("size is too big");
+    let (i, token) = s.next_skip_space().ok_or("unexpected EOF")?;
+    let size = token.number().ok_or_else(|| format_parse_error("invalid size", &token, &i))? as usize;
+    if size > (('Z' as u8) - ('A' as u8) + 1) as usize {
+        return Err("size is too big".to_string())
+    }
+    let cage_cells = read_cage_cells(&mut s, size)?;
+    let cage_targets = read_cage_targets(&mut s, cage_cells.len())?;
+    debug_assert!(cage_cells.len() == cage_targets.len());
+    if let Some((i, t)) = s.next_skip_space() {
+        return Err(format_parse_error("unexpected token", &t, &i))
+    }
+    let cages = cage_cells.into_iter().zip(cage_targets.into_iter())
+        .map(|((cage_id, cells), (target, operator))| {
+            if cells.len() > 1 && operator.is_none() {
+                return Err(format!("cage {} is missing an operator", cage_id))
             }
-            n as usize
-        },
-        _ => panic!("Expected size"),
-    };
-    let mut cage_cells = read_cage_cells(&mut s, size);
-    let mut cage_targets = read_cage_targets(&mut s, cage_cells.len());
-    let cages = cage_cells.drain(..).zip(cage_targets.drain(..))
-        .map(|(cells, (target, operator))|
-            Cage {
+            let operator = match operator {
+                Some(o) => o,
+                None => Operator::Add,
+            };
+            let cage = Cage {
                 cells: cells,
                 target: target as i32,
                 operator: operator,
-            }
-        )
-        .collect();
-    Puzzle {
+            };
+            Ok(cage)
+        })
+        .collect::<Result<_, _>>()?;
+    let puzzle = Puzzle {
         cages: cages,
         size: size,
-    }
+    };
+    Ok(puzzle)
 }
 
-fn read_cage_cells(s: &mut Iterator<Item=IndexedChar>, size: usize) -> Vec<Vec<usize>> {
-    let mut cages: Vec<Vec<usize>> = Vec::new();
+fn read_cage_cells(s: &mut StringTokenIterator, size: usize) -> Result<BTreeMap<char, Vec<usize>>, String> {
+    let mut cages = BTreeMap::new();
     for cell in 0..(size * size) as usize {
-        let (i, id) = s.next().unwrap();
-        let cage_index = match id {
-            Token::Letter(l) => {
-                if !l.is_ascii_uppercase() {
-                    panic!("Invalid cage id: {}, ({})", id, i)
-                }
-                ((l as u8) - ('A' as u8)) as usize
-            },
-            _ => panic!("Invalid cage id: {}, ({})", id, i)
-        };
-        if cage_index >= cages.len() {
-            cages.resize_default(cage_index + 1);
+        let (i, token) = s.next_skip_space().ok_or("unexpected EOF")?;
+        let l = token.letter().ok_or_else(|| format_parse_error("invalid cage id", &token, &i))?;
+        if !l.is_ascii_uppercase() {
+            return Err(format_parse_error("invalid cage id", &l, &i));
         }
-        cages[cage_index].push(cell);
+        cages.entry(l).or_insert_with(Vec::new).push(cell);
     }
-    cages
+    Ok(cages)
 }
 
-fn read_cage_targets(s: &mut Iterator<Item=IndexedChar>, num_cages: usize) -> Vec<(u32, Operator)> {
+fn read_cage_targets(s: &mut StringTokenIterator, num_cages: usize) -> Result<Vec<(u32, Option<Operator>)>, String> {
     (0..num_cages).map(|_| {
-        let (i, token) = s.next().expect("unexpected EOF");
-        let target = match token {
-            Token::Number(n) => n,
-            _ => panic!("Invalid target: '{}' ({})", token, i)
-        };
-        let (i, token) = s.next().expect("unexpected EOF");
+        let (i, token) = s.next_skip_space().ok_or("unexpected EOF")?;
+        let target = token.number().ok_or_else(|| format_parse_error("invalid target", &token, &i))?;
+        let (i, token) = s.next().ok_or("unexpected EOF")?;
         let operator = match token {
-            Token::Operator(o) => o,
-            _ => panic!("Invalid operator: '{}', ({})", token, i),
+            Token::Operator(o) => Some(o),
+            Token::Space => None,
+            _ => return Err(format_parse_error("invalid operator", &token, &i)),
         };
-        (target, operator)
-    }).collect()
+        Ok((target, operator))
+    })
+    .collect()
 }
 
+fn format_parse_error<T: fmt::Display>(msg: &str, s: &T, i: &SIndex) -> String {
+    format!("{}: '{}' ({})", msg, s, i)
+}
 
