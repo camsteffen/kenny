@@ -94,7 +94,7 @@ fn do_main() -> Result<(), std::io::Error> {
             let mut file = File::open(path)?;
             let mut buf = String::new();
             file.read_to_string(&mut buf)?;
-            parse_puzzle(&buf)
+            parse_puzzle(&buf).unwrap_or_else(|e| panic!("Error parsing puzzle from {}: {}", path, e))
         } else if matches.is_present("generate") {
             let size = matches.value_of("size")
                 .map(|s| s.parse::<usize>().expect("invalid size"))
