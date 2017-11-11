@@ -143,7 +143,7 @@ impl<'a> Solver<'a> {
         true
     }
 
-    fn remove_and_solve(&mut self, pos: usize, n: i32, mark_cage_dirty: bool) -> bool {
+    fn remove_from_cell_domain_and_solve(&mut self, pos: usize, n: i32, mark_cage_dirty: bool) -> bool {
         let removed = self.remove_from_cell_domain(pos, n);
         if removed {
             self.solve_cell_from_domain(pos, mark_cage_dirty);
@@ -200,7 +200,7 @@ impl<'a> Solver<'a> {
         // remove possibility from cells in same row or column
         for &vector_id in vectors_intersecting_at(pos, size).iter() {
             for pos in (0..size).map(|n| vector_id.vec_pos_to_sq_pos(n, size)) {
-                self.remove_and_solve(pos, value, true);
+                self.remove_from_cell_domain_and_solve(pos, value, true);
             }
         }
 
@@ -241,7 +241,7 @@ impl<'a> Solver<'a> {
                 Operator::Add => {
                     for &pos in &cage.cells {
                         for n in cage.target - cage.cells.len() as i32 + 2..=self.size() as i32 {
-                            self.remove_and_solve(pos, n, false);
+                            self.remove_from_cell_domain_and_solve(pos, n, false);
                         }
                     }
                 },
@@ -251,7 +251,7 @@ impl<'a> Solver<'a> {
                         .collect_vec();
                     for &pos in &cage.cells {
                         for &n in &non_factors {
-                            self.remove_and_solve(pos, n, false);
+                            self.remove_from_cell_domain_and_solve(pos, n, false);
                         }
                     }
                 },
@@ -260,7 +260,7 @@ impl<'a> Solver<'a> {
                     if cage.target > size / 2 {
                         for &pos in &cage.cells {
                             for n in size - cage.target + 1..=cage.target {
-                                self.remove_and_solve(pos, n, false);
+                                self.remove_from_cell_domain_and_solve(pos, n, false);
                             }
                         }
                     }
@@ -274,7 +274,7 @@ impl<'a> Solver<'a> {
                     if non_domain.size() > 0 {
                         for &pos in &cage.cells {
                             for n in non_domain.iter() {
-                                self.remove_and_solve(pos, n, false);
+                                self.remove_from_cell_domain_and_solve(pos, n, false);
                             }
                         }
                     }
@@ -381,7 +381,7 @@ impl<'a> Solver<'a> {
                     .collect_vec();
             }
             for n in no_solutions {
-                self.remove_and_solve(index, n, false);
+                self.remove_from_cell_domain_and_solve(index, n, false);
             }
         }
 
@@ -457,7 +457,7 @@ impl<'a> Solver<'a> {
             debug!("value {} exists in cage at {}, in {}", n, self.cage_first_coord(cage_index), vector_id);
 
             for &pos in &remove_from {
-                self.remove_and_solve(pos, n, true);
+                self.remove_from_cell_domain_and_solve(pos, n, true);
             }
         }
     }
