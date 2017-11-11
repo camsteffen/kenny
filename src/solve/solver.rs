@@ -122,7 +122,7 @@ impl<'a> Solver<'a> {
 
         // update vector value domains
         for &v in &vectors_intersecting_at(pos, self.size()) {
-            let vec_pos = self.vec_val_doms[v][n as usize - 1].as_mut().and_then(|dom| {
+            let vec_val_pos = self.vec_val_doms[v][n as usize - 1].as_mut().and_then(|dom| {
                 let vec_pos = v.sq_pos_to_vec_pos(pos, size);
                 if dom.remove(vec_pos) {
                     dom.single_value()
@@ -130,10 +130,10 @@ impl<'a> Solver<'a> {
                     None
                 }
             });
-            if let Some(vec_pos) = vec_pos {
-                let sq_pos = v.vec_pos_to_sq_pos(vec_pos as usize, self.puzzle.size);
+            if let Some(vec_val_pos) = vec_val_pos {
+                let sq_pos = v.vec_pos_to_sq_pos(vec_val_pos as usize, self.puzzle.size);
                 debug!("the only possible position for {} in {} is {}", n, v, Coord::from_index(pos, self.puzzle.size));
-                let v2 = v.intersecting_at(vec_pos);
+                let v2 = v.intersecting_at(vec_val_pos);
                 self.vec_val_doms.remove_vector_value(v, n);
                 self.vec_val_doms.remove_vector_value(v2, n);
                 self.solve_cell(sq_pos, n);
