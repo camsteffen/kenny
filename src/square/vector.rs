@@ -34,8 +34,15 @@ impl VectorId {
             Col(i) => size + i,
         }
     }
-    
 
+    pub fn from_number(size: usize, n: usize) -> VectorId {
+        if n < size {
+            Row(n)
+        } else {
+            Col(n - size)
+        }
+    }
+    
     /// Retrieves the vector that intersects this vector at a given position
     pub fn intersecting_at(&self, pos: usize) -> VectorId {
         match *self {
@@ -46,6 +53,7 @@ impl VectorId {
 
     /// Calculates the position of a cell with respect to a vector, given the position of the cell with respect to the square.
     pub fn sq_pos_to_vec_pos(&self, pos: usize, size: usize) -> usize {
+        debug_assert!(pos < size * size);
         match *self {
             Row(i) => {
                 debug_assert!(pos / size == i);
@@ -60,6 +68,7 @@ impl VectorId {
 
     /// Calculates the position of a cell with respect to a square, given the position of the cell with respect to a vector.
     pub fn vec_pos_to_sq_pos(&self, pos: usize, size: usize) -> usize {
+        debug_assert!(pos < size);
         match *self {
             Row(i) => i * size + pos,
             Col(i) => i + pos * size,

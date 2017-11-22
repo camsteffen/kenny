@@ -230,7 +230,7 @@ fn draw_range_domain(
     let scale = Scale::uniform(info.cell_width as f32 * 0.2);
     let v_metrics = info.font.v_metrics(scale);
 
-    if domain.size() as u32 > MAX_LINE_LEN * 2 { return }
+    if domain.len() as u32 > MAX_LINE_LEN * 2 { return }
     let mut char_x = 0;
     let mut char_y = 0;
     for n in domain.iter() {

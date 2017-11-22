@@ -1,18 +1,18 @@
 use std::ops::Deref;
-use range_domain::RangeDomain;
+use range_domain::RangeSet;
 use std::ops::{Index, IndexMut};
 use square::vector::VectorId;
 
 pub struct VectorValueDomainSet {
     size: usize,
-    set: Vec<Vec<Option<RangeDomain>>>,
+    set: Vec<Vec<Option<RangeSet>>>,
 }
 
 impl VectorValueDomainSet {
     pub fn new(size: usize) -> Self {
         Self {
             size: size,
-            set: vec![vec![Some(RangeDomain::with_all(size)); size]; 2 * size],
+            set: vec![vec![Some(RangeSet::with_all(size)); size]; 2 * size],
         }
     }
 
@@ -22,7 +22,7 @@ impl VectorValueDomainSet {
 }
 
 impl Deref for VectorValueDomainSet {
-    type Target = Vec<Vec<Option<RangeDomain>>>;
+    type Target = Vec<Vec<Option<RangeSet>>>;
 
     fn deref(&self) -> &Self::Target {
         &self.set
@@ -30,7 +30,7 @@ impl Deref for VectorValueDomainSet {
 }
 
 impl Index<VectorId> for VectorValueDomainSet {
-    type Output = Vec<Option<RangeDomain>>;
+    type Output = Vec<Option<RangeSet>>;
 
     fn index<'a>(&'a self, vector_id: VectorId) -> &'a Self::Output {
         let index = vector_id.as_number(self.size);

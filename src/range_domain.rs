@@ -1,36 +1,32 @@
-use std::mem;
-
 #[derive(Clone)]
-pub struct RangeDomain {
-    pub size: usize,
+pub struct RangeSet {
+    size: usize,
     domain: Vec<bool>,
 }
 
-impl RangeDomain {
-    pub fn with_all(size: usize) -> RangeDomain {
-        RangeDomain {
+impl RangeSet {
+    pub fn with_all(size: usize) -> RangeSet {
+        RangeSet {
             size: size,
             domain: vec![true; size],
         }
     }
 
-    pub fn with_none(size: usize) -> RangeDomain {
-        RangeDomain {
+    pub fn with_none(size: usize) -> RangeSet {
+        RangeSet {
             size: 0,
             domain: vec![false; size],
         }
     }
 
-/*
     pub fn len(&self) -> usize {
         self.size
     }
-    */
 
     pub fn insert(&mut self, n: usize) -> bool {
         let existed = self.domain[n];
-        self.domain[n] = true;
         if !existed {
+            self.domain[n] = true;
             self.size += 1
         }
         existed
@@ -59,48 +55,45 @@ impl RangeDomain {
     pub fn iter(&self) -> Iter {
         Iter {
             domain: &self.domain,
-            i: 0,
+            index: 0,
         }
     }
 }
 
 pub struct Iter<'a> {
     domain: &'a [bool],
-    i: usize,
+    index: usize,
 }
 
 impl<'a> Iterator for Iter<'a> {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let pos = match self.domain.iter().position(|&c| c) {
-            Some(pos) => pos,
-            None => return None,
-        };
-        let res = Some(self.i + pos);
-        self.i += pos + 1;
-        let domain = mem::replace(&mut self.domain, &[]);
-        let (_, remaining) = domain.split_at(pos + 1);
-        self.domain = remaining;
-        res
+        for i in self.index..self.domain.len() {
+            if self.domain[i] {
+                self.index = i + 1;
+                return Some(i)
+            }
+        }
+        None
     }
 }
 
 #[derive(Clone)]
 pub struct CellDomain {
-    rd: RangeDomain,
+    rd: RangeSet,
 }
 
 impl CellDomain {
     pub fn with_all(size: usize) -> CellDomain {
         CellDomain {
-            rd: RangeDomain::with_all(size),
+            rd: RangeSet::with_all(size),
         }
     }
 
     pub fn with_none(size: usize) -> CellDomain {
         CellDomain {
-            rd: RangeDomain::with_none(size),
+            rd: RangeSet::with_none(size),
         }
     }
     pub fn contains(&self, n: i32) -> bool {
@@ -119,7 +112,7 @@ impl CellDomain {
         self.rd.remove(n as usize - 1)
     }
 
-    pub fn size(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.rd.size
     }
 
