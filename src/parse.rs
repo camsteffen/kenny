@@ -3,11 +3,11 @@
 use puzzle::Cage;
 use puzzle::Operator;
 use puzzle::Puzzle;
-use std::ascii::AsciiExt;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::iter::once;
 use std::str;
+use collections::square::SquareIndex;
 
 struct SIndex(u32, u32);
 
@@ -46,7 +46,7 @@ impl fmt::Display for Token {
         match *self {
             Token::Invalid(ref s) => write!(f, "{}", s),
             Token::Number(ref n) => write!(f, "{}", n),
-            Token::Operator(ref o) => write!(f, "{}", o.symbol()),
+            Token::Operator(ref o) => o.symbol().map_or_else(|| Ok(()), |symbol| write!(f, "{}", symbol)),
             Token::Letter(ref l) => write!(f, "{}", l),
             Token::Space => write!(f, " "),
         }
@@ -158,29 +158,25 @@ pub fn parse_puzzle(s: &str) -> Result<Puzzle, String> {
                 None => Operator::Add,
             };
             let cage = Cage {
-                cells: cells,
+                cells,
                 target: target as i32,
                 operator: operator,
             };
             Ok(cage)
         })
         .collect::<Result<_, _>>()?;
-    let puzzle = Puzzle {
-        cages: cages,
-        size: size,
-    };
-    Ok(puzzle)
+    Ok(Puzzle::new(size, cages))
 }
 
-fn read_cage_cells(s: &mut StringTokenIterator, size: usize) -> Result<BTreeMap<char, Vec<usize>>, String> {
+fn read_cage_cells(s: &mut StringTokenIterator, size: usize) -> Result<BTreeMap<char, Vec<SquareIndex>>, String> {
     let mut cages = BTreeMap::new();
     for cell in 0..(size * size) as usize {
         let (i, token) = s.next_skip_space().ok_or("unexpected EOF")?;
         let l = token.letter().ok_or_else(|| format_parse_error("invalid cage id", &token, &i))?;
-        if !l.is_ascii_uppercase() {
+        if !l.is_uppercase() {
             return Err(format_parse_error("invalid cage id", &l, &i));
         }
-        cages.entry(l).or_insert_with(Vec::new).push(cell);
+        cages.entry(l).or_insert_with(Vec::new).push(SquareIndex(cell));
     }
     Ok(cages)
 }

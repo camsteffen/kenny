@@ -5,17 +5,18 @@ pub struct RangeSet {
 }
 
 impl RangeSet {
+
+    pub fn new(size: usize) -> RangeSet {
+        RangeSet {
+            size: 0,
+            domain: vec![false; size],
+        }
+    }
+
     pub fn with_all(size: usize) -> RangeSet {
         RangeSet {
             size: size,
             domain: vec![true; size],
-        }
-    }
-
-    pub fn with_none(size: usize) -> RangeSet {
-        RangeSet {
-            size: 0,
-            domain: vec![false; size],
         }
     }
 
@@ -24,12 +25,16 @@ impl RangeSet {
     }
 
     pub fn insert(&mut self, n: usize) -> bool {
-        let existed = self.domain[n];
-        if !existed {
+        let missing = !self.domain[n];
+        if missing {
             self.domain[n] = true;
             self.size += 1
         }
-        existed
+        missing
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.size == 0
     }
 
     pub fn remove(&mut self, n: usize) -> bool {
@@ -43,6 +48,12 @@ impl RangeSet {
 
     pub fn contains(&self, n: usize) -> bool {
         self.domain[n]
+    }
+
+    pub fn clear(&mut self) {
+        for e in &mut self.domain {
+            *e = false;
+        }
     }
 
     pub fn single_value(&self) -> Option<usize> {
@@ -79,44 +90,10 @@ impl<'a> Iterator for Iter<'a> {
     }
 }
 
-#[derive(Clone)]
-pub struct CellDomain {
-    rd: RangeSet,
-}
-
-impl CellDomain {
-    pub fn with_all(size: usize) -> CellDomain {
-        CellDomain {
-            rd: RangeSet::with_all(size),
+impl Extend<usize> for RangeSet {
+    fn extend<I: IntoIterator<Item=usize>>(&mut self, iter: I) {
+        for i in iter {
+            self.domain[i] = true;
         }
-    }
-
-    pub fn with_none(size: usize) -> CellDomain {
-        CellDomain {
-            rd: RangeSet::with_none(size),
-        }
-    }
-    pub fn contains(&self, n: i32) -> bool {
-        self.rd.contains(n as usize - 1)
-    }
-
-    pub fn insert(&mut self, n: i32) -> bool {
-        self.rd.insert(n as usize - 1)
-    }
-
-    pub fn iter<'a>(&'a self) -> Box<Iterator<Item=i32> + 'a> {
-        Box::new(self.rd.iter().map(|i| i as i32 + 1))
-    }
-
-    pub fn remove(&mut self, n: i32) -> bool {
-        self.rd.remove(n as usize - 1)
-    }
-
-    pub fn len(&self) -> usize {
-        self.rd.size
-    }
-
-    pub fn single_value(&self) -> Option<i32> {
-        self.rd.single_value().map(|n| n as i32 + 1)
     }
 }

@@ -1,7 +1,7 @@
 use std::ops::Deref;
-use range_domain::RangeSet;
+use collections::RangeSet;
 use std::ops::{Index, IndexMut};
-use square::vector::VectorId;
+use collections::square::vector::VectorId;
 
 pub struct VectorValueDomainSet {
     size: usize,

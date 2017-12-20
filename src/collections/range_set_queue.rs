@@ -1,7 +1,5 @@
 use fnv::FnvHashSet;
-use std::collections::HashSet;
 use std::hash::Hash;
-use std::collections::VecDeque;
 use std::iter::FromIterator;
 
 pub struct RangeSetStack<T> {

@@ -16,11 +16,9 @@ extern crate rand;
 extern crate rusttype;
 extern crate fnv;
 
-pub mod square;
 pub mod puzzle;
 pub mod image;
 pub mod parse;
 
 mod collections;
-mod range_domain;
 mod solve;

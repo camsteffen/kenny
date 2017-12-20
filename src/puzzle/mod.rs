@@ -5,13 +5,12 @@ mod cage;
 pub use self::cage::Cage;
 pub use self::cage::Operator;
 
+use std::ops::Index;
 use itertools::Itertools;
-use itertools::repeat_call;
 use rand::Rng;
 use rand::thread_rng;
 use solve::Solver;
-use square::Coord;
-use square::Square;
+use collections::square::{Coord, Square, SquareIndex};
 
 /// An unsolved KenKen puzzle
 pub struct Puzzle {
@@ -21,16 +20,28 @@ pub struct Puzzle {
 
     /// set of cages in the puzzle
     pub cages: Vec<Cage>,
+
+    cage_map: Square<usize>,
 }
 
 impl Puzzle {
+
+    pub fn new(size: usize, cages: Vec<Cage>) -> Self {
+        let cage_map = Self::cage_map(size, &cages);
+        Self {
+            size,
+            cages,
+            cage_map,
+        }
+    }
+
     /**
      * Create a square of values where each value represents the index of the cage
      * containing that position
      */
-    pub fn cage_map(&self) -> Square<usize> {
-        let mut indices = Square::new(0, self.size as usize);
-        for (i, cage) in self.cages.iter().enumerate() {
+    fn cage_map(size: usize, cages: &[Cage]) -> Square<usize> {
+        let mut indices = Square::with_width_and_value(0, size as usize);
+        for (i, cage) in cages.iter().enumerate() {
             for &j in &cage.cells {
                 indices[j] = i;
             }
@@ -43,10 +54,7 @@ impl Puzzle {
         let solution = random_latin_square(size);
         debug!("Solution:\n{}", &solution);
         let cages = generate_cages(&solution);
-        Puzzle {
-            size: size,
-            cages: cages,
-        }
+        Self::new(size, cages)
     }
 
     /// Attempt to solve a puzzle
@@ -57,20 +65,24 @@ impl Puzzle {
         solver
     }
 
+    pub fn cage_at<T>(&self, cell_index: T) -> usize
+            where Square<usize> : Index<T, Output=usize> {
+        self.cage_map[cell_index]
+    }
+
 }
 
-fn generate_cages(cells: &Square<i32>) -> Vec<Cage> {
-    let width = cells.width();
+fn generate_cages(square: &Square<i32>) -> Vec<Cage> {
+    let width = square.width();
     let min_cage_size = 2;
     let max_cage_size = 4;
-    let num_cells = cells.len();
+    let num_cells = square.len();
     let no_cage = -1;
-    let mut cage_ids = Square::new(no_cage, width);
+    let mut cage_ids = Square::with_width_and_value(width, no_cage);
     let mut uncaged = num_cells;
     let mut cur_cage = 0;
-    let mut pos = Coord::from_index(0, width);
+    let mut pos = SquareIndex(0).as_coord(width);
     let mut rng = thread_rng();
-    //let directions = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
     'cages: loop {
         let cage_size = rng.gen_range(min_cage_size, max_cage_size + 1);
         for _ in 0..cage_size {
@@ -101,7 +113,7 @@ fn generate_cages(cells: &Square<i32>) -> Vec<Cage> {
                     let index = cage_ids.iter()
                         .position(|c| *c == no_cage)
                         .unwrap();
-                    pos = Coord::from_index(index, width);
+                    pos = SquareIndex(index).as_coord(width);
                     break
                 }
             }
@@ -113,15 +125,15 @@ fn generate_cages(cells: &Square<i32>) -> Vec<Cage> {
     // for every cage_cells[i][j], cell j is in cage i
     let mut cage_cells = vec![Vec::new(); num_cages];
     for (cell, cage_index) in cage_ids.iter().map(|&i| i as usize).enumerate() {
-        cage_cells[cage_index].push(cell);
+        cage_cells[cage_index].push(SquareIndex(cell));
     }
     let mut cages = Vec::with_capacity(num_cages);
-    for cage_cells in cage_cells {
-        let (operator, target) = find_cage_operator(cells, &cage_cells);
+    for cells in cage_cells {
+        let (operator, target) = find_cage_operator(square, &cells);
         cages.push(Cage {
-            operator: operator,
-            target: target,
-            cells: cage_cells,
+            operator,
+            target,
+            cells,
         });
     }
     cages
@@ -132,21 +144,23 @@ fn generate_cages(cells: &Square<i32>) -> Vec<Cage> {
  */
 fn random_latin_square(size: usize) -> Square<i32> {
     let mut rng = thread_rng();
-    let seed = repeat_call(|| {
+    let mut generate_seed = || {
         let mut seed = (0..size as i32).collect_vec();
         rng.shuffle(&mut seed);
         seed
-    }).take(2).collect_vec();
-    let mut square: Square<i32> = Square::new(0, size);
+    };
+    let seeds = [generate_seed(), generate_seed()];
+    let mut square: Square<i32> = Square::with_width_and_value(size, 0);
     for (i, row) in square.rows_mut().enumerate() {
         for (j, element) in row.iter_mut().enumerate() {
-            *element = (seed[0][i] + seed[1][j]) % size as i32 + 1;
+            *element = (seeds[0][i] + seeds[1][j]) % size as i32 + 1;
         }
     }
     square
 }
 
-fn find_cage_operator(cells: &Square<i32>, indices: &[usize]) -> (Operator, i32) {
+/// Selects a random, valid operator for a cage
+fn find_cage_operator(cells: &Square<i32>, indices: &[SquareIndex]) -> (Operator, i32) {
     let mut rng = thread_rng();
     let mut operators = Vec::with_capacity(4);
     let mut min: i32 = -1;
@@ -170,6 +184,7 @@ fn find_cage_operator(cells: &Square<i32>, indices: &[usize]) -> (Operator, i32)
         Operator::Subtract => max - min,
         Operator::Multiply => vals.iter().product(),
         Operator::Divide => max / min,
+        Operator::Nop => unreachable!(),
     };
     (operator, target)
 }

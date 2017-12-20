@@ -12,15 +12,15 @@ const COLOR_CELL_BORDER:  Rgb<u8> = Rgb { data: [205; 3] };
 const COLOR_CAGE_BORDER: Rgb<u8> = BLACK;
 const COLOR_BG: Rgb<u8> = WHITE;
 
-use range_domain::CellDomain;
+use solve::CellDomain;
 use puzzle::Puzzle;
 use rusttype::Font;
 use rusttype::FontCollection;
 use rusttype::Scale;
 use rusttype::point;
 use solve::Solver;
-use solve::Variable;
-use square::Coord;
+use solve::CellVariable;
+use collections::square::Coord;
 
 /// The `AsImage` trait is uesd to generate an in-memory image
 pub trait AsImage {
@@ -109,14 +109,12 @@ fn draw_grid(
     draw_rectangle(buffer, info.border_width, cells_width, image_width, image_width, COLOR_CAGE_BORDER);
     draw_rectangle(buffer, 0, info.border_width, info.border_width, image_width, COLOR_CAGE_BORDER);
 
-    let cage_map = puzzle.cage_map();
-
     // draw horizontal line segments
     for i in 1..puzzle.size as usize { // row
         for j in 0..puzzle.size as usize { // col
             let pos1 = Coord([i - 1, j]);
             let pos2 = Coord([i, j]);
-            let color = if cage_map[pos1] == cage_map[pos2] {
+            let color = if puzzle.cage_at(pos1) == puzzle.cage_at(pos2) {
                 COLOR_CELL_BORDER
             } else {
                 COLOR_CAGE_BORDER
@@ -133,7 +131,7 @@ fn draw_grid(
         for j in 1..puzzle.size as usize { // col
             let pos1 = Coord([i, j - 1]);
             let pos2 = Coord([i, j]);
-            let color = if cage_map[pos1] == cage_map[pos2] {
+            let color = if puzzle.cage_at(pos1) == puzzle.cage_at(pos2) {
                 COLOR_CELL_BORDER
             } else {
                 COLOR_CAGE_BORDER
@@ -149,13 +147,13 @@ fn draw_grid(
     // draw intersections
     for i in 1..puzzle.size as usize {
         for j in 1..puzzle.size as usize {
-            let first = cage_map[Coord([i - 1, j - 1])];
+            let first = puzzle.cage_at(Coord([i - 1, j - 1]));
             let pos = [
                 Coord([i - 1, j]),
                 Coord([i, j - 1]),
                 Coord([i, j]),
             ];
-            let color = if pos.iter().all(|pos| cage_map[*pos] == first) {
+            let color = if pos.iter().all(|pos| puzzle.cage_at(*pos) == first) {
                 COLOR_CELL_BORDER
             } else {
                 COLOR_CAGE_BORDER
@@ -178,17 +176,20 @@ fn draw_cage_glyphs(
     let v_metrics = info.font.v_metrics(scale);
 
     for cage in &puzzle.cages {
-        let text = &format!("{}{}", cage.target, cage.operator.symbol());
+        let text = match cage.operator.symbol() {
+            Some(symbol) => format!("{}{}", cage.target, symbol),
+            None => cage.target.to_string(),
+        };
 
         let index = *cage.cells.iter().min().unwrap();
-        let pos = Coord::from_index(index, puzzle.size as usize);
+        let pos = index.as_coord(puzzle.size as usize);
 
         let pad = info.cell_width / 16;
         let offset = point(
             ((pos[1] as u32 * info.cell_width) + info.border_width + pad) as f32,
             ((pos[0] as u32 * info.cell_width) + info.border_width + pad) as f32 + v_metrics.ascent);
 
-        for glyph in info.font.layout(text, scale, offset) {
+        for glyph in info.font.layout(&text, scale, offset) {
             let bb = glyph.pixel_bounding_box().expect("glyph bounding box");
             glyph.draw(|x, y, v| {
                 if v == 0.0 { return };
@@ -209,10 +210,10 @@ fn draw_markup(
 {
     for (pos, cell) in solver.cells.iter_coord() {
         match *cell {
-            Variable::Unsolved(ref domain) => {
+            CellVariable::Unsolved(ref domain) => {
                 draw_range_domain(buffer, info, pos, domain)
             },
-            Variable::Solved(value) => {
+            CellVariable::Solved(value) => {
                 draw_cell_solution(buffer, info, pos, value)
             },
         };
@@ -233,7 +234,7 @@ fn draw_range_domain(
     if domain.len() as u32 > MAX_LINE_LEN * 2 { return }
     let mut char_x = 0;
     let mut char_y = 0;
-    for n in domain.iter() {
+    for n in domain {
         let s = n.to_string();
         let mut chars = s.chars();
         let c = chars.next().unwrap();

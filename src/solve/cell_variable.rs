@@ -1,12 +1,12 @@
-use range_domain::CellDomain;
+use super::CellDomain;
 
 #[derive(Clone)]
-pub enum Variable {
+pub enum CellVariable {
     Solved(i32),
     Unsolved(CellDomain),
 }
 
-impl Variable {
+impl CellVariable {
     /*
     fn is_solved(&self) -> bool {
         match self {
@@ -16,48 +16,48 @@ impl Variable {
     }
     */
 
-    pub fn unsolved_with_all(size: usize) -> Variable {
-        Variable::Unsolved(CellDomain::with_all(size))
+    pub fn unsolved_with_all(size: usize) -> CellVariable {
+        CellVariable::Unsolved(CellDomain::with_all(size))
     }
 
     pub fn is_solved(&self) -> bool {
         match *self {
-            Variable::Solved(_) => true,
+            CellVariable::Solved(_) => true,
             _ => false,
         }
     }
 
     pub fn is_unsolved(&self) -> bool {
         match *self {
-            Variable::Unsolved(_) => true,
+            CellVariable::Unsolved(_) => true,
             _ => false,
         }
     }
 
     pub fn solved(&self) -> Option<i32> {
         match *self {
-            Variable::Solved(value) => Some(value),
+            CellVariable::Solved(value) => Some(value),
             _ => None,
         }
     }
 
     pub fn unsolved(&self) -> Option<&CellDomain> {
         match *self {
-            Variable::Unsolved(ref domain) => Some(domain),
+            CellVariable::Unsolved(ref domain) => Some(domain),
             _ => None,
         }
     }
 
     pub fn unwrap_solved(&self) -> i32 {
         match *self {
-            Variable::Solved(val) => val,
+            CellVariable::Solved(val) => val,
             _ => panic!("Not Solved"),
         }
     }
 
     pub fn unwrap_unsolved(&self) -> &CellDomain {
         match *self {
-            Variable::Unsolved(ref d) => d,
+            CellVariable::Unsolved(ref d) => d,
             _ => panic!("Not Unsolved"),
         }
     }
