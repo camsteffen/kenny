@@ -6,11 +6,11 @@ use puzzle::solve::markup::PuzzleMarkupChanges;
 use puzzle::solve::PuzzleMarkup;
 use super::Constraint;
 
-pub struct VectorValueConstraint {
+pub struct VectorSolvedCellConstraint {
     solved_cells: Vec<SquareIndex>,
 }
 
-impl VectorValueConstraint {
+impl VectorSolvedCellConstraint {
 
     pub fn new() -> Self {
         Self {
@@ -34,7 +34,7 @@ impl VectorValueConstraint {
     }
 }
 
-impl Constraint for VectorValueConstraint {
+impl Constraint for VectorSolvedCellConstraint {
     
     fn enforce_partial(&mut self, _: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool {
         while let Some(index) = self.solved_cells.pop() {

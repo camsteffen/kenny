@@ -88,12 +88,12 @@ impl Index<VectorId> for VectorValueSet {
     type Output = Vec<Option<RangeSet>>;
 
     fn index(&self, vector_id: VectorId) -> &Self::Output {
-        &self.0[vector_id.0]
+        &self.0[usize::from(vector_id)]
     }
 }
 
 impl IndexMut<VectorId> for VectorValueSet {
     fn index_mut(&mut self, vector_id: VectorId) -> &mut Self::Output {
-        &mut self.0[vector_id.0]
+        &mut self.0[usize::from(vector_id)]
     }
 }

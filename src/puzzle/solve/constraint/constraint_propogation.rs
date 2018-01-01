@@ -5,8 +5,8 @@ use puzzle::solve::markup::PuzzleMarkupChanges;
 use super::CageSolutionsConstraint;
 use super::CageVectorValueConstraint;
 use super::Constraint;
+use super::VectorSolvedCellConstraint;
 use super::VectorSubdomainConstraint;
-use super::VectorValueConstraint;
 use super::VectorValueDomainConstraint;
 use super::ConstraintSet;
 
@@ -59,7 +59,7 @@ pub fn constraint_propogation_old(puzzle: &Puzzle, markup: &mut PuzzleMarkup) {
 
 fn default_constraint_set(puzzle: &Puzzle) -> Vec<Box<Constraint>> {
     vec![
-        Box::new(VectorValueConstraint::new()),
+        Box::new(VectorSolvedCellConstraint::new()),
         Box::new(CageSolutionsConstraint::new(puzzle)),
         Box::new(CageVectorValueConstraint::new(puzzle)),
         Box::new(VectorSubdomainConstraint::new(puzzle.width)),

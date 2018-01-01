@@ -94,9 +94,8 @@ fn do_main() -> Result<(), std::io::Error> {
             let size = matches.value_of("size")
                 .map(|s| s.parse::<usize>().expect("invalid size"))
                 .unwrap_or(DEFAULT_SIZE);
-            let puzzle = puzzle::generate(size);
+            let puzzle = puzzle::generate_puzzle(size);
             if let Some(path) = matches.value_of("output_file") {
-                // let cages_json = serde_json::to_string(&puzzle).expect("serialize cages");
                 let cages_json = String::new();
                 let mut file = File::create(path)?;
                 file.write_all(cages_json.into_bytes().as_slice())?;
@@ -118,8 +117,8 @@ fn do_main() -> Result<(), std::io::Error> {
         if matches.is_present("solve") {
             let markup = puzzle.solve();
             if log_enabled!(LogLevel::Info) {
-                //let result = if markup { "Success" } else { "Fail" };
-                //info!("Result: {}", result);
+                let result = if markup.is_solved() { "Success" } else { "Fail" };
+                info!("Result: {}", result);
             }
             Some(markup)
         } else {

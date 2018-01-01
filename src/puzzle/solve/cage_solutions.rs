@@ -17,7 +17,6 @@ use super::markup::PuzzleMarkupChanges;
 pub struct CageSolutionsSet {
     cage_map: Square<usize>,
     data: Vec<CageSolutions>,
-    //cell_domain_value_removals: Vec<Vec<(usize, i32)>>,
 }
 
 impl CageSolutionsSet {
@@ -25,7 +24,6 @@ impl CageSolutionsSet {
         Self {
             cage_map: puzzle.cage_map.clone(),
             data: puzzle.cages.iter().map(|cage| CageSolutions::new(&cage.cells)).collect(),
-            //cell_domain_value_removals: vec![Vec::new(); puzzle.cages.len()],
         }
     }
 
@@ -85,17 +83,6 @@ impl DerefMut for CageSolutionsSet {
         &mut self.data
     }
 }
-
-/*
-impl<T> Index<T> for CageSolutionsSet
-        where Vec<CageSolutions> : Index<T, Output=CageSolutions> {
-    type Output = CageSolutions;
-
-    fn index(&self, index: T) -> &Self::Output {
-        &self.data[index]
-    }
-}
-*/
 
 /// A set of possible solutions for one cage
 pub struct CageSolutions {
@@ -178,29 +165,6 @@ impl CageSolutions {
                     if solution_indices_set.contains(&i) { None } else { Some(j) }
                 }).collect();
         }
-
-
-        /*
-        let steps = indicies.iter().scan((0, &self.indices[..]), |&mut (start, mut indicies), source_index| {
-            let index = indicies.binary_search(source_index).unwrap();
-            indicies = &indicies[index..];
-            Some(index)
-        }).collect::<Vec<_>>();
-        let indicies = mem::replace(&mut self.indices, Vec::with_capacity(capacity));
-        let solutions = mem::replace(&mut self.solutions, Vec::with_capacity(capacity));
-        let mut indicies_iter = indicies.into_iter();
-        let mut solutions_iter = solutions.into_iter();
-        for step in steps {
-            for i in 0..step {
-                self.indices.push(indicies_iter.next().unwrap());
-                self.solutions.push(solutions_iter.next().unwrap());
-            }
-            indicies_iter.next();
-            solutions_iter.next();
-        }
-        self.indices.extend(indicies_iter);
-        self.solutions.extend(solutions_iter);
-        */
         self.reset_index_map();
     }
 

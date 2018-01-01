@@ -2,7 +2,8 @@
 
 pub use self::cage::Cage;
 pub use self::cage::Operator;
-pub use self::generate::generate_puzzle as generate;
+pub use self::generate::generate_puzzle;
+pub use self::generate::generate_puzzle_with_solution;
 pub use self::parse::parse_puzzle as parse;
 
 mod cage;

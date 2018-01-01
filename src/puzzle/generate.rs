@@ -9,8 +9,12 @@ use std::mem;
 
 const MAX_CAGE_SIZE: usize = 4;
 
-/// Generate a random puzzle of a certain size
 pub fn generate_puzzle(width: usize) -> Puzzle {
+    let (puzzle, _) = generate_puzzle_with_solution(width);
+    puzzle
+}
+
+pub fn generate_puzzle_with_solution(width: usize) -> (Puzzle, Square<i32>) {
     let solution = random_latin_square(width);
     debug!("Solution:\n{}", &solution);
     let cage_cells = generate_cage_cells(width);
@@ -20,7 +24,8 @@ pub fn generate_puzzle(width: usize) -> Puzzle {
         let target = find_cage_target(operator, &values);
         Cage { cells, operator, target }
     }).collect();
-    Puzzle::new(width, cages)
+    let puzzle = Puzzle::new(width, cages);
+    (puzzle, solution)
 }
 
 fn random_latin_square(width: usize) -> Square<i32> {
@@ -40,24 +45,31 @@ fn random_latin_square(width: usize) -> Square<i32> {
     square
 }
 
-fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<SquareIndex>> {
-    debug!("generating cages");
-    let num_cells = puzzle_width ^ 2;
-    let mut cage_map = (0..num_cells).collect::<Vec<_>>();
-    let mut cages = (0..num_cells).map(|i| vec![i]).collect::<Vec<_>>();
+fn shuffled_inner_borders(square_width: usize) -> Vec<usize> {
     let mut rng = thread_rng();
-    let num_borders = puzzle_width * (puzzle_width - 1) * 2;
+    let num_borders = square_width * (square_width - 1) * 2;
     let mut borders = (0..num_borders).collect::<Vec<_>>();
     rng.shuffle(&mut borders);
-    for border in borders {
-        let a = border / 2;
-        let (cell1, cell2) = if border % 2 == 0 {
-            (a, a + puzzle_width)
-        } else {
-            let b = puzzle_width - 1;
-            let c = a / b * puzzle_width + a % b;
-            (c, c + 1)
-        };
+    borders
+}
+
+fn cells_touching_border(square_width: usize, border_id: usize) -> (usize, usize) {
+    let a = border_id / 2;
+    if border_id % 2 == 0 {
+        (a, a + square_width)
+    } else {
+        let b = square_width - 1;
+        let c = a / b * square_width + a % b;
+        (c, c + 1)
+    }
+}
+
+fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<SquareIndex>> {
+    let num_cells = puzzle_width.pow(2);
+    let mut cage_map = (0..num_cells).collect::<Vec<_>>();
+    let mut cages = (0..num_cells).map(|i| vec![i]).collect::<Vec<_>>();
+    for border_id in shuffled_inner_borders(puzzle_width) {
+        let (cell1, cell2) = cells_touching_border(puzzle_width, border_id);
         let (mut cage1, mut cage2) = (cage_map[cell1], cage_map[cell2]);
         if cage1 > cage2 { mem::swap(&mut cage1, &mut cage2) }
         let cage_size = cages[cage1].len() + cages[cage2].len();
@@ -135,12 +147,14 @@ fn generate_cage_cells_snake(square: &Square<i32>) -> Vec<Vec<SquareIndex>> {
 }
 
 fn random_operator(values: &[i32]) -> Operator {
+    if values.len() == 1 { return Operator::Nop }
     let mut rng = thread_rng();
     let operators = possible_operators(values);
     *rng.choose(&operators).unwrap()
 }
 
 fn possible_operators(values: &[i32]) -> Vec<Operator> {
+    if values.len() < 2 { panic!("multiple values must be provided") }
     let mut operators = vec![Operator::Add, Operator::Multiply];
     if values.len() == 2 {
         operators.push(Operator::Subtract);

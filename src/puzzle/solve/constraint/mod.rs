@@ -1,9 +1,10 @@
 mod constraint_propogation;
+mod cage_solution_vector_domain;
 mod cage_solutions;
 mod cage_vector_value;
 mod constraint_set;
 mod unary_constraints;
-mod vector_value;
+mod vector_solved_cell;
 mod vector_value_domain;
 mod vector_subdomain;
 
@@ -16,7 +17,7 @@ use self::cage_solutions::CageSolutionsConstraint;
 use self::cage_vector_value::CageVectorValueConstraint;
 use self::vector_subdomain::VectorSubdomainConstraint;
 use self::vector_value_domain::VectorValueDomainConstraint;
-use self::vector_value::VectorValueConstraint;
+use self::vector_solved_cell::VectorSolvedCellConstraint;
 use super::markup::PuzzleMarkupChanges;
 use puzzle::Puzzle;
 use puzzle::solve::PuzzleMarkup;

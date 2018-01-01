@@ -12,7 +12,7 @@ pub enum Dimension { Row, Col }
 /// A row or column and its index
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(missing_docs)]
-pub struct VectorId(pub usize);
+pub struct VectorId(usize);
 
 impl VectorId {
     
@@ -83,5 +83,11 @@ impl Display for VectorId {
             Col => "Col",
         };
         write!(f, "{} {}", label, self.index())
+    }
+}
+
+impl From<VectorId> for usize {
+    fn from(vector_id: VectorId) -> Self {
+        vector_id.0
     }
 }

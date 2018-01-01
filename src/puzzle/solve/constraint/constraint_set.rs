@@ -3,11 +3,11 @@ use super::CageSolutionsConstraint;
 use super::CageVectorValueConstraint;
 use super::Constraint;
 use super::VectorSubdomainConstraint;
-use super::VectorValueConstraint;
+use super::VectorSolvedCellConstraint;
 use super::VectorValueDomainConstraint;
 
 pub struct ConstraintSet {
-    vector_value: VectorValueConstraint,
+    vector_value: VectorSolvedCellConstraint,
     cage_solutions: CageSolutionsConstraint,
     cage_vector_value: CageVectorValueConstraint,
     vector_subdomain: VectorSubdomainConstraint,
@@ -16,7 +16,7 @@ pub struct ConstraintSet {
 
 impl ConstraintSet {
     pub fn new(puzzle: &Puzzle) -> Self {
-        let vector_value = VectorValueConstraint::new();
+        let vector_value = VectorSolvedCellConstraint::new();
         let cage_solutions = CageSolutionsConstraint::new(puzzle);
         let cage_vector_value = CageVectorValueConstraint::new(puzzle);
         let vector_subdomain = VectorSubdomainConstraint::new(puzzle.width);

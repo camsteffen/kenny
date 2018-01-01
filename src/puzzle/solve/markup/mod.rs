@@ -26,6 +26,10 @@ impl PuzzleMarkup {
         self.cage_solutions_set.init(puzzle, &self.cell_variables);
     }
 
+    pub fn is_solved(&self) -> bool {
+        self.cell_variables.iter().all(|v| v.is_solved())
+    }
+
     pub fn sync_changes(&mut self, changes: &mut PuzzleMarkupChanges) {
 
         // apply cell solutions and collect cell domain removals
@@ -55,15 +59,4 @@ impl PuzzleMarkup {
 
         self.cage_solutions_set.apply_changes(changes);
     }
-
-/*
-    pub fn remove_cell_domain_value(&mut self, index: SquareIndex, cage_index: usize, value: i32) {
-        let cage_solutions = &mut self.cage_solutions_set[cage_index];
-        let solved = self.cell_variables[index].remove_from_domain(value).is_some();
-        cage_solutions.remove_cell_domain_value(index, value);
-        if solved {
-            cage_solutions.remove_indices(&[index]); // TODO collect list
-        }
-    }
-    */
 }
