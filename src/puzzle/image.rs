@@ -12,21 +12,33 @@ const COLOR_CELL_BORDER:  Rgb<u8> = Rgb { data: [205; 3] };
 const COLOR_CAGE_BORDER: Rgb<u8> = BLACK;
 const COLOR_BG: Rgb<u8> = WHITE;
 
-use solve::CellDomain;
+const BORDER_CELL_RATIO: u32 = 25;
+const DEFAULT_CELL_WIDTH: u32 = 60;
+
+use puzzle::solve::CellDomain;
 use puzzle::Puzzle;
 use rusttype::Font;
 use rusttype::FontCollection;
 use rusttype::Scale;
 use rusttype::point;
-use solve::Solver;
-use solve::CellVariable;
+use puzzle::solve::CellVariable;
 use collections::square::Coord;
+use collections::Square;
+use puzzle::solve::markup::PuzzleMarkup;
 
-/// The `AsImage` trait is uesd to generate an in-memory image
-pub trait AsImage {
+pub fn puzzle_image(puzzle: &Puzzle) -> RgbImage {
+    let info = PuzzleImageInfo::from_puzzle(puzzle);
+    let mut buffer = info.create_buffer();
+    render_puzzle(&mut buffer, &info, puzzle);
+    buffer
+}
 
-    /// Generate an image representation
-    fn as_image(&self) -> RgbImage;
+pub fn puzzle_image_with_markup(puzzle: &Puzzle, puzzle_markup: &PuzzleMarkup) -> RgbImage {
+    let info = PuzzleImageInfo::from_puzzle(puzzle);
+    let mut buffer = info.create_buffer();
+    render_puzzle(&mut buffer, &info, puzzle);
+    render_markup(&mut buffer, &info, &puzzle_markup.cell_variables);
+    buffer
 }
 
 struct PuzzleImageInfo<'a> {
@@ -37,44 +49,36 @@ struct PuzzleImageInfo<'a> {
 }
 
 impl<'a> PuzzleImageInfo<'a> {
-    pub fn from_puzzle_size_default(puzzle_size: u32) -> PuzzleImageInfo<'a> {
-        let cell_width = 60;
-        let border_width = cell_width / 25;
-        let image_width = cell_width * puzzle_size + border_width;
+
+    pub fn from_puzzle(puzzle: &Puzzle) -> PuzzleImageInfo<'a> {
+        Self::from_puzzle_and_cell_width(puzzle, DEFAULT_CELL_WIDTH)
+    }
+
+    pub fn from_puzzle_and_cell_width(puzzle: &Puzzle, cell_width: u32) -> PuzzleImageInfo<'a> {
+        let border_width = cell_width / BORDER_CELL_RATIO;
+        let image_width = cell_width * puzzle.width as u32 + border_width;
 
         let font_data = include_bytes!("/Library/Fonts/Verdana.ttf");
         let font_collection = FontCollection::from_bytes(font_data as &[u8]);
         let font = font_collection.font_at(0).expect("load font");
 
         PuzzleImageInfo {
-            cell_width: cell_width,
-            border_width: border_width,
-            image_width: image_width,
-            font: font,
+            cell_width,
+            border_width,
+            image_width,
+            font,
         }
     }
 
-    pub fn buffer(&self) -> RgbImage {
+    pub fn from_puzzle_and_image_width(puzzle: &Puzzle, image_width: u32) -> PuzzleImageInfo<'a> {
+        let a = BORDER_CELL_RATIO.checked_mul(image_width).expect("image width is too big");
+        let b = BORDER_CELL_RATIO * puzzle.width as u32 + 1;
+        let cell_width = a / b;
+        Self::from_puzzle_and_cell_width(puzzle, cell_width)
+    }
+
+    pub fn create_buffer(&self) -> RgbImage {
         RgbImage::from_pixel(self.image_width, self.image_width, COLOR_BG)
-    }
-}
-
-impl AsImage for Puzzle {
-    fn as_image(&self) -> RgbImage {
-        let info = PuzzleImageInfo::from_puzzle_size_default(self.size as u32);
-        let mut buffer = info.buffer();
-        render_puzzle(&mut buffer, &info, self);
-        buffer
-    }
-}
-
-impl<'a> AsImage for Solver<'a> {
-    fn as_image(&self) -> RgbImage {
-        let info = PuzzleImageInfo::from_puzzle_size_default(self.puzzle.size as u32);
-        let mut buffer = info.buffer();
-        render_puzzle(&mut buffer, &info, self.puzzle);
-        render_solver(&mut buffer, &info, self);
-        buffer
     }
 }
 
@@ -83,8 +87,8 @@ fn render_puzzle(buffer: &mut RgbImage, info: &PuzzleImageInfo, puzzle: &Puzzle)
     draw_cage_glyphs(buffer, info, puzzle);
 }
 
-fn render_solver(buffer: &mut RgbImage, info: &PuzzleImageInfo, solver: &Solver) {
-    draw_markup(buffer, info, solver);
+fn render_markup(buffer: &mut RgbImage, info: &PuzzleImageInfo, cell_variables: &Square<CellVariable>) {
+    draw_markup(buffer, info, cell_variables);
 }
 
 fn draw_rectangle(buffer: &mut RgbImage, x1: u32, y1: u32, x2: u32, y2: u32, color: Rgb<u8>) {
@@ -100,8 +104,8 @@ fn draw_grid(
     info: &PuzzleImageInfo,
     puzzle: &Puzzle)
 {
-    let image_width = info.cell_width * puzzle.size as u32 + info.border_width;
-    let cells_width = info.cell_width * puzzle.size as u32;
+    let image_width = info.cell_width * puzzle.width as u32 + info.border_width;
+    let cells_width = info.cell_width * puzzle.width as u32;
 
     // draw outer border
     draw_rectangle(buffer, 0, 0, cells_width, info.border_width, COLOR_CAGE_BORDER);
@@ -110,11 +114,11 @@ fn draw_grid(
     draw_rectangle(buffer, 0, info.border_width, info.border_width, image_width, COLOR_CAGE_BORDER);
 
     // draw horizontal line segments
-    for i in 1..puzzle.size as usize { // row
-        for j in 0..puzzle.size as usize { // col
+    for i in 1..puzzle.width as usize { // row
+        for j in 0..puzzle.width as usize { // col
             let pos1 = Coord([i - 1, j]);
             let pos2 = Coord([i, j]);
-            let color = if puzzle.cage_at(pos1) == puzzle.cage_at(pos2) {
+            let color = if puzzle.cage_index_at(pos1) == puzzle.cage_index_at(pos2) {
                 COLOR_CELL_BORDER
             } else {
                 COLOR_CAGE_BORDER
@@ -127,11 +131,11 @@ fn draw_grid(
         }
     }
     // draw vertical line segments
-    for i in 0..puzzle.size as usize { // row
-        for j in 1..puzzle.size as usize { // col
+    for i in 0..puzzle.width as usize { // row
+        for j in 1..puzzle.width as usize { // col
             let pos1 = Coord([i, j - 1]);
             let pos2 = Coord([i, j]);
-            let color = if puzzle.cage_at(pos1) == puzzle.cage_at(pos2) {
+            let color = if puzzle.cage_index_at(pos1) == puzzle.cage_index_at(pos2) {
                 COLOR_CELL_BORDER
             } else {
                 COLOR_CAGE_BORDER
@@ -145,15 +149,15 @@ fn draw_grid(
     }
 
     // draw intersections
-    for i in 1..puzzle.size as usize {
-        for j in 1..puzzle.size as usize {
-            let first = puzzle.cage_at(Coord([i - 1, j - 1]));
+    for i in 1..puzzle.width as usize {
+        for j in 1..puzzle.width as usize {
+            let first = puzzle.cage_index_at(Coord([i - 1, j - 1]));
             let pos = [
                 Coord([i - 1, j]),
                 Coord([i, j - 1]),
                 Coord([i, j]),
             ];
-            let color = if pos.iter().all(|pos| puzzle.cage_at(*pos) == first) {
+            let color = if pos.iter().all(|pos| puzzle.cage_index_at(*pos) == first) {
                 COLOR_CELL_BORDER
             } else {
                 COLOR_CAGE_BORDER
@@ -182,7 +186,7 @@ fn draw_cage_glyphs(
         };
 
         let index = *cage.cells.iter().min().unwrap();
-        let pos = index.as_coord(puzzle.size as usize);
+        let pos = index.as_coord(puzzle.width as usize);
 
         let pad = info.cell_width / 16;
         let offset = point(
@@ -206,9 +210,9 @@ fn draw_cage_glyphs(
 fn draw_markup(
     buffer: &mut RgbImage,
     info: &PuzzleImageInfo,
-    solver: &Solver)
+    cell_variables: &Square<CellVariable>)
 {
-    for (pos, cell) in solver.cells.iter_coord() {
+    for (pos, cell) in cell_variables.iter_coord() {
         match *cell {
             CellVariable::Unsolved(ref domain) => {
                 draw_range_domain(buffer, info, pos, domain)

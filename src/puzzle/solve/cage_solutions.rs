@@ -2,171 +2,227 @@ use collections::square::SquareIndex;
 use puzzle::Cage;
 use puzzle::Operator;
 use puzzle::Puzzle;
-use solve::CellDomain;
-use solve::Solver;
-use solve::CellVariable;
-use solve::CellVariable::{Solved, Unsolved};
-use std::collections::{BTreeMap, BTreeSet};
-use collections::GetByIndicies;
+use puzzle::solve::CellDomain;
+use puzzle::solve::CellVariable::*;
 use collections::Square;
-use solve::DomainChangeSet;
+use std::ops::Deref;
+use std::ops::DerefMut;
+use fnv::FnvHashMap;
+use fnv::FnvHashSet;
+use std::mem;
+use collections::GetIndiciesCloned;
+use super::CellVariable;
+use super::markup::PuzzleMarkupChanges;
 
-/// This struct is used to keep track of all possible solutions for all cages in the puzzle.
-/// When this constraint is enforced, all cell domain values must be part of a possible cage solution.
-pub struct CageSolutionsConstraint {
-    size: usize,
-    dirty: BTreeSet<usize>,
-}
-
-impl CageSolutionsConstraint {
-    pub fn new(size: usize) -> Self {
-        Self {
-            size,
-            dirty: BTreeSet::new(),
-        }
-    }
-
-    fn notify_cage_solutions_changed(&mut self, cage_id: usize) {
-        self.dirty.insert(cage_id);
-    }
-
-    fn enforce(&self, puzzle: &Puzzle, cell_variables: &Square<CellVariable>, cage_solutions: &PuzzleCageSolutions, changes: &mut DomainChangeSet) {
-        let cage_id = self.dirty.iter().next().cloned().unwrap();
-        let cage_solutions = cage_solutions.cage_solutions(cage_id);
-        self.enforce_cage(puzzle, cell_variables, cage_id, cage_solutions, changes);
-        self.dirty.remove(&cage_id);
-    }
-
-    fn enforce_cage(&self, puzzle: &Puzzle, cell_variables: &Square<CellVariable>, cage_id: usize, cage_solutions: &CageSolutions, changes: &mut DomainChangeSet) {
-        // assemble domain for each unsolved cell from cell solutions
-        let mut soln_domain = vec![CellDomain::new(self.size); cage_solutions.num_cells()];
-        for solution in &cage_solutions.solutions {
-            for i in 0..cage_solutions.num_cells() {
-                soln_domain[i].insert(solution[i]);
-            }
-        }
-
-        let cell_domains = cell_variables.get_indicies(&cage_solutions.indicies).into_iter()
-                .map(|variable| variable.unwrap_unsolved()).collect::<Vec<_>>();
-
-        // remove values from cell domains that are not in a cage solution
-        let mut to_remove = Vec::new();
-        for (i, sq_index) in cage_solutions.indicies.iter().cloned().enumerate() {
-            let domain = cell_variables[sq_index].unwrap_unsolved();
-            let no_solutions;
-            {
-                no_solutions = domain.iter()
-                    .filter(|&n| !soln_domain[i].contains(n))
-                    .collect::<Vec<_>>();
-            }
-            for n in no_solutions {
-                changes.remove_value_from_cell(sq_index, n);
-            }
-        }
-    }
-}
-
-pub struct PuzzleCageSolutions {
+pub struct CageSolutionsSet {
+    cage_map: Square<usize>,
     data: Vec<CageSolutions>,
-    cell_domain_value_removals: Vec<Vec<(usize, i32)>>,
+    //cell_domain_value_removals: Vec<Vec<(usize, i32)>>,
 }
 
-impl PuzzleCageSolutions {
-
-    fn new(cages: &[Cage]) -> Self {
+impl CageSolutionsSet {
+    pub fn new(puzzle: &Puzzle) -> Self {
         Self {
-            data: cages.iter().map(|cage| CageSolutions::new(&cage.cells)).collect(),
-            cell_domain_value_removals: vec![Vec::new(); cages.len()],
+            cage_map: puzzle.cage_map.clone(),
+            data: puzzle.cages.iter().map(|cage| CageSolutions::new(&cage.cells)).collect(),
+            //cell_domain_value_removals: vec![Vec::new(); puzzle.cages.len()],
         }
     }
 
-    fn notify_cell_domain_value_removed(&self, cage_index: usize, cage_cell_index: usize, value: i32) {
-        self.cell_domain_value_removals[cage_index].push((cage_cell_index, value));
+    pub fn init(&mut self, puzzle: &Puzzle, cell_variables: &Square<CellVariable>) {
+        let mut cages_iter = puzzle.cages.iter();
+        for cage_solutions in &mut self.data {
+            let cage = cages_iter.next().unwrap();
+            if cage.operator != Operator::Nop {
+                let cell_variables = cage.cells.iter().cloned().map(|i| &cell_variables[i]).collect::<Vec<_>>();
+                cage_solutions.init(puzzle.width, cage, &cell_variables);
+            }
+        }
     }
 
-    fn cage_solutions(&self, cage_index: usize) -> &CageSolutions {
-        self.sync_cage(cage_index);
-        &self.data[cage_index]
-    }
+    pub fn apply_changes(&mut self, changes: &PuzzleMarkupChanges) {
+        struct CageData {
+            removed_indices: Vec<SquareIndex>,
+            removed_values: Vec<(SquareIndex, i32)>,
+        }
+        impl CageData {
+            fn new() -> Self {
+                Self {
+                    removed_indices: Vec::new(),
+                    removed_values: Vec::new(),
+                }
+            }
+        }
 
-    fn sync_cage(&mut self, cage_index: usize) {
-        let cage_solutions = self.data[cage_index];
-        let domain_values = self.cell_domain_value_removals[cage_index];
-        cage_solutions.remove_cell_domain_values(&domain_values);
-        domain_values.clear();
+        let mut data = FnvHashMap::default();
+
+        for &(index, _) in &changes.cell_solutions {
+            let cage_index = self.cage_map[index];
+            data.entry(cage_index).or_insert_with(CageData::new).removed_indices.push(index);
+        }
+
+        for &(index, value) in &changes.cell_domain_value_removals {
+            let cage_index = self.cage_map[index];
+            data.entry(cage_index).or_insert_with(CageData::new).removed_values.push((index, value));
+        }
+
+        for (cage_index, cage_data) in data {
+            self[cage_index].apply_changes(&cage_data.removed_indices, &cage_data.removed_values);
+        }
     }
 }
 
+impl Deref for CageSolutionsSet {
+    type Target = Vec<CageSolutions>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.data
+    }
+}
+
+impl DerefMut for CageSolutionsSet {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.data
+    }
+}
+
+/*
+impl<T> Index<T> for CageSolutionsSet
+        where Vec<CageSolutions> : Index<T, Output=CageSolutions> {
+    type Output = CageSolutions;
+
+    fn index(&self, index: T) -> &Self::Output {
+        &self.data[index]
+    }
+}
+*/
+
+/// A set of possible solutions for one cage
 pub struct CageSolutions {
-    indicies: Vec<SquareIndex>,
-    solutions: Vec<Vec<i32>>,
+    /// the indicies of the unsolved cells in the cage
+    pub indices: Vec<SquareIndex>,
+    /// a list of all possible solutions for a cage. the numbers correspond to the cells represented in indicies
+    pub solutions: Vec<Vec<i32>>,
+    index_map: FnvHashMap<SquareIndex, usize>,
 }
 
 impl CageSolutions {
 
-    pub fn new(indicies: &[SquareIndex]) -> Self {
+    pub fn new(indices: &[SquareIndex]) -> Self {
         Self {
-            indicies: indicies.to_vec(),
+            indices: indices.to_vec(),
             solutions: Vec::new(),
+            index_map: Self::build_index_map(indices),
         }
     }
 
-    fn init(&mut self, puzzle_width: usize, cage: &Cage, cell_variables: &[&CellVariable]) {
+    pub fn init(&mut self, puzzle_width: usize, cage: &Cage, cell_variables: &[&CellVariable]) {
         self.solutions = match cage.operator {
             Operator::Add => self.init_add(puzzle_width, cage, cell_variables),
             Operator::Multiply => self.init_multiply(puzzle_width, cage, cell_variables),
             Operator::Subtract => self.init_subtract(puzzle_width, cage, cell_variables),
             Operator::Divide => self.init_divide(puzzle_width, cage, cell_variables),
-            Operator::Nop => unreachable!(),
+            Operator::Nop => panic!("cannot init CageSolutions with a Nop cage"),
         };
 
         debug!("solutions: {:?}", self.solutions);
     }
 
-    fn num_cells(&self) -> usize {
-        self.indicies.len()
+    pub fn num_cells(&self) -> usize {
+        self.indices.len()
     }
 
-    fn remove_indicies(&mut self, indicies: &[SquareIndex]) {
-        let capacity = self.indicies.len() - indicies.len();
+    pub fn apply_changes(&mut self, removed_indices: &[SquareIndex], removed_values: &[(SquareIndex, i32)]) {
+
+        // create hashmap of removed solution indices
+        let removed_indices = removed_indices.iter().map(|i| self.index_map[i]).collect::<FnvHashSet<_>>();
+
+        let len = self.indices.len() - removed_indices.len();
+        let indices = mem::replace(&mut self.indices, Vec::with_capacity(len));
+        let mut keep_indices = Vec::with_capacity(len);
+        let indices = indices.into_iter().enumerate().filter(|&(i, _)| !removed_indices.contains(&i));
+        for (i, sq_idx) in indices {
+            self.indices.push(sq_idx);
+            keep_indices.push(i);
+        }
+        let removed_values = removed_values.iter().map(|&(i, v)| (self.index_map[&i], v)).collect::<Vec<_>>();
+        let solutions = mem::replace(&mut self.solutions, Vec::new());
+        self.solutions = solutions.into_iter()
+            .filter_map(|solution| {
+                for &(index, value) in &removed_values {
+                    if solution[index] == value {
+                        return None
+                    }
+                }
+                Some(solution.get_indices_cloned(&keep_indices))
+            })
+            .collect();
+    }
+
+    pub fn remove_indices(&mut self, indices: &[SquareIndex]) {
+        let capacity = self.indices.len() - indices.len();
         if capacity == 0 {
-            self.indicies.clear();
+            self.indices.clear();
             self.solutions.clear();
+            self.index_map.clear();
             return
         }
-        let steps = indicies.iter().scan((0, &self.indicies[..]), |&mut (start, indicies), source_index| {
+        let indices_set = indices.iter().cloned().collect::<FnvHashSet<_>>();
+        let solution_indices_set = indices.iter()
+            .map(|&i| self.indices.iter().position(|&j| j == i).unwrap())
+            .collect::<FnvHashSet<_>>();
+        self.indices.retain(|i| !indices_set.contains(i));
+        for solution in &mut self.solutions {
+            *solution = solution.into_iter().enumerate()
+                .filter_map(|(i, &mut j)| {
+                    if solution_indices_set.contains(&i) { None } else { Some(j) }
+                }).collect();
+        }
+
+
+        /*
+        let steps = indicies.iter().scan((0, &self.indices[..]), |&mut (start, mut indicies), source_index| {
             let index = indicies.binary_search(source_index).unwrap();
             indicies = &indicies[index..];
             Some(index)
         }).collect::<Vec<_>>();
-        let indicies_iter = self.indicies.into_iter();
-        let solutions_iter = self.solutions.into_iter();
-        self.indicies = Vec::with_capacity(capacity);
-        self.solutions = Vec::with_capacity(capacity);
+        let indicies = mem::replace(&mut self.indices, Vec::with_capacity(capacity));
+        let solutions = mem::replace(&mut self.solutions, Vec::with_capacity(capacity));
+        let mut indicies_iter = indicies.into_iter();
+        let mut solutions_iter = solutions.into_iter();
         for step in steps {
             for i in 0..step {
-                self.indicies.push(indicies_iter.next().unwrap());
+                self.indices.push(indicies_iter.next().unwrap());
                 self.solutions.push(solutions_iter.next().unwrap());
             }
             indicies_iter.next();
             solutions_iter.next();
         }
-        self.indicies.extend(indicies_iter);
+        self.indices.extend(indicies_iter);
         self.solutions.extend(solutions_iter);
+        */
+        self.reset_index_map();
     }
 
-    fn remove_cell_domain_values(&mut self, domain_values: &[(usize, i32)]) {
-        self.solutions.retain(|solution| {
-            domain_values.iter().all(|&(index, value)| solution[index] != value)
-        });
+    pub fn remove_cell_domain_value(&mut self, index: SquareIndex, value: i32) {
+        let index = self.index_map[&index];
+        self.solutions.retain(|solution| solution[index] != value);
+    }
+
+    fn build_index_map(indicies: &[SquareIndex]) -> FnvHashMap<SquareIndex, usize> {
+        indicies.iter().cloned().enumerate().map(|(i, sq_i)| (sq_i, i)).collect()
+    }
+
+    fn reset_index_map(&mut self) {
+        self.index_map = Self::build_index_map(&self.indices);
     }
 
     fn init_add(&mut self, puzzle_width: usize, cage: &Cage, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
         let mut indicies = Vec::new();
         let mut cell_domains = Vec::new();
         let mut solved_sum = 0;
-        for (i, &&cell_variable) in cell_variables.iter().enumerate() {
-            match cell_variable {
+        for (i, &cell_variable) in cell_variables.iter().enumerate() {
+            match *cell_variable {
                 Solved(v) => solved_sum += v,
                 Unsolved(ref domain) => {
                     indicies.push(cage.cells[i]);
@@ -185,8 +241,8 @@ impl CageSolutions {
         let mut indicies = Vec::new();
         let mut cell_domains = Vec::new();
         let mut solved_product = 1;
-        for (i, &&cell_variable) in cell_variables.iter().enumerate() {
-            match cell_variable {
+        for (i, &cell_variable) in cell_variables.iter().enumerate() {
+            match *cell_variable {
                 Solved(v) => solved_product *= v,
                 Unsolved(ref domain) => {
                     indicies.push(cage.cells[i]);

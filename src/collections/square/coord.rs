@@ -1,5 +1,5 @@
 use std::fmt;
-use std::fmt::Display;
+use std::fmt::Debug;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use super::SquareIndex;
@@ -30,7 +30,7 @@ impl DerefMut for Coord {
     }
 }
 
-impl Display for Coord {
+impl Debug for Coord {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}, {})", self.0[0], self.0[1])
     }

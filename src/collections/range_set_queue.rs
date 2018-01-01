@@ -2,12 +2,14 @@ use fnv::FnvHashSet;
 use std::hash::Hash;
 use std::iter::FromIterator;
 
-pub struct RangeSetStack<T> {
+/// A stack that also behaves like a set (it cannot contain duplicate values).
+/// It is optimized to work with small values.
+pub struct SetStack<T> {
     set: FnvHashSet<T>,
     queue: Vec<T>,
 }
 
-impl<T: Hash + Eq + Copy> RangeSetStack<T> {
+impl<T: Hash + Eq + Copy> SetStack<T> {
 
     pub fn new() -> Self {
         Self {
@@ -40,7 +42,7 @@ impl<T: Hash + Eq + Copy> RangeSetStack<T> {
 
 }
 
-impl<T: Hash + Eq + Copy> FromIterator<T> for RangeSetStack<T> {
+impl<T: Hash + Eq + Copy> FromIterator<T> for SetStack<T> {
     fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> Self {
         let mut rsq = Self::new();
         for e in iter {

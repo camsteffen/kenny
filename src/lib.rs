@@ -11,14 +11,15 @@
 #[macro_use] extern crate log;
 extern crate itertools;
 extern crate num;
+extern crate image;
 extern crate png;
 extern crate rand;
 extern crate rusttype;
 extern crate fnv;
+extern crate linked_hash_set;
 
 pub mod puzzle;
-pub mod image;
-pub mod parse;
+
+pub use self::puzzle::Puzzle;
 
 mod collections;
-mod solve;

@@ -1,55 +1,46 @@
 use collections::range_set;
 use collections::RangeSet;
+use std::ops::Deref;
 
 #[derive(Clone)]
-pub struct CellDomain {
-    rd: RangeSet,
-}
+pub struct CellDomain(RangeSet);
 
 impl CellDomain {
 
-    pub fn new(size: usize) -> CellDomain {
-        CellDomain {
-            rd: RangeSet::new(size),
-        }
+    pub fn new(size: usize) -> Self {
+        CellDomain(RangeSet::new(size))
     }
 
     pub fn with_all(size: usize) -> CellDomain {
-        CellDomain {
-            rd: RangeSet::with_all(size),
-        }
+        CellDomain(RangeSet::with_all(size))
     }
 
     pub fn contains(&self, n: i32) -> bool {
-        self.rd.contains(n as usize - 1)
+        self.0.contains(n as usize - 1)
     }
 
     pub fn insert(&mut self, n: i32) -> bool {
-        self.rd.insert(n as usize - 1)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.rd.is_empty()
+        self.0.insert(n as usize - 1)
     }
 
     pub fn iter<'a>(&'a self) -> impl Iterator<Item=i32> + 'a {
-        self.rd.iter().map(|i| i as i32 + 1)
+        self.0.iter().map(|i| i as i32 + 1)
     }
 
     pub fn remove(&mut self, n: i32) -> bool {
-        self.rd.remove(n as usize - 1)
-    }
-
-    pub fn len(&self) -> usize {
-        self.rd.len()
-    }
-
-    pub fn clear(&mut self) {
-        self.rd.clear();
+        self.0.remove(n as usize - 1)
     }
 
     pub fn single_value(&self) -> Option<i32> {
-        self.rd.single_value().map(|n| n as i32 + 1)
+        self.0.single_value().map(|n| n as i32 + 1)
+    }
+}
+
+impl Deref for CellDomain {
+    type Target = RangeSet;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -79,7 +70,7 @@ impl<'a> IntoIterator for &'a CellDomain {
 
     fn into_iter(self) -> Self::IntoIter {
         CellDomainIter {
-            iter: self.rd.iter(),
+            iter: self.0.iter(),
         }
     }
 

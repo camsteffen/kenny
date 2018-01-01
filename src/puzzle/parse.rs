@@ -9,6 +9,42 @@ use std::iter::once;
 use std::str;
 use collections::square::SquareIndex;
 
+/// parse a `Puzzle` from a string
+pub fn parse_puzzle(s: &str) -> Result<Puzzle, String> {
+    let mut s = StringTokenIterator::new(s);
+    let (i, token) = s.next_skip_space().ok_or("unexpected EOF")?;
+    let size = token.number().ok_or_else(|| format_parse_error("invalid size", &token, &i))? as usize;
+    if size > (('Z' as u8) - ('A' as u8) + 1) as usize {
+        return Err("size is too big".to_string())
+    }
+    let cage_cells = read_cage_cells(&mut s, size)?;
+    let cage_targets = read_cage_targets(&mut s, cage_cells.len())?;
+    debug_assert!(cage_cells.len() == cage_targets.len());
+    if let Some((i, t)) = s.next_skip_space() {
+        return Err(format_parse_error("unexpected token", &t, &i))
+    }
+    let cages = cage_cells.into_iter().zip(cage_targets.into_iter())
+        .map(|((cage_id, cells), (target, operator))| {
+            match cells.len() {
+                1 => if let Some(symbol) = operator.as_ref().map(|o| o.symbol().unwrap()) {
+                    return Err(format!("cage {} has one cell and operator {}", cage_id, symbol))
+                }
+                _ => if operator.is_none() {
+                    return Err(format!("cage {} is missing an operator", cage_id))
+                },
+            }
+            let operator = operator.unwrap_or(Operator::Nop);
+            let cage = Cage {
+                cells,
+                target: target as i32,
+                operator: operator,
+            };
+            Ok(cage)
+        })
+        .collect::<Result<_, _>>()?;
+    Ok(Puzzle::new(size, cages))
+}
+
 struct SIndex(u32, u32);
 
 impl fmt::Display for SIndex {
@@ -132,40 +168,6 @@ impl<'a> Iterator for StringTokenIterator<'a> {
         self.s = &self.s[take..];
         Some((SIndex(self.line, self.col), token))
     }
-}
-
-/// parse a `Puzzle` from a string
-pub fn parse_puzzle(s: &str) -> Result<Puzzle, String> {
-    let mut s = StringTokenIterator::new(s);
-    let (i, token) = s.next_skip_space().ok_or("unexpected EOF")?;
-    let size = token.number().ok_or_else(|| format_parse_error("invalid size", &token, &i))? as usize;
-    if size > (('Z' as u8) - ('A' as u8) + 1) as usize {
-        return Err("size is too big".to_string())
-    }
-    let cage_cells = read_cage_cells(&mut s, size)?;
-    let cage_targets = read_cage_targets(&mut s, cage_cells.len())?;
-    debug_assert!(cage_cells.len() == cage_targets.len());
-    if let Some((i, t)) = s.next_skip_space() {
-        return Err(format_parse_error("unexpected token", &t, &i))
-    }
-    let cages = cage_cells.into_iter().zip(cage_targets.into_iter())
-        .map(|((cage_id, cells), (target, operator))| {
-            if cells.len() > 1 && operator.is_none() {
-                return Err(format!("cage {} is missing an operator", cage_id))
-            }
-            let operator = match operator {
-                Some(o) => o,
-                None => Operator::Add,
-            };
-            let cage = Cage {
-                cells,
-                target: target as i32,
-                operator: operator,
-            };
-            Ok(cage)
-        })
-        .collect::<Result<_, _>>()?;
-    Ok(Puzzle::new(size, cages))
 }
 
 fn read_cage_cells(s: &mut StringTokenIterator, size: usize) -> Result<BTreeMap<char, Vec<SquareIndex>>, String> {

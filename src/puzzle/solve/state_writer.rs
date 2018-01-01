@@ -1,7 +1,8 @@
-use image::AsImage;
 use std::path::Path;
 use std::fs::remove_file;
-use super::Solver;
+use puzzle::Puzzle;
+use puzzle::solve::PuzzleMarkup;
+use std::fs;
 
 const OUTPUT_DIR: &str = "output/state/";
 
@@ -16,7 +17,7 @@ impl StateWriter {
             index: 1,
         };
         for i in 1.. {
-            let path_str = StateWriter::image_path(i);
+            let path_str = image_path(i);
             let path = Path::new(&path_str);
             if path.is_file() {
                 debug!("removing {}", path_str);
@@ -28,14 +29,15 @@ impl StateWriter {
         sw
     }
 
-    pub fn write(&mut self, solver: &Solver) {
-        let path = StateWriter::image_path(self.index);
+    pub fn write(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup) {
+        let path = image_path(self.index);
         debug!("Writing {}", path);
-        solver.as_image().save(path).unwrap();
+        fs::create_dir_all(OUTPUT_DIR).unwrap();
+        puzzle.image_with_markup(markup).save(path).unwrap();
         self.index += 1;
     }
+}
 
-    fn image_path(i: u32) -> String {
-        format!("{}state{}.png", OUTPUT_DIR, i)
-    }
+fn image_path(i: u32) -> String {
+    format!("{}state{}.jpeg", OUTPUT_DIR, i)
 }

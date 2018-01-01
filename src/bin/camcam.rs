@@ -4,13 +4,8 @@ extern crate env_logger;
 extern crate log;
 extern crate clap;
 
-use camcam::image::AsImage;
-// use getopts::Options;
-//use itertools::Itertools;
 use log::LogLevel;
-use camcam::puzzle::Puzzle;
-use camcam::parse::parse_puzzle;
-// use std::env;
+use camcam::puzzle;
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
@@ -94,12 +89,12 @@ fn do_main() -> Result<(), std::io::Error> {
             let mut file = File::open(path)?;
             let mut buf = String::new();
             file.read_to_string(&mut buf)?;
-            parse_puzzle(&buf).unwrap_or_else(|e| panic!("Error parsing puzzle from {}: {}", path, e))
+            puzzle::parse(&buf).unwrap_or_else(|e| panic!("Error parsing puzzle from {}: {}", path, e))
         } else if matches.is_present("generate") {
             let size = matches.value_of("size")
                 .map(|s| s.parse::<usize>().expect("invalid size"))
                 .unwrap_or(DEFAULT_SIZE);
-            let puzzle = Puzzle::generate(size);
+            let puzzle = puzzle::generate(size);
             if let Some(path) = matches.value_of("output_file") {
                 // let cages_json = serde_json::to_string(&puzzle).expect("serialize cages");
                 let cages_json = String::new();
@@ -112,29 +107,29 @@ fn do_main() -> Result<(), std::io::Error> {
         };
 
     if log_enabled!(LogLevel::Info) {
-        info!("Cage Indices:\n{}", puzzle.cage_map());
+        info!("Cage Indices:\n{}", puzzle.cage_map);
         info!("Cages:");
         for (i, cage) in puzzle.cages.iter().enumerate() {
-            info!(" {:>2}: {} {}", i, &cage.operator.symbol(), cage.target);
+            info!(" {:>2}: {} {}", i, &cage.operator.symbol().unwrap_or(' '), cage.target);
         }
     }
 
-    let solver =
+    let markup =
         if matches.is_present("solve") {
-            let solver = puzzle.solve();
+            let markup = puzzle.solve();
             if log_enabled!(LogLevel::Info) {
-                let result = if solver.solved() { "Success" } else { "Fail" };
-                info!("Result: {}", result);
+                //let result = if markup { "Success" } else { "Fail" };
+                //info!("Result: {}", result);
             }
-            Some(solver)
+            Some(markup)
         } else {
             None
         };
 
     if let Some(path) = matches.value_of("output_image") {
-        let image = match solver {
-            Some(solver) => solver.as_image(),
-            None => puzzle.as_image(),
+        let image = match markup {
+            Some(markup) => puzzle.image_with_markup(&markup),
+            None => puzzle.image(),
         };
         image.save(path)?;
     }

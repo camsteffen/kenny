@@ -17,7 +17,7 @@ use std::ops::IndexMut;
 use std::slice::Chunks;
 use std::slice::ChunksMut;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct SquareIndex(pub usize);
 
 impl SquareIndex {
@@ -48,8 +48,8 @@ impl SquareIndex {
     }
 
     /// Returns an array with the row and column intersecting at the given position
-    pub fn vectors_intersecting_at(pos: SquareIndex, size: usize) -> [VectorId; 2] {
-        let SquareIndex(pos) = pos;
+    pub fn intersecting_vectors(&self, size: usize) -> [VectorId; 2] {
+        let SquareIndex(pos) = *self;
         [
             VectorId::row(pos / size),
             VectorId::col(pos % size),
@@ -66,6 +66,7 @@ impl Deref for SquareIndex {
 }
 
 /// A container of elements represented in a square grid
+#[derive(Clone)]
 pub struct Square<T> {
     width: usize,
     elements: Vec<T>,
@@ -75,7 +76,7 @@ impl<T> Square<T> {
 
     /// Creates a new square with a specified width and fill with the default value
     pub fn with_width(width: usize) -> Square<T>
-            where T: Default {
+            where T: Clone + Default {
         Self {
             width,
             elements: vec![Default::default(); width.pow(2)],
@@ -139,7 +140,8 @@ impl<T> Index<Coord> for Square<T> {
 
 impl<T> IndexMut<Coord> for Square<T> {
     fn index_mut(&mut self, coord: Coord) -> &mut T {
-        &mut self[coord.as_index(self.width)]
+        let width = self.width;
+        &mut self[coord.as_index(width)]
     }
 }
 

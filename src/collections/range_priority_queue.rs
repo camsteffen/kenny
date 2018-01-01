@@ -4,7 +4,7 @@ use std::usize;
 
 #[derive(Clone)]
 struct QueueNode {
-    value: u32,
+    value: usize,
     pnode: *mut PriorityNode,
 }
 
@@ -43,7 +43,7 @@ impl RangePriorityQueue {
     /**
      * Adds a number to the queue. If the number is already in the queue, its priority will be incremented.
      */
-    pub fn add(&mut self, n: u32) {
+    pub fn add(&mut self, n: usize) {
         let range = self.queue.len();
         let index_add = |a, b| { Self::index_add(range, a, b) };
 
@@ -56,7 +56,7 @@ impl RangePriorityQueue {
                 };
                 let node_is_shared = if let Some(swap_index) = swap_index {
                     self.queue.swap(swap_index, i);
-                    self.indicies.swap(n as usize, self.queue[i].value as usize);
+                    self.indicies.swap(n, self.queue[i].value);
                     i = swap_index;
                     true
                 } else {
@@ -90,7 +90,7 @@ impl RangePriorityQueue {
                     (self.head, node)
                 } else {
                     let last_index = index_add(self.head, self.len - 1);
-                    let mut pnode = unsafe { &mut *self.queue[last_index].pnode };
+                    let pnode = unsafe { &mut *self.queue[last_index].pnode };
                     if pnode.priority == 0 {
                         let index = {
                             let r = &mut pnode.bounds[1];
@@ -109,13 +109,13 @@ impl RangePriorityQueue {
                     }
                 };
                 self.queue[index] = QueueNode { value: n, pnode };
-                self.indicies[n as usize] = index;
+                self.indicies[n] = index;
                 self.len += 1;
             }
         }
     }
 
-    pub fn pop(&mut self) -> Option<u32> {
+    pub fn pop(&mut self) -> Option<usize> {
         if self.len == 0 {
             return None
         }
@@ -132,7 +132,7 @@ impl RangePriorityQueue {
                 pnode.bounds[0] += 1;
             }
         }
-        self.indicies[n as usize] = usize::MAX;
+        self.indicies[n] = usize::MAX;
         self.head = Self::index_add(self.range(), self.head, 1);
         self.len -= 1;
         Some(n)
@@ -143,16 +143,16 @@ impl RangePriorityQueue {
         self.queue.len()
     }
 
-    fn index_of(&self, n: u32) -> Option<usize> {
-        let i = self.indicies[n as usize];
+    fn index_of(&self, n: usize) -> Option<usize> {
+        let i = self.indicies[n];
         match i {
             usize::MAX => None,
             _ => Some(i),
         }
     }
 
-    fn pnode_ref_count(range: usize, node: &PriorityNode) -> u32 {
-        Self::index_subtract(range, node.bounds[1], node.bounds[0]) as u32
+    fn pnode_ref_count(range: usize, node: &PriorityNode) -> usize {
+        Self::index_subtract(range, node.bounds[1], node.bounds[0])
     }
 
 /*
@@ -206,8 +206,8 @@ impl Drop for RangePriorityQueue {
     }
 }
 
-impl Extend<u32> for RangePriorityQueue {
-    fn extend<T: IntoIterator<Item=u32>>(&mut self, iter: T) {
+impl Extend<usize> for RangePriorityQueue {
+    fn extend<T: IntoIterator<Item=usize>>(&mut self, iter: T) {
         for elem in iter {
             self.add(elem);
         }

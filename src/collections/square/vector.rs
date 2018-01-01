@@ -7,7 +7,7 @@ use self::Dimension::{Col, Row};
 use super::Coord;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Dimension { Row, Col }
+pub enum Dimension { Row, Col }
 
 /// A row or column and its index
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -33,6 +33,14 @@ impl VectorId {
     /// Retrives the index of the vector in its respective dimension
     pub fn index(&self) -> usize {
         self.0 / 2
+    }
+
+    pub fn contains_sq_index(&self, index: SquareIndex, square_width: usize) -> bool {
+        let index = match self.dimension() {
+            Row => index.row(square_width),
+            Col => index.col(square_width),
+        };
+        index == self.index()
     }
 
     /// Creates an iterator over the positions of the cells in this vector with respect to the square
