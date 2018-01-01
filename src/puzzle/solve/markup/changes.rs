@@ -1,14 +1,15 @@
 use collections::square::SquareIndex;
+use collections::FnvLinkedHashMap;
 
 pub struct PuzzleMarkupChanges {
-    pub cell_domain_value_removals: Vec<(SquareIndex, i32)>,
+    pub cell_domain_value_removals: FnvLinkedHashMap<SquareIndex, Vec<i32>>,
     pub cell_solutions: Vec<(SquareIndex, i32)>,
 }
 
 impl PuzzleMarkupChanges {
     pub fn new() -> Self {
         Self {
-            cell_domain_value_removals: Vec::new(),
+            cell_domain_value_removals: FnvLinkedHashMap::default(),
             cell_solutions: Vec::new(),
         }
     }
@@ -23,7 +24,7 @@ impl PuzzleMarkupChanges {
     }
 
     pub fn remove_value_from_cell(&mut self, index: SquareIndex, value: i32) {
-        self.cell_domain_value_removals.push((index, value));
+        self.cell_domain_value_removals.entry(index).or_insert_with(Vec::new).push(value);
     }
 
     pub fn solve_cell(&mut self, index: SquareIndex, value: i32) {

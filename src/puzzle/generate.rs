@@ -53,21 +53,23 @@ fn shuffled_inner_borders(square_width: usize) -> Vec<usize> {
     borders
 }
 
-fn cells_touching_border(square_width: usize, border_id: usize) -> (usize, usize) {
+fn cells_touching_border(square_width: usize, border_id: usize) -> (SquareIndex, SquareIndex) {
     let a = border_id / 2;
-    if border_id % 2 == 0 {
+    let (a, b) = if border_id % 2 == 0 {
         (a, a + square_width)
     } else {
         let b = square_width - 1;
         let c = a / b * square_width + a % b;
         (c, c + 1)
-    }
+    };
+    (SquareIndex(a), SquareIndex(b))
 }
 
 fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<SquareIndex>> {
     let num_cells = puzzle_width.pow(2);
-    let mut cage_map = (0..num_cells).collect::<Vec<_>>();
-    let mut cages = (0..num_cells).map(|i| vec![i]).collect::<Vec<_>>();
+    let cage_map = (0..num_cells).collect::<Vec<_>>();
+    let mut cage_map = Square::from_vec(cage_map).unwrap();
+    let mut cages = (0..num_cells).map(|i| vec![SquareIndex(i)]).collect::<Vec<_>>();
     for border_id in shuffled_inner_borders(puzzle_width) {
         let (cell1, cell2) = cells_touching_border(puzzle_width, border_id);
         let (mut cage1, mut cage2) = (cage_map[cell1], cage_map[cell2]);
@@ -85,7 +87,7 @@ fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<SquareIndex>> {
             cages[cage1].extend(b);
         }
     }
-    cages.into_iter().map(|cells| cells.into_iter().map(|i| SquareIndex(i)).collect()).collect()
+    cages
 }
 
 fn generate_cage_cells_snake(square: &Square<i32>) -> Vec<Vec<SquareIndex>> {

@@ -16,6 +16,7 @@ extern crate png;
 extern crate rand;
 extern crate rusttype;
 extern crate fnv;
+extern crate linked_hash_map;
 extern crate linked_hash_set;
 
 pub mod puzzle;

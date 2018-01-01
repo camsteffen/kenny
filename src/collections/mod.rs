@@ -6,8 +6,10 @@ pub use self::square::Square;
 
 use fnv::FnvBuildHasher;
 use std::ops::Index;
+use linked_hash_map::LinkedHashMap;
 use linked_hash_set::LinkedHashSet;
 
+pub type FnvLinkedHashMap<K, V> = LinkedHashMap<K, V, FnvBuildHasher>;
 pub type FnvLinkedHashSet<T> = LinkedHashSet<T, FnvBuildHasher>;
 
 pub trait GetIndiciesCloned<T, I, R> {

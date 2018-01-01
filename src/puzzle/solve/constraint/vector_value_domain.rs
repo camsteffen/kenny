@@ -52,15 +52,17 @@ impl Constraint for VectorValueDomainConstraint {
         for &(index, value) in &changes.cell_solutions {
             self.data.remove_index_value(self.puzzle_width, index, value);
         }
-        for &(index, value) in &changes.cell_domain_value_removals {
+        for (&index, values) in &changes.cell_domain_value_removals {
             for &v in &index.intersecting_vectors(self.puzzle_width) {
-                if let Some(dom) = self.data[v][value as usize - 1].as_mut() {
-                    let vec_pos = v.sq_pos_to_vec_pos(index, self.puzzle_width);
-                    let removed = dom.remove(vec_pos);
-                    // TODO assert necessary?
-                    debug_assert!(removed);
-                    self.dirty_vec_vals.insert((v, value));
-                };
+                for &value in values {
+                    if let Some(dom) = self.data[v][value as usize - 1].as_mut() {
+                        let vec_pos = v.sq_pos_to_vec_pos(index, self.puzzle_width);
+                        let removed = dom.remove(vec_pos);
+                        // TODO assert necessary?
+                        debug_assert!(removed);
+                        self.dirty_vec_vals.insert((v, value));
+                    };
+                }
             }
         }
     }

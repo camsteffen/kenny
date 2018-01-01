@@ -1,10 +1,5 @@
 //! Generate images for unsolved or solved puzzles
 
-extern crate png;
-extern crate image;
-
-use self::image::{Rgb, RgbImage};
-
 const BLACK: Rgb<u8> = Rgb { data: [0; 3] };
 const WHITE: Rgb<u8> = Rgb { data: [255; 3] };
 
@@ -15,16 +10,17 @@ const COLOR_BG: Rgb<u8> = WHITE;
 const BORDER_CELL_RATIO: u32 = 25;
 const DEFAULT_CELL_WIDTH: u32 = 60;
 
-use puzzle::solve::CellDomain;
+use collections::Square;
+use collections::square::Coord;
+use image::{Rgb, RgbImage};
 use puzzle::Puzzle;
+use puzzle::solve::CellDomain;
+use puzzle::solve::CellVariable;
+use puzzle::solve::markup::PuzzleMarkup;
 use rusttype::Font;
 use rusttype::FontCollection;
 use rusttype::Scale;
 use rusttype::point;
-use puzzle::solve::CellVariable;
-use collections::square::Coord;
-use collections::Square;
-use puzzle::solve::markup::PuzzleMarkup;
 
 pub fn puzzle_image(puzzle: &Puzzle) -> RgbImage {
     let info = PuzzleImageInfo::from_puzzle(puzzle);

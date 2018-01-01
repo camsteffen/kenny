@@ -27,6 +27,14 @@ impl CellVariable {
         }
     }
 
+    pub fn solve(&mut self) -> Option<i32> {
+        let solution = self.unwrap_unsolved().single_value();
+        if let Some(solution) = solution {
+            *self = Solved(solution)
+        }
+        solution
+    }
+
     pub fn solved(&self) -> Option<i32> {
         match *self {
             Solved(value) => Some(value),
@@ -62,16 +70,8 @@ impl CellVariable {
         }
     }
 
-    pub fn remove_from_domain(&mut self, value: i32) -> Option<i32> {
-        let solution = {
-            let domain = self.unwrap_unsolved_mut();
-            domain.remove(value);
-            domain.single_value()
-        };
-        if let Some(solution) = solution {
-            *self = Solved(solution);
-        }
-        solution
+    pub fn remove_from_domain(&mut self, value: i32) -> bool {
+        self.unwrap_unsolved_mut().remove(value)
     }
 
     pub fn unsolved_and_contains(&self, value: i32) -> bool {

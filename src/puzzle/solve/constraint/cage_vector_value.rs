@@ -93,7 +93,7 @@ impl Constraint for CageVectorValueConstraint {
     }
 
     fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
-        for &(index, _) in &changes.cell_domain_value_removals {
+        for &index in changes.cell_domain_value_removals.keys() {
             let (cage_index, ref vector_ids) = self.cell_cage_vector_map[index.0];
             for &vector_id in vector_ids {
                 self.dirty_cage_vectors.insert((cage_index, vector_id));

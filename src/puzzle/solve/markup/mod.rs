@@ -6,6 +6,7 @@ use collections::Square;
 use puzzle::solve::CellVariable;
 use puzzle::Puzzle;
 use puzzle::solve::CageSolutionsSet;
+use fnv::FnvHashMap;
 
 pub struct PuzzleMarkup {
     pub cell_variables: Square<CellVariable>,
@@ -33,14 +34,14 @@ impl PuzzleMarkup {
     pub fn sync_changes(&mut self, changes: &mut PuzzleMarkupChanges) {
 
         // apply cell solutions and collect cell domain removals
-        let mut new_cell_domain_removals = Vec::new();
+        let mut new_cell_domain_removals = FnvHashMap::default();
         for &(index, value) in &changes.cell_solutions {
             let cell_variable = &mut self.cell_variables[index];
             {
                 let cell_domain = cell_variable.unwrap_unsolved();
                 for i in (1..value).chain(value + 1..=self.puzzle_width as i32) {
                     if cell_domain.contains(value) {
-                        new_cell_domain_removals.push((index, i));
+                        new_cell_domain_removals.entry(index).or_insert_with(Vec::new).push(i);
                     }
                 }
             }
@@ -48,8 +49,15 @@ impl PuzzleMarkup {
         }
 
         // apply cell domain removals and add any resulting cell solutions to changes
-        for &(index, value) in &changes.cell_domain_value_removals {
-            if let Some(solution) = self.cell_variables[index].remove_from_domain(value) {
+        for (&index, values) in &changes.cell_domain_value_removals {
+            let cell_variable = &mut self.cell_variables[index];
+            {
+                let domain = cell_variable.unwrap_unsolved_mut();
+                for &value in values {
+                    domain.remove(value);
+                }
+            }
+            if let Some(solution) = cell_variable.solve() {
                 changes.cell_solutions.push((index, solution));
             }
         }

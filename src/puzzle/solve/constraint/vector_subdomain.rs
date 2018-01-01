@@ -96,7 +96,7 @@ impl Constraint for VectorSubdomainConstraint {
     }
 
     fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
-        for &(index, _) in &changes.cell_domain_value_removals {
+        for &index in changes.cell_domain_value_removals.keys() {
             for &vector_id in &index.intersecting_vectors(self.puzzle_width) {
                 self.dirty_vecs.insert(vector_id);
             }

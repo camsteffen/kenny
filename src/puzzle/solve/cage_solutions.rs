@@ -59,9 +59,12 @@ impl CageSolutionsSet {
             data.entry(cage_index).or_insert_with(CageData::new).removed_indices.push(index);
         }
 
-        for &(index, value) in &changes.cell_domain_value_removals {
+        for (&index, values) in &changes.cell_domain_value_removals {
             let cage_index = self.cage_map[index];
-            data.entry(cage_index).or_insert_with(CageData::new).removed_values.push((index, value));
+            let cage_data = data.entry(cage_index).or_insert_with(CageData::new);
+            for &value in values {
+                cage_data.removed_values.push((index, value));
+            }
         }
 
         for (cage_index, cage_data) in data {

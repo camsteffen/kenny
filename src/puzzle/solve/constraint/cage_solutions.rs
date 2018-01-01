@@ -68,7 +68,7 @@ impl Constraint for CageSolutionsConstraint {
     }
 
     fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
-        for &(index, _) in &changes.cell_domain_value_removals {
+        for &index in changes.cell_domain_value_removals.keys() {
             let cage_index = self.cage_map[index];
             self.dirty_cages.insert(cage_index);
         }
