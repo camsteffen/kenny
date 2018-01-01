@@ -1,6 +1,6 @@
 /// The `Operator` enum represents each of the possible math operators
 /// that can be in a cage.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[allow(missing_docs)]
 pub enum Operator { Add, Subtract, Multiply, Divide, Nop }
 

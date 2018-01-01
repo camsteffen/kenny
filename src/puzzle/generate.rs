@@ -5,17 +5,78 @@ use puzzle::Operator;
 use puzzle::Puzzle;
 use rand::Rng;
 use rand::thread_rng;
+use std::mem;
+
+const MAX_CAGE_SIZE: usize = 4;
 
 /// Generate a random puzzle of a certain size
-pub fn generate_puzzle(size: usize) -> Puzzle {
-    let solution = random_latin_square(size);
+pub fn generate_puzzle(width: usize) -> Puzzle {
+    let solution = random_latin_square(width);
     debug!("Solution:\n{}", &solution);
-    let cages = generate_cages(&solution);
-    Puzzle::new(size, cages)
+    let cage_cells = generate_cage_cells(width);
+    let cages = cage_cells.into_iter().map(|cells| {
+        let values = cells.iter().map(|&i| solution[i]).collect::<Vec<_>>();
+        let operator = random_operator(&values);
+        let target = find_cage_target(operator, &values);
+        Cage { cells, operator, target }
+    }).collect();
+    Puzzle::new(width, cages)
 }
-    
-// TODO investigate another method - randomly remove cell borders
-fn generate_cages(square: &Square<i32>) -> Vec<Cage> {
+
+fn random_latin_square(width: usize) -> Square<i32> {
+    let mut rng = thread_rng();
+    let mut generate_seed = || {
+        let mut seed = (0..width as i32).collect::<Vec<_>>();
+        rng.shuffle(&mut seed);
+        seed
+    };
+    let seeds = [generate_seed(), generate_seed()];
+    let mut square: Square<i32> = Square::with_width_and_value(width, 0);
+    for (i, row) in square.rows_mut().enumerate() {
+        for (j, element) in row.iter_mut().enumerate() {
+            *element = (seeds[0][i] + seeds[1][j]) % width as i32 + 1;
+        }
+    }
+    square
+}
+
+fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<SquareIndex>> {
+    debug!("generating cages");
+    let num_cells = puzzle_width ^ 2;
+    let mut cage_map = (0..num_cells).collect::<Vec<_>>();
+    let mut cages = (0..num_cells).map(|i| vec![i]).collect::<Vec<_>>();
+    let mut rng = thread_rng();
+    let num_borders = puzzle_width * (puzzle_width - 1) * 2;
+    let mut borders = (0..num_borders).collect::<Vec<_>>();
+    rng.shuffle(&mut borders);
+    for border in borders {
+        let a = border / 2;
+        let (cell1, cell2) = if border % 2 == 0 {
+            (a, a + puzzle_width)
+        } else {
+            let b = puzzle_width - 1;
+            let c = a / b * puzzle_width + a % b;
+            (c, c + 1)
+        };
+        let (mut cage1, mut cage2) = (cage_map[cell1], cage_map[cell2]);
+        if cage1 > cage2 { mem::swap(&mut cage1, &mut cage2) }
+        let cage_size = cages[cage1].len() + cages[cage2].len();
+        if cage_size > MAX_CAGE_SIZE { continue }
+        let a = cages.pop().unwrap();
+        if cage2 == cages.len() {
+            for &i in &a { cage_map[i] = cage1 }
+            cages[cage1].extend(a);
+        } else {
+            for &i in &a { cage_map[i] = cage2 }
+            let b = mem::replace(&mut cages[cage2], a);
+            for &i in &b { cage_map[i] = cage1 }
+            cages[cage1].extend(b);
+        }
+    }
+    cages.into_iter().map(|cells| cells.into_iter().map(|i| SquareIndex(i)).collect()).collect()
+}
+
+fn generate_cage_cells_snake(square: &Square<i32>) -> Vec<Vec<SquareIndex>> {
     let width = square.width();
     let min_cage_size = 2;
     let max_cage_size = 4;
@@ -70,64 +131,50 @@ fn generate_cages(square: &Square<i32>) -> Vec<Cage> {
     for (cell, cage_index) in cage_ids.iter().map(|&i| i as usize).enumerate() {
         cage_cells[cage_index].push(SquareIndex(cell));
     }
-    let mut cages = Vec::with_capacity(num_cages);
-    for cells in cage_cells {
-        let (operator, target) = find_cage_operator(square, &cells);
-        cages.push(Cage {
-            operator,
-            target,
-            cells,
-        });
-    }
-    cages
+    cage_cells
 }
 
-/**
- * Generate a random latin square with values from 1 to size
- */
-fn random_latin_square(size: usize) -> Square<i32> {
+fn random_operator(values: &[i32]) -> Operator {
     let mut rng = thread_rng();
-    let mut generate_seed = || {
-        let mut seed = (0..size as i32).collect::<Vec<_>>();
-        rng.shuffle(&mut seed);
-        seed
-    };
-    let seeds = [generate_seed(), generate_seed()];
-    let mut square: Square<i32> = Square::with_width_and_value(size, 0);
-    for (i, row) in square.rows_mut().enumerate() {
-        for (j, element) in row.iter_mut().enumerate() {
-            *element = (seeds[0][i] + seeds[1][j]) % size as i32 + 1;
-        }
-    }
-    square
+    let operators = possible_operators(values);
+    *rng.choose(&operators).unwrap()
 }
 
-/// Selects a random, valid operator for a cage
-fn find_cage_operator(cells: &Square<i32>, indices: &[SquareIndex]) -> (Operator, i32) {
-    let mut rng = thread_rng();
-    let mut operators = Vec::with_capacity(4);
-    let mut min: i32 = -1;
-    let mut max: i32 = -1;
-    let vals = indices.iter()
-        .map(|&i| cells[i])
-        .collect::<Vec<_>>();
-    operators.push(Operator::Add);
-    operators.push(Operator::Multiply);
-    if indices.len() == 2 {
-        min = *vals.iter().min().unwrap();
-        max = *vals.iter().max().unwrap();
+fn possible_operators(values: &[i32]) -> Vec<Operator> {
+    let mut operators = vec![Operator::Add, Operator::Multiply];
+    if values.len() == 2 {
         operators.push(Operator::Subtract);
+        let (min, max) = min_max(&values);
         if max % min == 0 {
             operators.push(Operator::Divide);
         }
     }
-    let operator = rng.choose(&operators).unwrap().clone();
-    let target = match operator {
-        Operator::Add => vals.iter().sum(),
-        Operator::Subtract => max - min,
-        Operator::Multiply => vals.iter().product(),
-        Operator::Divide => max / min,
-        Operator::Nop => unreachable!(),
-    };
-    (operator, target)
+    operators
 }
+
+fn find_cage_target(operator: Operator, values: &[i32]) -> i32 {
+    match operator {
+        Operator::Add => values.iter().sum(),
+        Operator::Subtract => {
+            let (min, max) = min_max(values);
+            max - min
+        },
+        Operator::Multiply => values.iter().product(),
+        Operator::Divide => {
+            let (min, max) = min_max(values);
+            max / min
+        },
+        Operator::Nop => values[0],
+    }
+}
+
+fn min_max<T>(slice: &[T]) -> (T, T) where T: Copy + PartialOrd {
+    let mut min = slice[0];
+    let mut max = slice[1];
+    for &e in &slice[1..] {
+        if e < min { min = e }
+        if e > max { max = e }
+    }
+    (min, max)
+}
+

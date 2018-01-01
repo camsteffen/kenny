@@ -92,6 +92,16 @@ impl<T> Square<T> {
         }
     }
 
+    pub fn from_vec(elements: Vec<T>) -> Option<Self> {
+        let sqrt = (elements.len() as f32).sqrt();
+        let width = sqrt as usize;
+        if width as f32 == sqrt {
+            Some(Self { width, elements })
+        } else {
+            None
+        }
+    }
+
     /// Returns the width (and height) of the grid
     pub fn width(&self) -> usize {
         self.width
