@@ -45,7 +45,7 @@ impl Constraint for VectorSolvedCellConstraint {
         false
     }
 
-    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
+    fn notify_changes(&mut self, _: &Puzzle, changes: &PuzzleMarkupChanges) {
         for &(index, _) in &changes.cell_solutions {
             self.solved_cells.push(index);
         }

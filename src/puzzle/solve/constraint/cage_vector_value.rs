@@ -6,14 +6,13 @@ use puzzle::Puzzle;
 use super::Constraint;
 use puzzle::solve::PuzzleMarkup;
 use collections::FnvLinkedHashSet;
-use collections::GetIndiciesCloned;
+use collections::GetIndicesCloned;
 
 /// A record of values known to be in a certain cage, in a certain vector
 pub struct CageVectorValueConstraint {
     cell_cage_vector_map: Vec<(usize, Vec<VectorId>)>,
     dirty_cage_vectors: FnvLinkedHashSet<(usize, VectorId)>,
     known_vector_vals: FnvHashMap<VectorId, FnvHashSet<i32>>,
-    puzzle_width: usize,
 }
 
 impl CageVectorValueConstraint {
@@ -22,7 +21,6 @@ impl CageVectorValueConstraint {
             cell_cage_vector_map: create_cell_cage_vector_map(puzzle),
             dirty_cage_vectors: FnvLinkedHashSet::default(),
             known_vector_vals: FnvHashMap::default(),
-            puzzle_width: puzzle.width,
         }
     }
 
@@ -63,14 +61,15 @@ impl CageVectorValueConstraint {
             .extend(&values);
 
         // find cells that are in this vector but not part of this cage
-        let remove_from = vector_id.iter_sq_pos(self.puzzle_width)
+        let remove_from = vector_id.iter_sq_pos(puzzle.width)
             .filter(|&pos| puzzle.cage_map[pos] != cage_index)
             .collect::<Vec<_>>();
 
         let mut count = 0;
         
         // mark domain values for removal
-        debug!("values {:?} exists in cage at {:?}, in {}", values, puzzle.cages[cage_index].cells[0].as_coord(self.puzzle_width), vector_id);
+        debug!("values {:?} exists in cage at {:?}, in {}", values,
+            puzzle.cages[cage_index].cells[0].as_coord(puzzle.width), vector_id);
         for n in values {
             for &pos in &remove_from {
                 if markup.cell_variables[pos].unsolved_and_contains(n) {
@@ -80,6 +79,13 @@ impl CageVectorValueConstraint {
             }
         }
         count
+    }
+
+    fn notify_change_cell_domain(&mut self, index: SquareIndex) {
+        let (cage_index, ref vector_ids) = self.cell_cage_vector_map[index.0];
+        for &vector_id in vector_ids {
+            self.dirty_cage_vectors.insert((cage_index, vector_id));
+        }
     }
 }
 
@@ -92,16 +98,19 @@ impl Constraint for CageVectorValueConstraint {
         false
     }
 
-    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
+    fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
         for &index in changes.cell_domain_value_removals.keys() {
-            let (cage_index, ref vector_ids) = self.cell_cage_vector_map[index.0];
-            for &vector_id in vector_ids {
-                self.dirty_cage_vectors.insert((cage_index, vector_id));
+            self.notify_change_cell_domain(index);
+        }
+        for &cage_index in changes.cage_solution_removals.keys() {
+            for &index in &puzzle.cages[cage_index].cells {
+                self.notify_change_cell_domain(index);
             }
         }
     }
 }
 
+// TODO commonize metadata
 fn create_cell_cage_vector_map(puzzle: &Puzzle) -> Vec<(usize, Vec<VectorId>)> {
     (0..puzzle.width.pow(2)).map(|i| {
         let index = SquareIndex(i);

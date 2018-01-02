@@ -186,7 +186,7 @@ fn find_cage_target(operator: Operator, values: &[i32]) -> i32 {
 
 fn min_max<T>(slice: &[T]) -> (T, T) where T: Copy + PartialOrd {
     let mut min = slice[0];
-    let mut max = slice[1];
+    let mut max = slice[0];
     for &e in &slice[1..] {
         if e < min { min = e }
         if e > max { max = e }

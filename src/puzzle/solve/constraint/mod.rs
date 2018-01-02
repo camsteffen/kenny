@@ -13,6 +13,7 @@ pub use self::unary_constraints::apply_unary_constraints;
 pub use self::constraint_propogation::constraint_propogation;
 
 use self::constraint_set::ConstraintSet;
+use self::cage_solution_vector_domain::CageSolutionVectorDomainConstraint;
 use self::cage_solutions::CageSolutionsConstraint;
 use self::cage_vector_value::CageVectorValueConstraint;
 use self::vector_subdomain::VectorSubdomainConstraint;
@@ -24,5 +25,5 @@ use puzzle::solve::PuzzleMarkup;
 
 pub trait Constraint {
     fn enforce_partial(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool;
-    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges);
+    fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges);
 }

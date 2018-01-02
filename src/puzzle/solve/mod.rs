@@ -25,6 +25,6 @@ pub fn solve_puzzle(puzzle: &Puzzle) -> PuzzleMarkup {
     apply_unary_constraints(puzzle, &mut changes);
     let mut markup = PuzzleMarkup::new(puzzle);
     markup.sync_changes(&mut changes);
-    constraint_propogation(puzzle, &mut markup);
+    constraint_propogation(puzzle, &mut markup, &mut changes);
     markup
 }

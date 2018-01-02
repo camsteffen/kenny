@@ -12,11 +12,11 @@ use linked_hash_set::LinkedHashSet;
 pub type FnvLinkedHashMap<K, V> = LinkedHashMap<K, V, FnvBuildHasher>;
 pub type FnvLinkedHashSet<T> = LinkedHashSet<T, FnvBuildHasher>;
 
-pub trait GetIndiciesCloned<T, I, R> {
+pub trait GetIndicesCloned<T, I, R> {
     fn get_indices_cloned(&self, indicies: &[I]) -> Vec<R>;
 }
 
-impl<'a, T, I, R> GetIndiciesCloned<T, I, R> for T
+impl<'a, T, I, R> GetIndicesCloned<T, I, R> for T
         where T: Index<I, Output=R>,
               I: Copy,
               R: Clone {

@@ -38,12 +38,12 @@ impl RangeSet {
     }
 
     pub fn remove(&mut self, n: usize) -> bool {
-        let existed = self.domain[n];
-        if existed {
+        let exists = self.domain[n];
+        if exists {
             self.domain[n] = false;
             self.size -= 1;
         }
-        existed
+        exists
     }
 
     pub fn contains(&self, n: usize) -> bool {

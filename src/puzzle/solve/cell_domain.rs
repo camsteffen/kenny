@@ -24,7 +24,7 @@ impl CellDomain {
     }
 
     pub fn iter<'a>(&'a self) -> impl Iterator<Item=i32> + 'a {
-        self.0.iter().map(|i| i as i32 + 1)
+        self.into_iter()
     }
 
     pub fn remove(&mut self, n: i32) -> bool {
@@ -73,5 +73,4 @@ impl<'a> IntoIterator for &'a CellDomain {
             iter: self.0.iter(),
         }
     }
-
 }

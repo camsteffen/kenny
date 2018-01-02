@@ -10,7 +10,7 @@ use std::ops::DerefMut;
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
 use std::mem;
-use collections::GetIndiciesCloned;
+use collections::GetIndicesCloned;
 use super::CellVariable;
 use super::markup::PuzzleMarkupChanges;
 
@@ -40,13 +40,15 @@ impl CageSolutionsSet {
 
     pub fn apply_changes(&mut self, changes: &PuzzleMarkupChanges) {
         struct CageData {
-            removed_indices: Vec<SquareIndex>,
+            remove_indices: Vec<usize>,
+            solved_cells: Vec<(SquareIndex, i32)>,
             removed_values: Vec<(SquareIndex, i32)>,
         }
         impl CageData {
             fn new() -> Self {
                 Self {
-                    removed_indices: Vec::new(),
+                    remove_indices: Vec::new(),
+                    solved_cells: Vec::new(),
                     removed_values: Vec::new(),
                 }
             }
@@ -54,13 +56,20 @@ impl CageSolutionsSet {
 
         let mut data = FnvHashMap::default();
 
-        for &(index, _) in &changes.cell_solutions {
-            let cage_index = self.cage_map[index];
-            data.entry(cage_index).or_insert_with(CageData::new).removed_indices.push(index);
+        for (&cage_index, values) in &changes.cage_solution_removals {
+            data.entry(cage_index).or_insert_with(CageData::new).remove_indices.extend(values);
         }
+
+        for &(index, value) in &changes.cell_solutions {
+            let cage_index = self.cage_map[index];
+            data.entry(cage_index).or_insert_with(CageData::new).solved_cells.push((index, value));
+        }
+
+        let solved_cells = changes.cell_solutions.iter().map(|&(i, _)| i).collect::<FnvHashSet<_>>();
 
         for (&index, values) in &changes.cell_domain_value_removals {
             let cage_index = self.cage_map[index];
+            if solved_cells.contains(&index) { continue }
             let cage_data = data.entry(cage_index).or_insert_with(CageData::new);
             for &value in values {
                 cage_data.removed_values.push((index, value));
@@ -68,7 +77,7 @@ impl CageSolutionsSet {
         }
 
         for (cage_index, cage_data) in data {
-            self[cage_index].apply_changes(&cage_data.removed_indices, &cage_data.removed_values);
+            self[cage_index].apply_changes(&cage_data.remove_indices, &cage_data.solved_cells, &cage_data.removed_values);
         }
     }
 }
@@ -122,31 +131,35 @@ impl CageSolutions {
         self.indices.len()
     }
 
-    pub fn apply_changes(&mut self, removed_indices: &[SquareIndex], removed_values: &[(SquareIndex, i32)]) {
+    pub fn apply_changes(&mut self, remove_indices: &[usize], solved_cells: &[(SquareIndex, i32)], removed_values: &[(SquareIndex, i32)]) {
+        let remove_indices = remove_indices.iter().cloned().collect::<FnvHashSet<_>>();
 
-        // create hashmap of removed solution indices
-        let removed_indices = removed_indices.iter().map(|i| self.index_map[i]).collect::<FnvHashSet<_>>();
+        let solved_cells = solved_cells.iter().map(|&(i, v)| (self.index_map[&i], v)).collect::<Vec<_>>();
+        let remove_cells = solved_cells.iter().map(|&(i, _)| i).collect::<FnvHashSet<_>>();
 
-        let len = self.indices.len() - removed_indices.len();
+        let len = self.indices.len() - solved_cells.len();
         let indices = mem::replace(&mut self.indices, Vec::with_capacity(len));
         let mut keep_indices = Vec::with_capacity(len);
-        let indices = indices.into_iter().enumerate().filter(|&(i, _)| !removed_indices.contains(&i));
+        let indices = indices.into_iter().enumerate().filter(|&(i, _)| !remove_cells.contains(&i));
         for (i, sq_idx) in indices {
             self.indices.push(sq_idx);
             keep_indices.push(i);
         }
         let removed_values = removed_values.iter().map(|&(i, v)| (self.index_map[&i], v)).collect::<Vec<_>>();
         let solutions = mem::replace(&mut self.solutions, Vec::new());
-        self.solutions = solutions.into_iter()
-            .filter_map(|solution| {
+        self.solutions = solutions.into_iter().enumerate()
+            .filter_map(|(i, solution)| {
+                if remove_indices.contains(&i) { return None }
+                for &(index, value) in &solved_cells {
+                    if solution[index] != value { return None }
+                }
                 for &(index, value) in &removed_values {
-                    if solution[index] == value {
-                        return None
-                    }
+                    if solution[index] == value { return None }
                 }
                 Some(solution.get_indices_cloned(&keep_indices))
             })
             .collect();
+        self.reset_index_map();
     }
 
     pub fn remove_indices(&mut self, indices: &[SquareIndex]) {

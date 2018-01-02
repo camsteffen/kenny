@@ -40,7 +40,7 @@ impl PuzzleMarkup {
             {
                 let cell_domain = cell_variable.unwrap_unsolved();
                 for i in (1..value).chain(value + 1..=self.puzzle_width as i32) {
-                    if cell_domain.contains(value) {
+                    if cell_domain.contains(i) {
                         new_cell_domain_removals.entry(index).or_insert_with(Vec::new).push(i);
                     }
                 }

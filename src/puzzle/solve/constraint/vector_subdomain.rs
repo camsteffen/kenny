@@ -11,21 +11,19 @@ use super::Constraint;
 use collections::FnvLinkedHashSet;
 
 pub struct VectorSubdomainConstraint {
-    puzzle_width: usize,
     dirty_vecs: FnvLinkedHashSet<VectorId>,
 }
 
 impl VectorSubdomainConstraint {
 
-    pub fn new(puzzle_width: usize) -> Self {
+    pub fn new() -> Self {
         Self {
-            puzzle_width,
             dirty_vecs: FnvLinkedHashSet::default(),
         }
     }
 
     fn enforce_vector(&self, cell_variables: &Square<CellVariable>, vector_id: VectorId, change: &mut PuzzleMarkupChanges) -> u32 {
-        let size = self.puzzle_width;
+        let size = cell_variables.width();
 
         // organize cells by domain size
         let mut cells_by_domain_size = vec![Vec::new(); size - 3];
@@ -95,9 +93,9 @@ impl Constraint for VectorSubdomainConstraint {
         false
     }
 
-    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
+    fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
         for &index in changes.cell_domain_value_removals.keys() {
-            for &vector_id in &index.intersecting_vectors(self.puzzle_width) {
+            for &vector_id in &index.intersecting_vectors(puzzle.width) {
                 self.dirty_vecs.insert(vector_id);
             }
         }
