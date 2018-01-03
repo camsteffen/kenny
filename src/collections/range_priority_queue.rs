@@ -26,7 +26,7 @@ pub struct RangePriorityQueue {
     queue: Vec<QueueNode>,
     head: usize,
     len: usize,
-    indicies: Vec<usize>,
+    indices: Vec<usize>,
 }
 
 impl RangePriorityQueue {
@@ -36,7 +36,7 @@ impl RangePriorityQueue {
             queue: vec![QueueNode::default(); range],
             head: 0,
             len: 0,
-            indicies: vec![usize::MAX; range],
+            indices: vec![usize::MAX; range],
         }
     }
     
@@ -49,14 +49,12 @@ impl RangePriorityQueue {
 
         match self.index_of(n) {
             Some(mut i) => {
-                let swap_index = {
-                    let pnode = unsafe { &*self.queue[i].pnode };
-                    let left = pnode.bounds[0];
-                    if left != i { Some(left) } else { None }
-                };
+                let pnode = unsafe { &*self.queue[i].pnode };
+                let left = pnode.bounds[0];
+                let swap_index = if left != i { Some(left) } else { None };
                 let node_is_shared = if let Some(swap_index) = swap_index {
                     self.queue.swap(swap_index, i);
-                    self.indicies.swap(n, self.queue[i].value);
+                    self.indices.swap(n, self.queue[i].value);
                     i = swap_index;
                     true
                 } else {
@@ -92,11 +90,9 @@ impl RangePriorityQueue {
                     let last_index = index_add(self.head, self.len - 1);
                     let pnode = unsafe { &mut *self.queue[last_index].pnode };
                     if pnode.priority == 0 {
-                        let index = {
-                            let r = &mut pnode.bounds[1];
-                            *r = index_add(*r, 1);
-                            *r
-                        };
+                        let r = &mut pnode.bounds[1];
+                        *r = index_add(*r, 1);
+                        let index = *r;
                         let pnode: *mut _ = pnode;
                         (index, pnode)
                     } else {
@@ -109,7 +105,7 @@ impl RangePriorityQueue {
                     }
                 };
                 self.queue[index] = QueueNode { value: n, pnode };
-                self.indicies[n] = index;
+                self.indices[n] = index;
                 self.len += 1;
             }
         }
@@ -119,20 +115,17 @@ impl RangePriorityQueue {
         if self.len == 0 {
             return None
         }
-        let n;
-        {
-            let node = &mut self.queue[self.head];
-            n = node.value;
-            let pnode = unsafe { &mut *node.pnode };
-            if pnode.bounds[0] == pnode.bounds[1] {
-                node.value = 0;
-                unsafe { Box::from_raw(node.pnode) };
-                node.pnode = ptr::null_mut();
-            } else {
-                pnode.bounds[0] += 1;
-            }
+        let node = &mut self.queue[self.head];
+        let n = node.value;
+        let pnode = unsafe { &mut *node.pnode };
+        if pnode.bounds[0] == pnode.bounds[1] {
+            node.value = 0;
+            unsafe { Box::from_raw(node.pnode) };
+            node.pnode = ptr::null_mut();
+        } else {
+            pnode.bounds[0] += 1;
         }
-        self.indicies[n] = usize::MAX;
+        self.indices[n] = usize::MAX;
         self.head = Self::index_add(self.range(), self.head, 1);
         self.len -= 1;
         Some(n)
@@ -144,7 +137,7 @@ impl RangePriorityQueue {
     }
 
     fn index_of(&self, n: usize) -> Option<usize> {
-        let i = self.indicies[n];
+        let i = self.indices[n];
         match i {
             usize::MAX => None,
             _ => Some(i),

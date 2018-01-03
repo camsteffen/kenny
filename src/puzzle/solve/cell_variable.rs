@@ -43,29 +43,29 @@ impl CellVariable {
     }
 
     pub fn unsolved(&self) -> Option<&CellDomain> {
-        match *self {
-            Unsolved(ref domain) => Some(domain),
+        match self {
+            Unsolved(domain) => Some(domain),
             _ => None,
         }
     }
 
     pub fn unwrap_solved(&self) -> i32 {
-        match *self {
-            Solved(val) => val,
+        match self {
+            Solved(val) => *val,
             _ => panic!("Not Solved"),
         }
     }
 
     pub fn unwrap_unsolved(&self) -> &CellDomain {
-        match *self {
-            Unsolved(ref d) => d,
+        match self {
+            Unsolved(d) => d,
             _ => panic!("Not Unsolved"),
         }
     }
 
     pub fn unwrap_unsolved_mut(&mut self) -> &mut CellDomain {
-        match *self {
-            Unsolved(ref mut d) => d,
+        match self {
+            Unsolved(d) => d,
             _ => panic!("Not Unsolved"),
         }
     }
@@ -75,7 +75,7 @@ impl CellVariable {
     }
 
     pub fn unsolved_and_contains(&self, value: i32) -> bool {
-        match *self {
+        match self {
             Solved(_) => false,
             Unsolved(ref domain) => domain.contains(value),
         }

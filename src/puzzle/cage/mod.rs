@@ -17,6 +17,6 @@ pub struct Cage {
     pub operator: Operator,
 
     /// A list of the positions of the cells in this cage
-    /// TODO rename to cell_indicies
+    /// TODO rename to cell_indices
     pub cells: Vec<SquareIndex>,
 }

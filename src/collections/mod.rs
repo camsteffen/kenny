@@ -13,32 +13,32 @@ pub type FnvLinkedHashMap<K, V> = LinkedHashMap<K, V, FnvBuildHasher>;
 pub type FnvLinkedHashSet<T> = LinkedHashSet<T, FnvBuildHasher>;
 
 pub trait GetIndicesCloned<T, I, R> {
-    fn get_indices_cloned(&self, indicies: &[I]) -> Vec<R>;
+    fn get_indices_cloned(&self, indices: &[I]) -> Vec<R>;
 }
 
 impl<'a, T, I, R> GetIndicesCloned<T, I, R> for T
         where T: Index<I, Output=R>,
               I: Copy,
               R: Clone {
-    fn get_indices_cloned(&self, indicies: &[I]) -> Vec<R> {
-        let mut vec = Vec::with_capacity(indicies.len());
-        for &i in indicies {
+    fn get_indices_cloned(&self, indices: &[I]) -> Vec<R> {
+        let mut vec = Vec::with_capacity(indices.len());
+        for &i in indices {
             vec.push(self[i].clone());
         }
         vec
     }
 }
 
-pub trait GetIndiciesRef<'a, T, I, R> {
-    fn get_indices_ref(&'a self, indicies: &[I]) -> Vec<&'a R>;
+pub trait GetIndicesRef<'a, T, I, R> {
+    fn get_indices_ref(&'a self, indices: &[I]) -> Vec<&'a R>;
 }
 
-impl<'a, T, I, R> GetIndiciesRef<'a, T, I, R> for T
+impl<'a, T, I, R> GetIndicesRef<'a, T, I, R> for T
         where T: Index<I, Output=R>,
               I: Copy {
-    fn get_indices_ref(&'a self, indicies: &[I]) -> Vec<&'a R> {
-        let mut vec = Vec::with_capacity(indicies.len());
-        for &i in indicies {
+    fn get_indices_ref(&'a self, indices: &[I]) -> Vec<&'a R> {
+        let mut vec = Vec::with_capacity(indices.len());
+        for &i in indices {
             vec.push(&self[i]);
         }
         vec

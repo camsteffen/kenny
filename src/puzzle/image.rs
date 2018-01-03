@@ -209,12 +209,12 @@ fn draw_markup(
     cell_variables: &Square<CellVariable>)
 {
     for (pos, cell) in cell_variables.iter_coord() {
-        match *cell {
-            CellVariable::Unsolved(ref domain) => {
+        match cell {
+            CellVariable::Unsolved(domain) => {
                 draw_range_domain(buffer, info, pos, domain)
             },
             CellVariable::Solved(value) => {
-                draw_cell_solution(buffer, info, pos, value)
+                draw_cell_solution(buffer, info, pos, *value)
             },
         };
     }

@@ -98,9 +98,9 @@ impl DerefMut for CageSolutionsSet {
 
 /// A set of possible solutions for one cage
 pub struct CageSolutions {
-    /// the indicies of the unsolved cells in the cage
+    /// the indices of the unsolved cells in the cage
     pub indices: Vec<SquareIndex>,
-    /// a list of all possible solutions for a cage. the numbers correspond to the cells represented in indicies
+    /// a list of all possible solutions for a cage. the numbers correspond to the cells represented in indices
     pub solutions: Vec<Vec<i32>>,
     index_map: FnvHashMap<SquareIndex, usize>,
 }
@@ -189,8 +189,8 @@ impl CageSolutions {
         self.solutions.retain(|solution| solution[index] != value);
     }
 
-    fn build_index_map(indicies: &[SquareIndex]) -> FnvHashMap<SquareIndex, usize> {
-        indicies.iter().cloned().enumerate().map(|(i, sq_i)| (sq_i, i)).collect()
+    fn build_index_map(indices: &[SquareIndex]) -> FnvHashMap<SquareIndex, usize> {
+        indices.iter().cloned().enumerate().map(|(i, sq_i)| (sq_i, i)).collect()
     }
 
     fn reset_index_map(&mut self) {
@@ -198,42 +198,42 @@ impl CageSolutions {
     }
 
     fn init_add(&mut self, puzzle_width: usize, cage: &Cage, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
-        let mut indicies = Vec::new();
+        let mut indices = Vec::new();
         let mut cell_domains = Vec::new();
         let mut solved_sum = 0;
         for (i, &cell_variable) in cell_variables.iter().enumerate() {
-            match *cell_variable {
+            match cell_variable {
                 Solved(v) => solved_sum += v,
-                Unsolved(ref domain) => {
-                    indicies.push(cage.cells[i]);
+                Unsolved(domain) => {
+                    indices.push(cage.cells[i]);
                     cell_domains.push(domain);
                 },
             }
         }
         let remain_sum = cage.target - solved_sum;
-        let mut solution = vec![0; indicies.len()];
+        let mut solution = vec![0; indices.len()];
         let mut solutions = Vec::new();
-        Self::init_add_next(0, puzzle_width, remain_sum, &indicies, &cell_domains, &mut solution, &mut solutions);
+        Self::init_add_next(0, puzzle_width, remain_sum, &indices, &cell_domains, &mut solution, &mut solutions);
         solutions
     }
 
     fn init_multiply(&mut self, puzzle_width: usize, cage: &Cage, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
-        let mut indicies = Vec::new();
+        let mut indices = Vec::new();
         let mut cell_domains = Vec::new();
         let mut solved_product = 1;
         for (i, &cell_variable) in cell_variables.iter().enumerate() {
-            match *cell_variable {
+            match cell_variable {
                 Solved(v) => solved_product *= v,
-                Unsolved(ref domain) => {
-                    indicies.push(cage.cells[i]);
+                Unsolved(domain) => {
+                    indices.push(cage.cells[i]);
                     cell_domains.push(domain);
                 },
             }
         }
         let remain_product = cage.target / solved_product;
-        let mut solution = vec![0; indicies.len()];
+        let mut solution = vec![0; indices.len()];
         let mut solutions = Vec::new();
-        Self::init_multiply_next(0, puzzle_width, remain_product, &indicies, &cell_domains, &mut solution, &mut solutions);
+        Self::init_multiply_next(0, puzzle_width, remain_product, &indices, &cell_domains, &mut solution, &mut solutions);
         solutions
     }
 
@@ -301,14 +301,14 @@ impl CageSolutions {
         i: usize,
         puzzle_width: usize,
         remain_sum: i32,
-        indicies: &[SquareIndex],
+        indices: &[SquareIndex],
         cell_domains: &[&CellDomain],
         solution: &mut [i32],
         solutions: &mut Vec<Vec<i32>>)
     {
         let collides = |n: i32, vals: &[i32]| {
             (0..i).filter(|&j| vals[j] == n)
-                .any(|j| indicies[i].shared_vector(indicies[j], puzzle_width).is_some())
+                .any(|j| indices[i].shared_vector(indices[j], puzzle_width).is_some())
         };
         if remain_sum <= 0 { return }
         if i == solution.len() - 1 {
@@ -322,7 +322,7 @@ impl CageSolutions {
                 if n >= remain_sum { break }
                 if collides(n, &solution[..i]) { continue }
                 solution[i] = n;
-                Self::init_add_next(i + 1, puzzle_width, remain_sum - n, indicies, cell_domains, solution, solutions);
+                Self::init_add_next(i + 1, puzzle_width, remain_sum - n, indices, cell_domains, solution, solutions);
             }
         }
     }
@@ -331,14 +331,14 @@ impl CageSolutions {
         i: usize,
         puzzle_width: usize,
         remain_product: i32,
-        indicies: &[SquareIndex],
+        indices: &[SquareIndex],
         cell_domains: &[&CellDomain],
         solution: &mut [i32],
         solutions: &mut Vec<Vec<i32>>)
     {
         let collides = |n: i32, vals: &[i32]| {
             (0..i).filter(|&j| vals[j] == n)
-                .any(|j| indicies[i].shared_vector(indicies[j], puzzle_width).is_some())
+                .any(|j| indices[i].shared_vector(indices[j], puzzle_width).is_some())
         };
         if remain_product <= 0 { return }
         if i == solution.len() - 1 {
@@ -353,7 +353,7 @@ impl CageSolutions {
                 if remain_product % n != 0 { continue }
                 if collides(n, &solution[..i]) { continue }
                 solution[i] = n;
-                Self::init_multiply_next(i + 1, puzzle_width, remain_product / n, indicies, cell_domains, solution, solutions);
+                Self::init_multiply_next(i + 1, puzzle_width, remain_product / n, indices, cell_domains, solution, solutions);
             }
         }
     }

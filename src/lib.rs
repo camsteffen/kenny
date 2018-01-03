@@ -4,6 +4,7 @@
 #![feature(ascii_ctype)]
 #![feature(conservative_impl_trait)]
 #![feature(inclusive_range_syntax)]
+#![feature(match_default_bindings)]
 #![feature(slice_patterns)]
 #![feature(vec_resize_default)]
 #![warn(missing_docs)]

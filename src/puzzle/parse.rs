@@ -79,11 +79,11 @@ impl Token {
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Token::Invalid(ref s) => write!(f, "{}", s),
-            Token::Number(ref n) => write!(f, "{}", n),
-            Token::Operator(ref o) => o.symbol().map_or_else(|| Ok(()), |symbol| write!(f, "{}", symbol)),
-            Token::Letter(ref l) => write!(f, "{}", l),
+        match self {
+            Token::Invalid(s) => write!(f, "{}", s),
+            Token::Number(n) => write!(f, "{}", n),
+            Token::Operator(o) => o.symbol().map_or_else(|| Ok(()), |symbol| write!(f, "{}", symbol)),
+            Token::Letter(l) => write!(f, "{}", l),
             Token::Space => write!(f, " "),
         }
     }
@@ -105,16 +105,13 @@ impl<'a> StringTokenIterator<'a> {
     }
 
     fn next_skip_space(&mut self) -> Option<(SIndex, Token)> {
-        loop {
-            let (i, t) = match self.next() {
-                Some(s) => s,
-                None => return None,
-            };
+        while let Some((i, t)) = self.next() {
             match t {
-                Token::Space => continue,
+                Token::Space => (),
                 _ => return Some((i, t)),
             }
         }
+        None
     }
 }
 
@@ -126,10 +123,7 @@ impl<'a> Iterator for StringTokenIterator<'a> {
         let mut decrement_take = false;
         let token = {
             let mut chars = self.s.chars().inspect(|_| take += 1);
-            let mut c = match chars.next() {
-                Some(c) => c,
-                None => return None,
-            };
+            let mut c = chars.next()?;
             if c.is_whitespace() {
                 loop {
                     if c == '\n' {

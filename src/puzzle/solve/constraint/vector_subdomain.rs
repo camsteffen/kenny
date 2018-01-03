@@ -41,7 +41,7 @@ impl VectorSubdomainConstraint {
 
         // find a set of cells where the collective domain size < the size of the set
         let mut cells: Vec<SquareIndex> = Vec::with_capacity(size - 1);
-        'domain_sizes: for (i, cells2) in cells_by_domain_size.into_iter().enumerate().filter(|&(_, ref cells)| !cells.is_empty()) {
+        'domain_sizes: for (i, cells2) in cells_by_domain_size.into_iter().enumerate().filter(|(_, cells)| !cells.is_empty()) {
             cells = cells.into_iter().merge(cells2).collect();
             let max_size = i + 2;
             'combinations: for cells in cells.iter().cloned().combinations(max_size) {

@@ -31,27 +31,25 @@ impl CageVectorValueConstraint {
         if solution_indices.len() < 2 { return 0 }
 
         let mut values: FnvHashSet<i32>;
-        {
-            let mut solutions_iter = markup.cage_solutions_set[cage_index].solutions.iter()
-                .map(|s| s.get_indices_cloned(&solution_indices).into_iter());
-            let solution = solutions_iter.next().unwrap();
-            
-            // start with values in the first solution that are not already a known vector value
+        let mut solutions_iter = markup.cage_solutions_set[cage_index].solutions.iter()
+            .map(|s| s.get_indices_cloned(&solution_indices).into_iter());
+        let solution = solutions_iter.next().unwrap();
+
+        // start with values in the first solution that are not already a known vector value
+        values = solution
+            .filter(|n| {
+                self.known_vector_vals.get(&vector_id)
+                    .map_or(true, |vals| !vals.contains(n))
+            })
+            .collect();
+
+        for solution in solutions_iter {
+            if values.is_empty() { break }
+
+            // remove values that are not in the current solution
             values = solution
-                .filter(|n| {
-                    self.known_vector_vals.get(&vector_id)
-                        .map_or(true, |vals| !vals.contains(n))
-                })
+                .filter(|n| values.contains(n))
                 .collect();
-
-            for solution in solutions_iter {
-                if values.is_empty() { break }
-
-                // remove values that are not in the current solution
-                values = solution
-                    .filter(|n| values.contains(n))
-                    .collect();
-            }
         }
         
         if values.is_empty() { return 0 }
@@ -82,9 +80,9 @@ impl CageVectorValueConstraint {
     }
 
     fn notify_change_cell_domain(&mut self, index: SquareIndex) {
-        let (cage_index, ref vector_ids) = self.cell_cage_vector_map[index.0];
-        for &vector_id in vector_ids {
-            self.dirty_cage_vectors.insert((cage_index, vector_id));
+        let (cage_index, vector_ids) = &self.cell_cage_vector_map[index.0];
+        for vector_id in vector_ids {
+            self.dirty_cage_vectors.insert((*cage_index, *vector_id));
         }
     }
 }
