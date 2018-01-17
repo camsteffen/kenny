@@ -21,64 +21,35 @@ fn main() {
     });
 }
 
-/*
-struct Params {
-    generate: Option<GenerateParams>,
-    solve: bool,
-    input_file: Option<String>,
-    output_image: Option<String>,
-}
-
-struct GenerateParams {
-    size: usize,
-    output_file: Option<String>,
-}
-*/
-
-/*
-fn read_puzzle_stdin() -> Puzzle {
-    let mut buf = String::new();
-    stdin().read_to_string(&mut buf).unwrap();
-    parse_puzzle(&buf)
-}
-*/
-
 fn do_main() -> Result<(), std::io::Error> {
     let matches = clap::App::new("CamCam")
-            .author("Cameron Steffen <cam.steffen94@gmail.com>")
-            .about("Solve KenKen Puzzles")
-            .arg(clap::Arg::with_name("generate")
-                    .short("g")
-                    .help("Generates a KenKen puzzle"))
-            .arg(clap::Arg::with_name("solve")
-                    .short("s")
-                    .help("Solves a KenKen puzzle"))
-            .arg(clap::Arg::with_name("input")
-                    .short("i")
-                    .takes_value(true)
-                    .value_name("FILE")
-                    .help("Reads a KenKen puzzle from a file"))
-            .arg(clap::Arg::with_name("size")
-                    .short("w")
-                    .takes_value(true)
-                    .value_name("SIZE")
-                    .help("Sets the width/height for the generated puzzle"))
-            .arg(clap::Arg::with_name("output_image")
-                    .short("o")
-                    .takes_value(true)
-                    .value_name("OUT_IMAGE")
-                    .help("Writes the puzzle to a PNG image"))
-            .get_matches();
-
-    /*
-    let params = match parse_args() {
-        Ok(params) => params,
-        Err(e) => {
-            println!("{}", e);
-            return Ok(())
-        },
-    };
-    */
+        .author("Cameron Steffen <cam.steffen94@gmail.com>")
+        .about("Solve KenKen Puzzles")
+        .arg(clap::Arg::with_name("generate")
+            .short("g")
+            .help("Generates a KenKen puzzle"))
+        .arg(clap::Arg::with_name("solve")
+            .short("s")
+            .help("Solves a KenKen puzzle"))
+        .arg(clap::Arg::with_name("input")
+            .short("i")
+            .takes_value(true)
+            .value_name("FILE")
+            .help("Reads a KenKen puzzle from a file"))
+        .arg(clap::Arg::with_name("size")
+            .short("w")
+            .takes_value(true)
+            .value_name("SIZE")
+            .help("Sets the width/height for the generated puzzle"))
+        .arg(clap::Arg::with_name("output_image")
+            .short("o")
+            .takes_value(true)
+            .value_name("OUT_IMAGE")
+            .help("Writes the puzzle to a PNG image"))
+        .arg(clap::Arg::with_name("step_images")
+            .long("step-images")
+            .help("Saves an image for each step of the solving process"))
+        .get_matches();
 
     if matches.is_present("input") && matches.is_present("generate") {
         panic!("Cannot use input file and generate puzzle");
@@ -115,7 +86,8 @@ fn do_main() -> Result<(), std::io::Error> {
 
     let markup =
         if matches.is_present("solve") {
-            let markup = puzzle.solve();
+            let save_step_images = matches.is_present("step_images");
+            let markup = puzzle.solve(save_step_images);
             if log_enabled!(LogLevel::Info) {
                 let result = if markup.is_solved() { "Success" } else { "Fail" };
                 info!("Result: {}", result);

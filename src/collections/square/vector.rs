@@ -11,8 +11,7 @@ pub enum Dimension { Row, Col }
 
 /// A row or column and its index
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[allow(missing_docs)]
-pub struct VectorId(usize);
+pub struct VectorId(pub usize);
 
 impl VectorId {
     

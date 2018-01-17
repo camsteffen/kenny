@@ -20,11 +20,11 @@ use self::constraint::constraint_propogation;
 use self::markup::PuzzleMarkup;
 use self::markup::PuzzleMarkupChanges;
 
-pub fn solve_puzzle(puzzle: &Puzzle) -> PuzzleMarkup {
+pub fn solve_puzzle(puzzle: &Puzzle, save_step_images: bool) -> PuzzleMarkup {
     let mut changes = PuzzleMarkupChanges::new();
     apply_unary_constraints(puzzle, &mut changes);
     let mut markup = PuzzleMarkup::new(puzzle);
     markup.sync_changes(&mut changes);
-    constraint_propogation(puzzle, &mut markup, &mut changes);
+    constraint_propogation(puzzle, &mut markup, &mut changes, save_step_images);
     markup
 }

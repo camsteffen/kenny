@@ -1,5 +1,3 @@
-//! Modlue for the `Square` struct
-
 mod coord;
 mod vector;
 

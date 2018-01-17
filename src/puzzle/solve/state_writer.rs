@@ -1,12 +1,14 @@
-use std::path::Path;
-use std::fs::remove_file;
+//! Save images of the puzzle in a series of solution steps
+
+use collections::square::SquareIndex;
 use puzzle::Puzzle;
 use puzzle::solve::PuzzleMarkup;
+use std::fs::remove_file;
 use std::fs;
+use std::path::Path;
 
-const OUTPUT_DIR: &str = "output/state/";
+const OUTPUT_DIR: &str = "output/steps/";
 
-/// Writes the puzzle to images as it is solved in steps
 pub struct StateWriter {
     index: u32,
 }
@@ -29,11 +31,11 @@ impl StateWriter {
         sw
     }
 
-    pub fn write(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup) {
+    pub fn write_next(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changed_cells: &[SquareIndex]) {
         let path = image_path(self.index);
         debug!("Writing {}", path);
         fs::create_dir_all(OUTPUT_DIR).unwrap();
-        puzzle.image_with_markup(markup).save(path).unwrap();
+        puzzle.image_with_markup_and_highlighted_cells(markup, changed_cells).save(path).unwrap();
         self.index += 1;
     }
 }

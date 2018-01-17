@@ -33,7 +33,9 @@ impl CageVectorValueConstraint {
         let mut values: FnvHashSet<i32>;
         let mut solutions_iter = markup.cage_solutions_set[cage_index].solutions.iter()
             .map(|s| s.get_indices_cloned(&solution_indices).into_iter());
+        eprintln!("1");
         let solution = solutions_iter.next().unwrap();
+        eprintln!("2");
 
         // start with values in the first solution that are not already a known vector value
         values = solution

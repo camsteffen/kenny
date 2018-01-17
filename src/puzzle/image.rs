@@ -1,17 +1,23 @@
 //! Generate images for unsolved or solved puzzles
 
+extern crate rusttype;
+
 const BLACK: Rgb<u8> = Rgb { data: [0; 3] };
 const WHITE: Rgb<u8> = Rgb { data: [255; 3] };
 
 const COLOR_CELL_BORDER:  Rgb<u8> = Rgb { data: [205; 3] };
 const COLOR_CAGE_BORDER: Rgb<u8> = BLACK;
 const COLOR_BG: Rgb<u8> = WHITE;
+const COLOR_HIGHLIGHT_BG: Rgb<u8> = Rgb { data: [255, 255, 150] };
 
 const BORDER_CELL_RATIO: u32 = 25;
 const DEFAULT_CELL_WIDTH: u32 = 60;
 
 use collections::Square;
 use collections::square::Coord;
+use collections::square::SquareIndex;
+use fnv::FnvHashSet;
+use image::Pixel;
 use image::{Rgb, RgbImage};
 use puzzle::Puzzle;
 use puzzle::solve::CellDomain;
@@ -21,6 +27,7 @@ use rusttype::Font;
 use rusttype::FontCollection;
 use rusttype::Scale;
 use rusttype::point;
+use rusttype::PositionedGlyph;
 
 pub fn puzzle_image(puzzle: &Puzzle) -> RgbImage {
     let info = PuzzleImageInfo::from_puzzle(puzzle);
@@ -32,6 +39,15 @@ pub fn puzzle_image(puzzle: &Puzzle) -> RgbImage {
 pub fn puzzle_image_with_markup(puzzle: &Puzzle, puzzle_markup: &PuzzleMarkup) -> RgbImage {
     let info = PuzzleImageInfo::from_puzzle(puzzle);
     let mut buffer = info.create_buffer();
+    render_puzzle(&mut buffer, &info, puzzle);
+    render_markup(&mut buffer, &info, &puzzle_markup.cell_variables);
+    buffer
+}
+
+pub fn puzzle_image_with_markup_and_highlighted_cells(puzzle: &Puzzle, puzzle_markup: &PuzzleMarkup,
+                                                      highlighted_cells: &[SquareIndex]) -> RgbImage {
+    let info = PuzzleImageInfo::from_puzzle(puzzle);
+    let mut buffer = info.create_buffer_with_highlighted_cells(puzzle.width, highlighted_cells);
     render_puzzle(&mut buffer, &info, puzzle);
     render_markup(&mut buffer, &info, &puzzle_markup.cell_variables);
     buffer
@@ -75,6 +91,19 @@ impl<'a> PuzzleImageInfo<'a> {
 
     pub fn create_buffer(&self) -> RgbImage {
         RgbImage::from_pixel(self.image_width, self.image_width, COLOR_BG)
+    }
+
+    pub fn create_buffer_with_highlighted_cells(&self, puzzle_width: usize, highlighted_cells: &[SquareIndex]) -> RgbImage {
+        let highlighted_cells = highlighted_cells.iter().cloned().collect::<FnvHashSet<_>>();
+        RgbImage::from_fn(self.image_width, self.image_width, |i, j| {
+            let index = Coord([(j / self.cell_width) as usize, (i / self.cell_width) as usize])
+                .as_index(puzzle_width);
+            if highlighted_cells.contains(&index) {
+                COLOR_HIGHLIGHT_BG
+            } else {
+                COLOR_BG
+            }
+        })
     }
 }
 
@@ -190,15 +219,7 @@ fn draw_cage_glyphs(
             ((pos[0] as u32 * info.cell_width) + info.border_width + pad) as f32 + v_metrics.ascent);
 
         for glyph in info.font.layout(&text, scale, offset) {
-            let bb = glyph.pixel_bounding_box().expect("glyph bounding box");
-            glyph.draw(|x, y, v| {
-                if v == 0.0 { return };
-                let v = ((1.0 - v) * 255.0) as u8;
-                buffer.put_pixel(
-                    bb.min.x as u32 + x,
-                    bb.min.y as u32 + y,
-                    Rgb { data: [v; 3] });
-            });
+            overlay_glyph(buffer, glyph);
         }
     }
 }
@@ -211,7 +232,7 @@ fn draw_markup(
     for (pos, cell) in cell_variables.iter_coord() {
         match cell {
             CellVariable::Unsolved(domain) => {
-                draw_range_domain(buffer, info, pos, domain)
+                draw_domain(buffer, info, pos, domain)
             },
             CellVariable::Solved(value) => {
                 draw_cell_solution(buffer, info, pos, *value)
@@ -220,12 +241,13 @@ fn draw_markup(
     }
 }
 
-fn draw_range_domain(
+fn draw_domain(
     buffer: &mut RgbImage,
     info: &PuzzleImageInfo,
     pos: Coord,
     domain: &CellDomain)
 {
+    // the maximum number of characters that can fit on one line in a cell
     const MAX_LINE_LEN: u32 = 5;
 
     let scale = Scale::uniform(info.cell_width as f32 * 0.2);
@@ -245,15 +267,7 @@ fn draw_range_domain(
         let glyph = info.font.glyph(c).expect(&format!("No glyph for {}", c))
             .scaled(scale)
             .positioned(point);
-        let bb = glyph.pixel_bounding_box().unwrap();
-        glyph.draw(|x, y, v| {
-            if v == 0.0 { return };
-            let v = ((1.0 - v) * 255.0) as u8;
-            buffer.put_pixel(
-                bb.min.x as u32 + x,
-                bb.min.y as u32 + y,
-                Rgb { data: [v; 3] });
-        });
+        overlay_glyph(buffer, glyph);
         char_x += 1;
         if char_x == MAX_LINE_LEN {
             char_x = 0;
@@ -282,13 +296,14 @@ fn draw_cell_solution(
     let y = ((pos[0] as u32 + 1) * info.cell_width) as f32 - ((info.cell_width - info.border_width) as f32 - v_metrics.ascent) / 2.0;
     let point = point(x, y);
     let glyph = glyph.positioned(point);
-    let bb = glyph.pixel_bounding_box().unwrap();
-    glyph.draw(|x, y, val| {
-        if val == 0.0 { return };
-        let val = ((1.0 - val) * 255.0) as u8;
-        buffer.put_pixel(bb.min.x as u32 + x,
-                        bb.min.y as u32 + y,
-                        Rgb { data: [val; 3] });
-    });
+    overlay_glyph(buffer, glyph);
 }
 
+fn overlay_glyph(buffer: &mut RgbImage, glyph: PositionedGlyph) {
+    let bb = glyph.pixel_bounding_box().unwrap();
+    glyph.draw(|x, y, v| {
+        if v == 0.0 { return };
+        buffer.get_pixel_mut(bb.min.x as u32 + x, bb.min.y as u32 + y)
+            .apply(|c| (c as f32 * (1.0 - v)) as u8);
+    });
+}

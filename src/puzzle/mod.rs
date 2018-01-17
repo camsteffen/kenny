@@ -14,6 +14,7 @@ mod solve;
 
 use ::image::RgbImage;
 use collections::square::Square;
+use collections::square::SquareIndex;
 use self::solve::markup::PuzzleMarkup;
 use self::solve::solve_puzzle;
 use std::ops::Index;
@@ -40,8 +41,8 @@ impl Puzzle {
     }
 
     /// attempts to solve the puzzle and return the PuzzleMarkup with the solution
-    pub fn solve(&self) -> PuzzleMarkup {
-        solve_puzzle(self)
+    pub fn solve(&self, save_step_images: bool) -> PuzzleMarkup {
+        solve_puzzle(self, save_step_images)
     }
 
     /// retrieves the index of the cage containing the cell with the given index
@@ -58,6 +59,12 @@ impl Puzzle {
     /// creates an image of the puzzle with markup
     pub fn image_with_markup(&self, markup: &PuzzleMarkup) -> RgbImage {
         image::puzzle_image_with_markup(self, markup)
+    }
+
+    /// creates an image of the puzzle with markup
+    pub fn image_with_markup_and_highlighted_cells(&self, markup: &PuzzleMarkup,
+                                                   highlighted_cells: &[SquareIndex]) -> RgbImage {
+        image::puzzle_image_with_markup_and_highlighted_cells(self, markup, highlighted_cells)
     }
 
 }
