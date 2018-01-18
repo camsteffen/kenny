@@ -90,64 +90,6 @@ fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<SquareIndex>> {
     cages
 }
 
-fn generate_cage_cells_snake(square: &Square<i32>) -> Vec<Vec<SquareIndex>> {
-    let width = square.width();
-    let min_cage_size = 2;
-    let max_cage_size = 4;
-    let num_cells = square.len();
-    let no_cage = -1;
-    let mut cage_ids = Square::with_width_and_value(width, no_cage);
-    let mut uncaged = num_cells;
-    let mut cur_cage = 0;
-    let mut pos = SquareIndex(0).as_coord(width);
-    let mut rng = thread_rng();
-    'cages: loop {
-        let cage_size = rng.gen_range(min_cage_size, max_cage_size + 1);
-        for _ in 0..cage_size {
-            cage_ids[pos] = cur_cage;
-            uncaged -= 1;
-            if uncaged == 0 {
-                break 'cages
-            }
-            let mut available_positions = Vec::with_capacity(4);
-            for i in 0..2 {
-                if pos[i] > 0 {
-                    let mut available_pos = pos;
-                    available_pos[i] -= 1;
-                    available_positions.push(available_pos);
-                }
-                if pos[i] < width - 1 {
-                    let mut available_pos = pos;
-                    available_pos[i] += 1;
-                    available_positions.push(available_pos);
-                }
-            }
-            available_positions = available_positions.into_iter()
-                .filter(|next| cage_ids[*next] == no_cage)
-                .collect::<Vec<_>>();
-            match rng.choose(&available_positions) {
-                Some(p) => pos = *p,
-                None => {
-                    let index = cage_ids.iter()
-                        .position(|c| *c == no_cage)
-                        .unwrap();
-                    pos = SquareIndex(index).as_coord(width);
-                    break
-                }
-            }
-        }
-        cur_cage += 1;
-    }
-    let num_cages = cur_cage as usize + 1;
-
-    // for every cage_cells[i][j], cell j is in cage i
-    let mut cage_cells = vec![Vec::new(); num_cages];
-    for (cell, cage_index) in cage_ids.iter().map(|&i| i as usize).enumerate() {
-        cage_cells[cage_index].push(SquareIndex(cell));
-    }
-    cage_cells
-}
-
 fn random_operator(values: &[i32]) -> Operator {
     if values.len() == 1 { return Operator::Nop }
     let mut rng = thread_rng();

@@ -27,7 +27,7 @@ impl VectorValueDomainConstraint {
             None => return false,
         };
         let sq_pos = vector_id.vec_pos_to_sq_pos(vec_val_pos as usize, puzzle_width);
-        debug!("the only possible position for {} in {} is {:?}", n, vector_id, sq_pos.as_coord(puzzle_width));
+        debug!("the only possible position for {} in {:?} is {:?}", n, vector_id, sq_pos.as_coord(puzzle_width));
         let v2 = vector_id.intersect_at(vec_val_pos);
         self.data.remove_vector_value(vector_id, n);
         self.data.remove_vector_value(v2, n);

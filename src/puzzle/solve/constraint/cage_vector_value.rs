@@ -33,9 +33,7 @@ impl CageVectorValueConstraint {
         let mut values: FnvHashSet<i32>;
         let mut solutions_iter = markup.cage_solutions_set[cage_index].solutions.iter()
             .map(|s| s.get_indices_cloned(&solution_indices).into_iter());
-        eprintln!("1");
         let solution = solutions_iter.next().unwrap();
-        eprintln!("2");
 
         // start with values in the first solution that are not already a known vector value
         values = solution
@@ -68,7 +66,7 @@ impl CageVectorValueConstraint {
         let mut count = 0;
         
         // mark domain values for removal
-        debug!("values {:?} exists in cage at {:?}, in {}", values,
+        debug!("values {:?} exists in cage at {:?}, in {:?}", values,
             puzzle.cages[cage_index].cells[0].as_coord(puzzle.width), vector_id);
         for n in values {
             for &pos in &remove_from {

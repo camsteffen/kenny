@@ -12,6 +12,7 @@ pub struct PuzzleMarkup {
     pub cell_variables: Square<CellVariable>,
     pub cage_solutions_set: CageSolutionsSet,
     puzzle_width: usize,
+    unsolved_cell_count: u32,
 }
 
 impl PuzzleMarkup {
@@ -20,6 +21,7 @@ impl PuzzleMarkup {
             cell_variables: Square::with_width_and_value(puzzle.width, CellVariable::unsolved_with_all(puzzle.width)),
             cage_solutions_set: CageSolutionsSet::new(puzzle),
             puzzle_width: puzzle.width,
+            unsolved_cell_count: puzzle.width.pow(2) as u32,
         }
     }
 
@@ -28,7 +30,7 @@ impl PuzzleMarkup {
     }
 
     pub fn is_solved(&self) -> bool {
-        self.cell_variables.iter().all(|v| v.is_solved())
+        self.unsolved_cell_count == 0
     }
 
     pub fn sync_changes(&mut self, changes: &mut PuzzleMarkupChanges) {
@@ -66,5 +68,6 @@ impl PuzzleMarkup {
         changes.cell_domain_value_removals.extend(new_cell_domain_removals);
 
         self.cage_solutions_set.apply_changes(changes);
+        self.unsolved_cell_count -= changes.cell_solutions.len() as u32;
     }
 }

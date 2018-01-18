@@ -37,6 +37,9 @@ impl PuzzleMarkupChanges {
     }
 
     pub fn remove_cage_solution(&mut self, cage_index: usize, solution_index: usize) {
+        if cage_index == 0 {
+            debug!("der");
+        }
         self.cage_solution_removals.entry(cage_index).or_insert_with(Vec::new).push(solution_index);
     }
 }

@@ -5,7 +5,6 @@ use collections::FnvLinkedHashMap;
 use collections::FnvLinkedHashSet;
 use collections::square::VectorId;
 use fnv::FnvHashMap;
-use fnv::FnvHashSet;
 use puzzle::Puzzle;
 use puzzle::solve::cage_solutions::CageSolutions;
 use puzzle::solve::constraint::Constraint;
@@ -13,10 +12,8 @@ use puzzle::solve::markup::PuzzleMarkup;
 use puzzle::solve::markup::PuzzleMarkupChanges;
 
 pub struct VectorValueCageConstraint {
-    dirty_vector_values: FnvLinkedHashSet<(VectorId, i32)>,
-    known_vector_value_cages: Vec<(VectorId, i32, usize)>,
+    known_vector_value_cages: FnvLinkedHashMap<(VectorId, i32), usize>,
     vector_value_cages: FnvHashMap<(VectorId, i32), FnvLinkedHashMap<usize, u32>>,
-    vector_value_domain_sizes: FnvHashMap<(VectorId, i32), u32>,
 }
 
 impl VectorValueCageConstraint {
@@ -29,13 +26,9 @@ impl VectorValueCageConstraint {
                 });
             (1..=puzzle.width as i32).map(move |i| ((v, i), cages.clone()))
         }).collect();
-        let vector_value_domain_sizes = (0..puzzle.width * 2).map(|i| VectorId(i)).flat_map(|vector_id|
-            (1..puzzle.width as i32).map(move |value| ((vector_id, value), puzzle.width as u32))).collect();
         Self {
-            dirty_vector_values: FnvLinkedHashSet::default(),
-            known_vector_value_cages: Vec::new(),
+            known_vector_value_cages: FnvLinkedHashMap::default(),
             vector_value_cages,
-            vector_value_domain_sizes,
         }
     }
 }
@@ -43,11 +36,12 @@ impl VectorValueCageConstraint {
 impl Constraint for VectorValueCageConstraint {
 
     fn enforce_partial(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool {
-        while let Some((vector, value, cage)) = self.known_vector_value_cages.pop() {
+        while let Some(((vector, value), cage)) = self.known_vector_value_cages.pop_front() {
             let CageSolutions { indices, solutions, .. } = &markup.cage_solutions_set[cage];
             let indices_in_vector = indices.iter().enumerate().filter_map(|(i, &sq_idx)| {
                 if vector.contains_sq_index(sq_idx, puzzle.width) { Some(i) } else { None }
             }).collect::<Vec<_>>();
+            //if indices_in_vector.is_empty() { continue } // TODO rewrite
             let mut count = 0;
             for (soln_idx, solution) in solutions.iter().enumerate() {
                 if !indices_in_vector.iter().any(|&i| solution[i] == value) {
@@ -66,17 +60,8 @@ impl Constraint for VectorValueCageConstraint {
             for vector_id in i.intersecting_vectors(puzzle.width).to_vec() {
                 for &value in values {
                     let key = (vector_id, value);
-                    /*
-                    let domain_size = self.vector_value_domain_sizes.get_mut(&key).unwrap();
-                    *domain_size -= 1;
-                    let domain_size = *domain_size;
-                    if domain_size > 1 {
-                        self.dirty_vector_values.insert(key);
-                    } else if domain_size == 1 {
-                        self.dirty_vector_values.remove(&key);
-                    }
-                    */
                     let cages = self.vector_value_cages.get_mut(&key).unwrap();
+                    if cages.is_empty() { continue }
                     let cage_empty = {
                         let cage_count = cages.get_mut(&cage).unwrap();
                         *cage_count -= 1;
@@ -85,11 +70,24 @@ impl Constraint for VectorValueCageConstraint {
                     if cage_empty {
                         cages.remove(&cage);
                         if cages.len() == 1 {
-                            self.known_vector_value_cages.push((vector_id, value, cage));
+                            let cage = cages.pop_front().unwrap().0;
+                            debug!("The {} in {:?} must be in cage at {:?}", value, vector_id, puzzle.cages[cage].cells[0].as_coord(puzzle.width));
+                            if vector_id == VectorId::row(0) && value == 4 {
+                                debug!("der");
+                            }
+                            self.known_vector_value_cages.insert((vector_id, value), cage);
                         }
                     }
-
                 }
+            }
+        }
+
+        for &(sq_idx, value) in &changes.cell_solutions {
+            for vector_id in sq_idx.intersecting_vectors(puzzle.width).to_vec() {
+                if sq_idx.0 == 1 {
+                    debug!("der");
+                }
+                self.known_vector_value_cages.remove(&(vector_id, value));
             }
         }
     }

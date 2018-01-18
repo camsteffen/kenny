@@ -2,13 +2,14 @@ use puzzle::Puzzle;
 use puzzle::solve::PuzzleMarkup;
 use puzzle::solve::StateWriter;
 use puzzle::solve::markup::PuzzleMarkupChanges;
-use super::Constraint;
 use super::ConstraintSet;
 
 pub fn constraint_propogation(puzzle: &Puzzle, markup: &mut PuzzleMarkup,
                               changes: &mut PuzzleMarkupChanges, save_step_images: bool) {
     let mut state_writer = if save_step_images {
-        Some(StateWriter::new())
+        let mut state_writer = StateWriter::new();
+        state_writer.write_next(puzzle, markup, &[]);
+        Some(state_writer)
     } else {
         None
     };
@@ -29,5 +30,6 @@ pub fn constraint_propogation(puzzle: &Puzzle, markup: &mut PuzzleMarkup,
             state_writer.write_next(puzzle, markup, &changed_cells);
         }
         loop_count += 1;
+        if markup.is_solved() { break }
     }
 }

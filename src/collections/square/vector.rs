@@ -1,7 +1,7 @@
 //! Module for rows and columns of a `Square`
 
 use std::fmt;
-use std::fmt::Display;
+use std::fmt::Debug;
 use super::SquareIndex;
 use self::Dimension::{Col, Row};
 use super::Coord;
@@ -75,7 +75,7 @@ impl VectorId {
     }
 }
 
-impl Display for VectorId {
+impl Debug for VectorId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let label = match self.dimension() {
             Row => "Row",
