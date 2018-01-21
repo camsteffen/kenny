@@ -11,14 +11,14 @@ use fnv::FnvHashMap;
 pub struct PuzzleMarkup {
     pub cell_variables: Square<CellVariable>,
     pub cage_solutions_set: CageSolutionsSet,
-    puzzle_width: usize,
+    puzzle_width: u32,
     unsolved_cell_count: u32,
 }
 
 impl PuzzleMarkup {
     pub fn new(puzzle: &Puzzle) -> Self {
         Self {
-            cell_variables: Square::with_width_and_value(puzzle.width, CellVariable::unsolved_with_all(puzzle.width)),
+            cell_variables: Square::with_width_and_value(puzzle.width as usize, CellVariable::unsolved_with_all(puzzle.width)),
             cage_solutions_set: CageSolutionsSet::new(puzzle),
             puzzle_width: puzzle.width,
             unsolved_cell_count: puzzle.width.pow(2) as u32,

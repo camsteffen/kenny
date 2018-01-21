@@ -3,16 +3,15 @@ use puzzle::solve::PuzzleMarkup;
 use puzzle::solve::StateWriter;
 use puzzle::solve::markup::PuzzleMarkupChanges;
 use super::ConstraintSet;
+use std::path::Path;
 
 pub fn constraint_propogation(puzzle: &Puzzle, markup: &mut PuzzleMarkup,
-                              changes: &mut PuzzleMarkupChanges, save_step_images: bool) {
-    let mut state_writer = if save_step_images {
-        let mut state_writer = StateWriter::new();
+                              changes: &mut PuzzleMarkupChanges, step_images_path: Option<&Path>) {
+    let mut state_writer = step_images_path.map(|path| {
+        let mut state_writer = StateWriter::new(path);
         state_writer.write_next(puzzle, markup, &[]);
-        Some(state_writer)
-    } else {
-        None
-    };
+        state_writer
+    });
     markup.init_cage_solutions(puzzle);
 
     let mut constraints = ConstraintSet::new(puzzle);

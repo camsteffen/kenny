@@ -9,12 +9,12 @@ use std::mem;
 
 const MAX_CAGE_SIZE: usize = 4;
 
-pub fn generate_puzzle(width: usize) -> Puzzle {
+pub fn generate_puzzle(width: u32) -> Puzzle {
     let (puzzle, _) = generate_puzzle_with_solution(width);
     puzzle
 }
 
-pub fn generate_puzzle_with_solution(width: usize) -> (Puzzle, Square<i32>) {
+pub fn generate_puzzle_with_solution(width: u32) -> (Puzzle, Square<i32>) {
     let solution = random_latin_square(width);
     debug!("Solution:\n{}", &solution);
     let cage_cells = generate_cage_cells(width);
@@ -28,7 +28,7 @@ pub fn generate_puzzle_with_solution(width: usize) -> (Puzzle, Square<i32>) {
     (puzzle, solution)
 }
 
-fn random_latin_square(width: usize) -> Square<i32> {
+fn random_latin_square(width: u32) -> Square<i32> {
     let mut rng = thread_rng();
     let mut generate_seed = || {
         let mut seed = (0..width as i32).collect::<Vec<_>>();
@@ -36,7 +36,7 @@ fn random_latin_square(width: usize) -> Square<i32> {
         seed
     };
     let seeds = [generate_seed(), generate_seed()];
-    let mut square: Square<i32> = Square::with_width_and_value(width, 0);
+    let mut square: Square<i32> = Square::with_width_and_value(width as usize, 0);
     for (i, row) in square.rows_mut().enumerate() {
         for (j, element) in row.iter_mut().enumerate() {
             *element = (seeds[0][i] + seeds[1][j]) % width as i32 + 1;
@@ -65,7 +65,8 @@ fn cells_touching_border(square_width: usize, border_id: usize) -> (SquareIndex,
     (SquareIndex(a), SquareIndex(b))
 }
 
-fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<SquareIndex>> {
+fn generate_cage_cells(puzzle_width: u32) -> Vec<Vec<SquareIndex>> {
+    let puzzle_width = puzzle_width as usize;
     let num_cells = puzzle_width.pow(2);
     let cage_map = (0..num_cells).collect::<Vec<_>>();
     let mut cage_map = Square::from_vec(cage_map).unwrap();

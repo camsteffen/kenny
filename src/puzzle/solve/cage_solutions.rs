@@ -15,7 +15,7 @@ use super::CellVariable;
 use super::markup::PuzzleMarkupChanges;
 
 pub struct CageSolutionsSet {
-    cage_map: Square<usize>,
+    cage_map: Square<u32>,
     data: Vec<CageSolutions>,
 }
 
@@ -77,7 +77,7 @@ impl CageSolutionsSet {
         }
 
         for (cage_index, cage_data) in data {
-            self[cage_index].apply_changes(&cage_data.remove_indices, &cage_data.solved_cells, &cage_data.removed_values);
+            self[cage_index as usize].apply_changes(&cage_data.remove_indices, &cage_data.solved_cells, &cage_data.removed_values);
         }
     }
 }
@@ -115,7 +115,7 @@ impl CageSolutions {
         }
     }
 
-    pub fn init(&mut self, puzzle_width: usize, cage: &Cage, cell_variables: &[&CellVariable]) {
+    pub fn init(&mut self, puzzle_width: u32, cage: &Cage, cell_variables: &[&CellVariable]) {
         self.solutions = match cage.operator {
             Operator::Add => self.init_add(puzzle_width, cage, cell_variables),
             Operator::Multiply => self.init_multiply(puzzle_width, cage, cell_variables),
@@ -197,7 +197,7 @@ impl CageSolutions {
         self.index_map = Self::build_index_map(&self.indices);
     }
 
-    fn init_add(&mut self, puzzle_width: usize, cage: &Cage, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
+    fn init_add(&mut self, puzzle_width: u32, cage: &Cage, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
         let mut indices = Vec::new();
         let mut cell_domains = Vec::new();
         let mut solved_sum = 0;
@@ -217,7 +217,7 @@ impl CageSolutions {
         solutions
     }
 
-    fn init_multiply(&mut self, puzzle_width: usize, cage: &Cage, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
+    fn init_multiply(&mut self, puzzle_width: u32, cage: &Cage, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
         let mut indices = Vec::new();
         let mut cell_domains = Vec::new();
         let mut solved_product = 1;
@@ -237,7 +237,7 @@ impl CageSolutions {
         solutions
     }
 
-    fn init_subtract(&mut self, puzzle_width: usize, cage: &Cage, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
+    fn init_subtract(&mut self, puzzle_width: u32, cage: &Cage, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
         debug_assert_eq!(2, cage.cells.len());
         let mut solutions = Vec::new();
         if let Some(solved_pos) = cell_variables.iter().position(|v| v.is_solved()) {
@@ -267,7 +267,7 @@ impl CageSolutions {
         solutions
     }
 
-    fn init_divide(&mut self, puzzle_width: usize, cage: &Cage, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
+    fn init_divide(&mut self, puzzle_width: u32, cage: &Cage, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
         debug_assert_eq!(2, cage.cells.len());
         let mut solutions = Vec::new();
         if let Some(solved_pos) = cell_variables.iter().position(|v| v.is_solved()) {
@@ -299,7 +299,7 @@ impl CageSolutions {
 
     fn init_add_next(
         i: usize,
-        puzzle_width: usize,
+        puzzle_width: u32,
         remain_sum: i32,
         indices: &[SquareIndex],
         cell_domains: &[&CellDomain],
@@ -308,7 +308,7 @@ impl CageSolutions {
     {
         let collides = |n: i32, vals: &[i32]| {
             (0..i).filter(|&j| vals[j] == n)
-                .any(|j| indices[i].shared_vector(indices[j], puzzle_width).is_some())
+                .any(|j| indices[i].shared_vector(indices[j], puzzle_width as usize).is_some())
         };
         if remain_sum <= 0 { return }
         if i == solution.len() - 1 {
@@ -329,7 +329,7 @@ impl CageSolutions {
 
     fn init_multiply_next(
         i: usize,
-        puzzle_width: usize,
+        puzzle_width: u32,
         remain_product: i32,
         indices: &[SquareIndex],
         cell_domains: &[&CellDomain],
@@ -338,7 +338,7 @@ impl CageSolutions {
     {
         let collides = |n: i32, vals: &[i32]| {
             (0..i).filter(|&j| vals[j] == n)
-                .any(|j| indices[i].shared_vector(indices[j], puzzle_width).is_some())
+                .any(|j| indices[i].shared_vector(indices[j], puzzle_width as usize).is_some())
         };
         if remain_product <= 0 { return }
         if i == solution.len() - 1 {

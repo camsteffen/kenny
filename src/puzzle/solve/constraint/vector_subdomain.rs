@@ -45,7 +45,7 @@ impl VectorSubdomainConstraint {
             cells = cells.into_iter().merge(cells2).collect();
             let max_size = i + 2;
             'combinations: for cells in cells.iter().cloned().combinations(max_size) {
-                let mut domain = CellDomain::new(size);
+                let mut domain = CellDomain::new(size as u32);
                 for &cell in &cells {
                     for j in cell_variables[cell].unsolved().unwrap() {
                         if domain.insert(j) {
@@ -95,7 +95,7 @@ impl Constraint for VectorSubdomainConstraint {
 
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
         for &index in changes.cell_domain_value_removals.keys() {
-            for &vector_id in &index.intersecting_vectors(puzzle.width) {
+            for &vector_id in &index.intersecting_vectors(puzzle.width as usize) {
                 self.dirty_vecs.insert(vector_id);
             }
         }

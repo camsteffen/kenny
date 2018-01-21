@@ -3,43 +3,29 @@
 use collections::square::SquareIndex;
 use puzzle::Puzzle;
 use puzzle::solve::PuzzleMarkup;
-use std::fs::remove_file;
-use std::fs;
 use std::path::Path;
-
-const OUTPUT_DIR: &str = "output/steps/";
+use std::path::PathBuf;
 
 pub struct StateWriter {
     index: u32,
+    path: PathBuf,
 }
 
 impl StateWriter {
-    pub fn new() -> StateWriter {
-        let sw = StateWriter {
+    pub fn new(path: &Path) -> Self {
+        Self {
             index: 1,
-        };
-        for i in 1.. {
-            let path_str = image_path(i);
-            let path = Path::new(&path_str);
-            if path.is_file() {
-                debug!("removing {}", path_str);
-                remove_file(path).unwrap();
-            } else {
-                break
-            }
+            path: path.to_path_buf(),
         }
-        sw
     }
 
     pub fn write_next(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changed_cells: &[SquareIndex]) {
-        let path = image_path(self.index);
-        debug!("Writing {}", path);
-        fs::create_dir_all(OUTPUT_DIR).unwrap();
-        puzzle.image_with_markup_and_highlighted_cells(markup, changed_cells).save(path).unwrap();
+        let mut path = self.path.clone();
+        path.push(format!("step_{}.jpeg", self.index));
+        debug!("writing step image: {}", path.display());
+        let image = puzzle.image_with_markup_and_highlighted_cells(markup, changed_cells);
+        image.save(&path).unwrap_or_else(|e|
+            panic!(format!("unable to save step image to {}: {}", path.display(), e)));
         self.index += 1;
     }
-}
-
-fn image_path(i: u32) -> String {
-    format!("{}state{}.jpeg", OUTPUT_DIR, i)
 }

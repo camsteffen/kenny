@@ -9,7 +9,7 @@ pub enum CellVariable {
 
 impl CellVariable {
 
-    pub fn unsolved_with_all(size: usize) -> CellVariable {
+    pub fn unsolved_with_all(size: u32) -> CellVariable {
         Unsolved(CellDomain::with_all(size))
     }
 

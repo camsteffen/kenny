@@ -47,7 +47,7 @@ pub fn puzzle_image_with_markup(puzzle: &Puzzle, puzzle_markup: &PuzzleMarkup) -
 pub fn puzzle_image_with_markup_and_highlighted_cells(puzzle: &Puzzle, puzzle_markup: &PuzzleMarkup,
                                                       highlighted_cells: &[SquareIndex]) -> RgbImage {
     let info = PuzzleImageInfo::from_puzzle(puzzle);
-    let mut buffer = info.create_buffer_with_highlighted_cells(puzzle.width, highlighted_cells);
+    let mut buffer = info.create_buffer_with_highlighted_cells(puzzle.width as usize, highlighted_cells);
     render_puzzle(&mut buffer, &info, puzzle);
     render_markup(&mut buffer, &info, &puzzle_markup.cell_variables);
     buffer

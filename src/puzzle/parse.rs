@@ -13,8 +13,8 @@ use collections::square::SquareIndex;
 pub fn parse_puzzle(s: &str) -> Result<Puzzle, String> {
     let mut s = StringTokenIterator::new(s);
     let (i, token) = s.next_skip_space().ok_or("unexpected EOF")?;
-    let size = token.number().ok_or_else(|| format_parse_error("invalid size", &token, &i))? as usize;
-    if size > (('Z' as u8) - ('A' as u8) + 1) as usize {
+    let size = token.number().ok_or_else(|| format_parse_error("invalid size", &token, &i))?;
+    if size > (('Z' as u8) - ('A' as u8) + 1) as u32 {
         return Err("size is too big".to_string())
     }
     let cage_cells = read_cage_cells(&mut s, size)?;
@@ -164,7 +164,7 @@ impl<'a> Iterator for StringTokenIterator<'a> {
     }
 }
 
-fn read_cage_cells(s: &mut StringTokenIterator, size: usize) -> Result<BTreeMap<char, Vec<SquareIndex>>, String> {
+fn read_cage_cells(s: &mut StringTokenIterator, size: u32) -> Result<BTreeMap<char, Vec<SquareIndex>>, String> {
     let mut cages = BTreeMap::new();
     for cell in 0..(size * size) as usize {
         let (i, token) = s.next_skip_space().ok_or("unexpected EOF")?;

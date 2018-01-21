@@ -7,12 +7,12 @@ pub struct CellDomain(RangeSet);
 
 impl CellDomain {
 
-    pub fn new(size: usize) -> Self {
-        CellDomain(RangeSet::new(size))
+    pub fn new(size: u32) -> Self {
+        CellDomain(RangeSet::new(size as usize))
     }
 
-    pub fn with_all(size: usize) -> CellDomain {
-        CellDomain(RangeSet::with_all(size))
+    pub fn with_all(size: u32) -> CellDomain {
+        CellDomain(RangeSet::with_all(size as usize))
     }
 
     pub fn contains(&self, n: i32) -> bool {

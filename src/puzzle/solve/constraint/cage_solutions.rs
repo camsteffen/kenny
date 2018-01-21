@@ -12,19 +12,19 @@ use super::Constraint;
 /// Ensures that for every value in a cell domain, there is a possible solution of the corresponding cage
 /// with the value in that cell
 pub struct CageSolutionsConstraint {
-    dirty_cages: FnvLinkedHashSet<usize>,
+    dirty_cages: FnvLinkedHashSet<u32>,
 }
 
 impl CageSolutionsConstraint {
     pub fn new(puzzle: &Puzzle) -> Self {
         Self {
             dirty_cages: puzzle.cages.iter().enumerate()
-                .filter_map(|(i, cage)| if cage.operator != Operator::Nop { Some(i) } else { None })
+                .filter_map(|(i, cage)| if cage.operator != Operator::Nop { Some(i as u32) } else { None })
                 .collect(),
         }
     }
 
-    fn enforce_cage(&self, puzzle_width: usize, cell_variables: &Square<CellVariable>, cage_solutions: &CageSolutions, changes: &mut PuzzleMarkupChanges) -> u32 {
+    fn enforce_cage(&self, puzzle_width: u32, cell_variables: &Square<CellVariable>, cage_solutions: &CageSolutions, changes: &mut PuzzleMarkupChanges) -> u32 {
         // assemble domain for each unsolved cell from cell solutions
         let mut soln_domain = vec![CellDomain::new(puzzle_width); cage_solutions.num_cells()];
         for solution in &cage_solutions.solutions {
@@ -44,7 +44,7 @@ impl CageSolutionsConstraint {
             if no_solutions.is_empty() { continue }
             count += no_solutions.len() as u32;
             debug!("values {:?} in cell {:?} are not part of a solution", no_solutions,
-                sq_index.as_coord(puzzle_width));
+                sq_index.as_coord(puzzle_width as usize));
             for n in no_solutions {
                 changes.remove_value_from_cell(sq_index, n);
             }
@@ -56,7 +56,7 @@ impl CageSolutionsConstraint {
 impl Constraint for CageSolutionsConstraint {
     fn enforce_partial(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool {
         while let Some(cage_index) = self.dirty_cages.pop_front() {
-            let cage_solutions = &markup.cage_solutions_set[cage_index];
+            let cage_solutions = &markup.cage_solutions_set[cage_index as usize];
             let count = self.enforce_cage(puzzle.width, &markup.cell_variables, cage_solutions, changes);
             if count > 0 { return true }
         }

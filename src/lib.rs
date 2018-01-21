@@ -9,11 +9,11 @@
 #![feature(vec_resize_default)]
 #![warn(missing_docs)]
 
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate itertools;
 extern crate num;
 extern crate image;
-extern crate png;
 extern crate rand;
 extern crate rusttype;
 extern crate fnv;

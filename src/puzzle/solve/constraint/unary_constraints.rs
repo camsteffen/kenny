@@ -22,13 +22,13 @@ fn reduce_domains_by_cage(puzzle: &Puzzle, change: &mut PuzzleMarkupChanges) {
     }
 }
 
-fn reduce_cage(puzzle_width: usize, cage: &Cage, change: &mut PuzzleMarkupChanges) {
+fn reduce_cage(puzzle_width: u32, cage: &Cage, change: &mut PuzzleMarkupChanges) {
     match cage.operator {
         Operator::Add => {
             let start = cage.target - cage.cells.len() as i32 + 2;
             if start > puzzle_width as i32 { return }
             debug!("values {}-{} cannot exist in cage at {:?}", start, puzzle_width,
-                cage.cells[0].as_coord(puzzle_width));
+                cage.cells[0].as_coord(puzzle_width as usize));
             for &pos in &cage.cells {
                 for n in start..=puzzle_width as i32 {
                     change.remove_value_from_cell(pos, n);
@@ -41,7 +41,7 @@ fn reduce_cage(puzzle_width: usize, cage: &Cage, change: &mut PuzzleMarkupChange
                 .collect::<Vec<_>>();
             if non_factors.is_empty() { return }
             debug!("values {:?} cannot exist in cage at {:?}", non_factors,
-                cage.cells[0].as_coord(puzzle_width));
+                cage.cells[0].as_coord(puzzle_width as usize));
             for &pos in &cage.cells {
                 for &n in &non_factors {
                     change.remove_value_from_cell(pos, n);
@@ -53,7 +53,7 @@ fn reduce_cage(puzzle_width: usize, cage: &Cage, change: &mut PuzzleMarkupChange
             if cage.target <= size / 2 { return }
             let start = size - cage.target + 1;
             debug!("values {}-{} cannot exist in cage at {:?}", start, cage.target,
-                cage.cells[0].as_coord(puzzle_width));
+                cage.cells[0].as_coord(puzzle_width as usize));
             for &pos in &cage.cells {
                 for n in start..=cage.target {
                     change.remove_value_from_cell(pos, n);
@@ -68,7 +68,7 @@ fn reduce_cage(puzzle_width: usize, cage: &Cage, change: &mut PuzzleMarkupChange
             }
             if non_domain.is_empty() { return }
             debug!("values {:?} cannot exist in cage at {:?}", non_domain.iter().collect::<Vec<_>>(),
-                cage.cells[0].as_coord(puzzle_width));
+                cage.cells[0].as_coord(puzzle_width as usize));
             for &pos in &cage.cells {
                 for n in &non_domain {
                     change.remove_value_from_cell(pos, n);
@@ -78,7 +78,7 @@ fn reduce_cage(puzzle_width: usize, cage: &Cage, change: &mut PuzzleMarkupChange
         Operator::Nop => {
             debug_assert_eq!(1, cage.cells.len());
             let pos = cage.cells[0];
-            debug!("solving single cell cage at {:?}", cage.cells[0].as_coord(puzzle_width));
+            debug!("solving single cell cage at {:?}", cage.cells[0].as_coord(puzzle_width as usize));
             change.solve_cell(pos, cage.target);
         }
     }
