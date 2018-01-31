@@ -1,3 +1,5 @@
+#![feature(inclusive_range_syntax)]
+
 extern crate camcam;
 extern crate env_logger;
 #[macro_use]
@@ -7,8 +9,8 @@ extern crate clap;
 use camcam::puzzle::Puzzle;
 use camcam::puzzle;
 use log::LogLevel;
-use std::fs::File;
 use std::fs;
+use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 use std::path::Path;
@@ -66,7 +68,6 @@ fn main() {
             .help("save an image of the puzzle(s)"))
         .arg(clap::Arg::with_name("save_solved_image")
             .long("save-solved-image")
-            .value_name("PATH")
             .requires("solve")
             .help("save an image of the solved (or partially solved) puzzle(s)"))
         .arg(clap::Arg::with_name("step_images")
@@ -75,12 +76,14 @@ fn main() {
             .help("save an image of the puzzle at each step of the solving process"))
         .get_matches();
 
-    let Context { output_path, source, solve, save_image } = build_context(&matches);
+    let context = build_context(&matches);
+    let save_any = context.save_any();
+    let Context { output_path, source, solve, save_image } = context;
 
-    let handle_puzzle = |puzzle: &Puzzle, path: &Path| -> bool {
+    let handle_puzzle = |puzzle: &Puzzle, path: Option<&Path>| -> bool {
         print_puzzle(puzzle);
         if save_image {
-            if !save_puzzle_image(puzzle, path) {
+            if !save_puzzle_image(puzzle, path.unwrap()) {
                 return false
             }
         }
@@ -97,19 +100,20 @@ fn main() {
     match source {
         SourceContext::File(path) => {
             if let Some(puzzle) = input_puzzle(Path::new(path)) {
-                handle_puzzle(&puzzle, output_path);
+                handle_puzzle(&puzzle, Some(output_path));
             }
         },
         SourceContext::Generate(GenerateContext { count, width, save_puzzle }) => {
-            let handle_generated_puzzle = |puzzle: &Puzzle, output_path: &Path| -> bool {
-                let save_success = !save_puzzle || ::save_puzzle(&puzzle, output_path);
+            let handle_generated_puzzle = |puzzle: &Puzzle, output_path: Option<&Path>| -> bool {
+                let save_success = !save_puzzle || ::save_puzzle(&puzzle, output_path.unwrap());
                 save_success && handle_puzzle(puzzle, output_path)
             };
 
             if count == 1 {
                 let puzzle = puzzle::generate_puzzle(width);
-                handle_generated_puzzle(&puzzle, output_path);
+                handle_generated_puzzle(&puzzle, Some(output_path));
             } else {
+                let output_path = if save_any { Some(output_path) } else { None };
                 generate_puzzles(count, width, output_path, handle_generated_puzzle);
             }
         },
@@ -140,19 +144,29 @@ fn input_puzzle(path: &Path) -> Option<Puzzle> {
     Some(puzzle)
 }
 
-fn generate_puzzles<F: Fn(&Puzzle, &Path) -> bool>(count: u32, width: u32, output_path: &Path, consumer: F) {
-    //let path = Path::new(path.unwrap_or(DEFAULT_PATH));
-    let root = output_path.to_path_buf();
-    for i in 0..count {
-        println!("Generating puzzle {}/{}", i + 1, count);
+fn generate_puzzles<F: Fn(&Puzzle, Option<&Path>) -> bool>(count: u32, width: u32, output_path: Option<&Path>, consumer: F) {
+    let root = output_path.map(Path::to_path_buf);
+    let mut j = 1;
+    for i in 1..=count {
+        println!("Generating puzzle {}/{}", i , count);
         let puzzle = puzzle::generate_puzzle(width);
-        let mut path = root.clone();
-        path.push(format!("puzzle_{}", i + 1));
-        if let Err(e) = fs::create_dir(&path) {
-            eprintln!("unable to create directory \"{}\": {}", path.display(), e);
-            return
+        let path = root.as_ref().map(|root| {
+            loop {
+                let mut path = root.clone();
+                path.push(format!("puzzle_{}", j));
+                if !path.exists() {
+                    break path
+                }
+                j += 1;
+            }
+        });
+        if let &Some(ref path) = &path {
+            if let Err(e) = fs::create_dir(&path) {
+                eprintln!("unable to create directory \"{}\": {}", path.display(), e);
+                return
+            }
         }
-        if !consumer(&puzzle, &path) { return }
+        if !consumer(&puzzle, path.as_ref().map(PathBuf::as_path)) { return }
     }
 }
 
@@ -196,21 +210,21 @@ fn save_puzzle_image(puzzle: &Puzzle, output_path: &Path) -> bool {
     true
 }
 
-fn solve_puzzle(puzzle: &Puzzle, output_path: &Path, save_solved_image: bool, step_images: bool) -> bool {
+fn solve_puzzle(puzzle: &Puzzle, output_path: Option<&Path>, save_solved_image: bool, step_images: bool) -> bool {
+    println!("Solving puzzle");
     let step_images_path = if step_images {
-        let mut path = output_path.to_path_buf();
+        let mut path = output_path.unwrap().to_path_buf();
         path.push("steps");
         Some(path)
     } else {
         None
     };
     let markup = puzzle.solve(step_images_path.as_ref().map(PathBuf::as_path));
-    let result = if markup.is_solved() { "Success" } else { "Fail" };
-    println!("Result: {}", result);
+    println!("{}", if markup.is_solved() { "Puzzle solved successfully" } else { "Failed to solve puzzle" });
 
     if save_solved_image {
         let image = puzzle.image_with_markup(&markup);
-        let mut path = output_path.to_path_buf();
+        let mut path = output_path.unwrap().to_path_buf();
         path.push(format!("image_solved.{}", IMG_EXT));
         if let Err(e) = image.save(&path) {
             eprintln!("could not save image to \"{}\": {}", path.display(), e);
@@ -252,6 +266,27 @@ struct Context<'a> {
     source: SourceContext<'a>,
     solve: Option<SolveContext>,
     save_image: bool,
+}
+
+impl<'a> Context<'a> {
+
+    /// returns true if any files are to be saved
+    fn save_any(&self) -> bool {
+        if self.save_image {
+            return true
+        }
+        if let &SourceContext::Generate(ref gc) = &self.source {
+            if gc.save_puzzle {
+                return true
+            }
+        }
+        if let &Some(ref sc) = &self.solve {
+            if sc.save_image || sc.step_images {
+                return true
+            }
+        }
+        false
+    }
 }
 
 enum SourceContext<'a> {
