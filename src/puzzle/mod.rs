@@ -5,6 +5,7 @@ pub use self::cage::Operator;
 pub use self::generate::generate_puzzle;
 pub use self::generate::generate_puzzle_with_solution;
 pub use self::parse::parse_puzzle as parse;
+pub use self::image::PuzzleImageBuilder;
 
 mod cage;
 mod generate;
@@ -12,9 +13,7 @@ mod image;
 mod parse;
 mod solve;
 
-use ::image::RgbImage;
 use collections::square::Square;
-use collections::square::SquareIndex;
 use self::solve::markup::PuzzleMarkup;
 use self::solve::solve_puzzle;
 use std::fmt::Display;
@@ -61,22 +60,6 @@ impl Puzzle {
     pub fn cage_index_at<T>(&self, cell_index: T) -> u32
             where Square<u32> : Index<T, Output=u32> {
         self.cage_map[cell_index]
-    }
-
-    /// creates an image of puzzle
-    pub fn image(&self) -> RgbImage {
-        image::puzzle_image(self)
-    }
-
-    /// creates an image of the puzzle with markup
-    pub fn image_with_markup(&self, markup: &PuzzleMarkup) -> RgbImage {
-        image::puzzle_image_with_markup(self, markup)
-    }
-
-    /// creates an image of the puzzle with markup
-    pub fn image_with_markup_and_highlighted_cells(&self, markup: &PuzzleMarkup,
-                                                   highlighted_cells: &[SquareIndex]) -> RgbImage {
-        image::puzzle_image_with_markup_and_highlighted_cells(self, markup, highlighted_cells)
     }
 
 }

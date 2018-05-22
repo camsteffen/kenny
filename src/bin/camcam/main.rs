@@ -15,6 +15,7 @@ use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
+use camcam::puzzle::PuzzleImageBuilder;
 
 const DEFAULT_WIDTH: u32 = 4;
 const DEFAULT_PATH: &str = "output";
@@ -202,7 +203,7 @@ fn save_puzzle_image(puzzle: &Puzzle, output_path: &Path) -> bool {
     let mut path = output_path.to_path_buf();
     path.push(format!("image.{}", IMG_EXT));
     println!("Saving puzzle image to \"{}\"", path.display());
-    let image = puzzle.image();
+    let image = PuzzleImageBuilder::new(puzzle).build();
     if let Err(e)  = image.save(&path) {
         eprintln!("could not save puzzle image to \"{}\": {}", path.display(), e);
         return false
@@ -223,7 +224,9 @@ fn solve_puzzle(puzzle: &Puzzle, output_path: Option<&Path>, save_solved_image: 
     println!("{}", if markup.is_solved() { "Puzzle solved successfully" } else { "Failed to solve puzzle" });
 
     if save_solved_image {
-        let image = puzzle.image_with_markup(&markup);
+        let image = PuzzleImageBuilder::new(puzzle)
+            .cell_variables(Some(&markup.cell_variables))
+            .build();
         let mut path = output_path.unwrap().to_path_buf();
         path.push(format!("image_solved.{}", IMG_EXT));
         if let Err(e) = image.save(&path) {
