@@ -14,7 +14,7 @@ pub fn parse_puzzle(s: &str) -> Result<Puzzle, String> {
     let mut s = StringTokenIterator::new(s);
     let (i, token) = s.next_skip_space().ok_or("unexpected EOF")?;
     let size = token.number().ok_or_else(|| format_parse_error("invalid size", &token, &i))?;
-    if size > (('Z' as u8) - ('A' as u8) + 1) as u32 {
+    if size > u32::from((b'Z') - (b'A') + 1) {
         return Err("size is too big".to_string())
     }
     let cage_cells = read_cage_cells(&mut s, size)?;
@@ -37,7 +37,7 @@ pub fn parse_puzzle(s: &str) -> Result<Puzzle, String> {
             let cage = Cage {
                 cells,
                 target: target as i32,
-                operator: operator,
+                operator,
             };
             Ok(cage)
         })
@@ -82,7 +82,7 @@ impl fmt::Display for Token {
         match self {
             Token::Invalid(s) => write!(f, "{}", s),
             Token::Number(n) => write!(f, "{}", n),
-            Token::Operator(o) => o.symbol().map_or_else(|| Ok(()), |symbol| write!(f, "{}", symbol)),
+            Token::Operator(o) => o.symbol().map_or(Ok(()), |symbol| write!(f, "{}", symbol)),
             Token::Letter(l) => write!(f, "{}", l),
             Token::Space => write!(f, " "),
         }
@@ -98,14 +98,14 @@ struct StringTokenIterator<'a> {
 impl<'a> StringTokenIterator<'a> {
     fn new(s: &str) -> StringTokenIterator {
         StringTokenIterator {
-            s: s,
+            s,
             line: 1,
             col: 1,
         }
     }
 
     fn next_skip_space(&mut self) -> Option<(SIndex, Token)> {
-        while let Some((i, t)) = self.next() {
+        for (i, t) in self {
             match t {
                 Token::Space => (),
                 _ => return Some((i, t)),

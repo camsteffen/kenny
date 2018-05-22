@@ -1,5 +1,5 @@
 use collections::FnvLinkedHashSet;
-use collections::GetIndicesCloned;
+use collections::CloneIndices;
 use collections::square::SquareIndex;
 use collections::square::VectorId;
 use fnv::FnvHashMap;
@@ -94,7 +94,7 @@ fn enforce_cage_vector(puzzle: &Puzzle, markup: &PuzzleMarkup, cage_index: u32, 
         .collect::<Vec<_>>();
     let mut count = 0;
     'solutions: for (i, solution) in cage_solutions.solutions.iter().enumerate() {
-        let values = solution.get_indices_cloned(&soln_indices).into_iter().collect::<FnvHashSet<_>>();
+        let values = solution.clone_indices(&soln_indices).into_iter().collect::<FnvHashSet<_>>();
         for &(j, domain) in &outide_domains {
             if domain.len() > values.len() { continue }
             if domain.iter().all(|v| values.contains(&v)) {

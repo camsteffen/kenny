@@ -10,7 +10,7 @@ use std::ops::DerefMut;
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
 use std::mem;
-use collections::GetIndicesCloned;
+use collections;
 use super::CellVariable;
 use super::markup::PuzzleMarkupChanges;
 
@@ -156,7 +156,7 @@ impl CageSolutions {
                 for &(index, value) in &removed_values {
                     if solution[index] == value { return None }
                 }
-                Some(solution.get_indices_cloned(&keep_indices))
+                Some(collections::iter_indices(solution, keep_indices.iter().cloned()).collect::<Vec<i32>>())
             })
             .collect();
         self.reset_index_map();

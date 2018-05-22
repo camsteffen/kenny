@@ -3,9 +3,9 @@ mod changes;
 pub use self::changes::PuzzleMarkupChanges;
 
 use collections::Square;
-use puzzle::solve::CellVariable;
-use puzzle::Puzzle;
 use fnv::FnvHashMap;
+use puzzle::Puzzle;
+use puzzle::solve::CellVariable;
 use puzzle::solve::cage_solutions::CageSolutionsSet;
 
 pub struct PuzzleMarkup {

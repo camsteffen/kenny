@@ -6,21 +6,26 @@ pub use self::square::Square;
 
 use fnv::FnvBuildHasher;
 use std::ops::Index;
-use linked_hash_map::LinkedHashMap;
 use linked_hash_set::LinkedHashSet;
 
-pub type FnvLinkedHashMap<K, V> = LinkedHashMap<K, V, FnvBuildHasher>;
 pub type FnvLinkedHashSet<T> = LinkedHashSet<T, FnvBuildHasher>;
 
-pub trait GetIndicesCloned<T, I, R> {
-    fn get_indices_cloned(&self, indices: &[I]) -> Vec<R>;
+pub fn iter_indices<T, I, J, O>(data: T, indices: I) -> impl Iterator<Item=O>
+    where I: IntoIterator<Item=J>,
+          T: Index<J, Output=O>,
+          O: Sized + Copy {
+    indices.into_iter().map(move |i| data[i])
 }
 
-impl<'a, T, I, R> GetIndicesCloned<T, I, R> for T
+pub trait CloneIndices<T, I, R> {
+    fn clone_indices(&self, indices: &[I]) -> Vec<R>;
+}
+
+impl<'a, T, I, R> CloneIndices<T, I, R> for T
         where T: Index<I, Output=R>,
               I: Copy,
               R: Clone {
-    fn get_indices_cloned(&self, indices: &[I]) -> Vec<R> {
+    fn clone_indices(&self, indices: &[I]) -> Vec<R> {
         let mut vec = Vec::with_capacity(indices.len());
         for &i in indices {
             vec.push(self[i].clone());

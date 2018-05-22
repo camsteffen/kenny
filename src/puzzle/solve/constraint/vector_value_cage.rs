@@ -15,8 +15,8 @@ pub struct VectorValueCageConstraint {
 
 impl VectorValueCageConstraint {
     pub fn new(puzzle: &Puzzle) -> Self {
-        let dirty_vector_values = (0..puzzle.width as usize * 2).map(|i| VectorId(i)).flat_map(|v| {
-            (1..=puzzle.width as i32).map(move |i| ((v, i)))
+        let dirty_vector_values = (0..puzzle.width as usize * 2).map(VectorId).flat_map(|v| {
+            (1..=puzzle.width as i32).map(move |i| (v, i))
         }).collect();
         Self {
             dirty_vector_values,

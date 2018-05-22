@@ -48,10 +48,8 @@ impl VectorSubdomainConstraint {
                 let mut domain = CellDomain::new(size as u32);
                 for &cell in &cells {
                     for j in cell_variables[cell].unsolved().unwrap() {
-                        if domain.insert(j) {
-                            if domain.len() > max_size {
-                                continue 'combinations
-                            }
+                        if domain.insert(j) && domain.len() > max_size {
+                            continue 'combinations
                         }
                     }
                 }

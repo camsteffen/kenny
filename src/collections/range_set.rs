@@ -15,7 +15,7 @@ impl RangeSet {
 
     pub fn with_all(size: usize) -> RangeSet {
         RangeSet {
-            size: size,
+            size,
             domain: vec![true; size],
         }
     }

@@ -8,22 +8,20 @@ mod vector_subdomain;
 mod vector_value_cage;
 mod vector_value_domain;
 
-//pub use self::constraint_propagation::ConstraintPropogation;
 pub use self::unary_constraints::apply_unary_constraints;
 pub use self::constraint_propagation::constraint_propagation;
 
-use self::cage_solution_vector_domain::CageSolutionVectorDomainConstraint;
-use self::cage_solutions::CageSolutionsConstraint;
-use self::cage_vector_value::CageVectorValueConstraint;
-use self::vector_subdomain::VectorSubdomainConstraint;
-use self::vector_value_domain::VectorValueDomainConstraint;
-use self::vector_value_cage::VectorValueCageConstraint;
-use self::vector_solved_cell::VectorSolvedCellConstraint;
 use super::markup::PuzzleMarkupChanges;
 use puzzle::Puzzle;
 use puzzle::solve::PuzzleMarkup;
 
 pub trait Constraint {
-    fn enforce_partial(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool;
+
+    /// Notifies this constraint of changes made to the puzzle markup.
+    /// This should be a low-cost method where data is cached for later processing.
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges);
+
+    /// Partially enforces this constraint on the current puzzle. The constraint will be checked until one unit of
+    /// change is found and added to `changes`. Returns `false` if no changes are found.
+    fn enforce_partial(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool;
 }

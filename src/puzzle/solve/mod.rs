@@ -7,7 +7,6 @@ mod constraint;
 mod markup;
 mod step_writer;
 
-pub use self::cage_solutions::CageSolutions;
 pub use self::cell_domain::CellDomain;
 pub use self::cell_variable::CellVariable;
 pub use self::markup::PuzzleMarkup;

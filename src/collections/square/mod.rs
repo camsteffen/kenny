@@ -28,7 +28,7 @@ impl SquareIndex {
         self.0 % square_width
     }
 
-    /// Create a `Coord` using the index of an elment in a `Square` and the size of the `Square`.
+    /// Create a `Coord` using the index of an element in a `Square` and the size of the `Square`.
     pub fn as_coord(&self, size: usize) -> Coord {
         Coord([self.row(size), self.col(size)])
     }
@@ -85,15 +85,14 @@ impl<T> Square<T> {
     pub fn with_width_and_value(width: usize, val: T) -> Square<T>
             where T: Clone {
         Square {
-            width: width,
+            width,
             elements: vec![val; width.pow(2)],
         }
     }
 
     pub fn from_vec(elements: Vec<T>) -> Option<Self> {
-        let sqrt = (elements.len() as f32).sqrt();
-        let width = sqrt as usize;
-        if width as f32 == sqrt {
+        let width = (elements.len() as f32).sqrt() as usize;
+        if width * width == elements.len() {
             Some(Self { width, elements })
         } else {
             None
