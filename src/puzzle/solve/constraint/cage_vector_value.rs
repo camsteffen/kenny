@@ -6,7 +6,6 @@ use puzzle::Puzzle;
 use super::Constraint;
 use puzzle::solve::PuzzleMarkup;
 use collections::FnvLinkedHashSet;
-use collections::CloneIndices;
 
 /// A record of values known to be in a certain cage, in a certain vector
 pub struct CageVectorValueConstraint {
@@ -32,7 +31,7 @@ impl CageVectorValueConstraint {
 
         let mut values: FnvHashSet<i32>;
         let mut solutions_iter = markup.cage_solutions_set[cage_index as usize].solutions.iter()
-            .map(|s| s.clone_indices(&solution_indices).into_iter());
+            .map(|s| solution_indices.iter().map(|&i| s[i]).collect::<Vec<_>>().into_iter());
         let solution = solutions_iter.next().unwrap();
 
         // start with values in the first solution that are not already a known vector value
