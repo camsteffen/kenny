@@ -1,5 +1,7 @@
 //! KenKen puzzles
 
+pub mod solve;
+
 pub use self::cage::Cage;
 pub use self::cage::Operator;
 pub use self::generate::generate_puzzle;
@@ -11,15 +13,11 @@ mod cage;
 mod generate;
 mod image;
 mod parse;
-mod solve;
 
 use collections::square::Square;
-use self::solve::markup::PuzzleMarkup;
-use self::solve::solve_puzzle;
 use std::fmt::Display;
 use std::fmt;
 use std::ops::Index;
-use std::path::Path;
 use collections::square::Coord;
 
 /// An unsolved KenKen puzzle
@@ -41,11 +39,6 @@ impl Puzzle {
             cages,
             cage_map,
         }
-    }
-
-    /// attempts to solve the puzzle and return the PuzzleMarkup with the solution
-    pub fn solve(&self, step_images_path: Option<&Path>) -> PuzzleMarkup {
-        solve_puzzle(self, step_images_path)
     }
 
     pub fn get_cage(&self, cage_index: u32) -> &Cage {
