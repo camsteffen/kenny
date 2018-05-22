@@ -1,5 +1,3 @@
-#![feature(inclusive_range_syntax)]
-
 extern crate camcam;
 extern crate env_logger;
 #[macro_use]
