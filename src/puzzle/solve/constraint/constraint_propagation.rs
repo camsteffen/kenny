@@ -5,7 +5,7 @@ use puzzle::solve::markup::PuzzleMarkupChanges;
 use super::ConstraintSet;
 use std::path::Path;
 
-pub fn constraint_propogation(puzzle: &Puzzle, markup: &mut PuzzleMarkup,
+pub fn constraint_propagation(puzzle: &Puzzle, markup: &mut PuzzleMarkup,
                               changes: &mut PuzzleMarkupChanges, step_images_path: Option<&Path>) {
     let mut state_writer = step_images_path.map(|path| {
         let mut state_writer = StateWriter::new(path);

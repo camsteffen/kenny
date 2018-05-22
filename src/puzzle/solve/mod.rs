@@ -16,7 +16,7 @@ pub use self::state_writer::StateWriter;
 
 use puzzle::Puzzle;
 use self::constraint::apply_unary_constraints;
-use self::constraint::constraint_propogation;
+use self::constraint::constraint_propagation;
 use self::markup::PuzzleMarkup;
 use self::markup::PuzzleMarkupChanges;
 use std::path::Path;
@@ -26,6 +26,6 @@ pub fn solve_puzzle(puzzle: &Puzzle, step_images_path: Option<&Path>) -> PuzzleM
     apply_unary_constraints(puzzle, &mut changes);
     let mut markup = PuzzleMarkup::new(puzzle);
     markup.sync_changes(&mut changes);
-    constraint_propogation(puzzle, &mut markup, &mut changes, step_images_path);
+    constraint_propagation(puzzle, &mut markup, &mut changes, step_images_path);
     markup
 }
