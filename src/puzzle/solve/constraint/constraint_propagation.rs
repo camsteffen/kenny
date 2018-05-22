@@ -1,34 +1,50 @@
 use puzzle::Puzzle;
 use puzzle::solve::PuzzleMarkup;
-use puzzle::solve::StateWriter;
+use puzzle::solve::StepWriter;
 use puzzle::solve::markup::PuzzleMarkupChanges;
-use super::ConstraintSet;
-use std::path::Path;
+use puzzle::solve::constraint::Constraint;
+use puzzle::solve::constraint::vector_solved_cell::VectorSolvedCellConstraint;
+use puzzle::solve::constraint::vector_value_domain::VectorValueDomainConstraint;
+use puzzle::solve::constraint::cage_solutions::CageSolutionsConstraint;
+use puzzle::solve::constraint::cage_vector_value::CageVectorValueConstraint;
+use puzzle::solve::constraint::vector_subdomain::VectorSubdomainConstraint;
+use puzzle::solve::constraint::vector_value_cage::VectorValueCageConstraint;
+use puzzle::solve::constraint::cage_solution_vector_domain::CageSolutionVectorDomainConstraint;
 
 pub fn constraint_propagation(puzzle: &Puzzle, markup: &mut PuzzleMarkup,
-                              changes: &mut PuzzleMarkupChanges, step_images_path: Option<&Path>) {
-    let mut state_writer = step_images_path.map(|path| {
-        let mut state_writer = StateWriter::new(path);
-        state_writer.write_next(puzzle, markup, &[]);
-        state_writer
-    });
+                              changes: &mut PuzzleMarkupChanges, mut step_writer: Option<&mut StepWriter>) {
     markup.init_cage_solutions(puzzle);
 
-    let mut constraints = ConstraintSet::new(puzzle);
+    let mut constraints = constraint_set(puzzle);
 
     let mut loop_count = 0;
     loop {
-        constraints.for_each(|c| c.notify_changes(puzzle, &changes));
+        for c in &mut constraints {
+            c.notify_changes(puzzle, changes);
+        }
         changes.clear();
-        let has_changes = (0..ConstraintSet::len()).any(|i|
-            constraints.select_map(i, |c| c.enforce_partial(puzzle, markup, changes)));
+        let has_changes = constraints.iter_mut().any(|c|
+            c.enforce_partial(puzzle, markup, changes));
         if !has_changes { break }
         markup.sync_changes(changes);
-        if let Some(state_writer) = state_writer.as_mut() {
+        if let Some(step_writer) = &mut step_writer {
             let changed_cells = changes.cell_domain_value_removals.keys().cloned().collect::<Vec<_>>();
-            state_writer.write_next(puzzle, markup, &changed_cells);
+            step_writer.write_next(puzzle, markup, &changed_cells);
         }
         loop_count += 1;
         if markup.is_solved() { break }
     }
+    debug!("constraint propagation finished after {} iterations", loop_count);
+}
+
+fn constraint_set(puzzle: &Puzzle) -> Vec<Box<Constraint>> {
+    vec![
+        Box::new(VectorSolvedCellConstraint::new()),
+        Box::new(VectorValueDomainConstraint::new(puzzle.width)),
+        Box::new(CageSolutionsConstraint::new(puzzle)),
+        Box::new(CageVectorValueConstraint::new(puzzle)),
+        Box::new(VectorSubdomainConstraint::new()),
+        Box::new(VectorValueCageConstraint::new(puzzle)),
+        Box::new(CageSolutionVectorDomainConstraint::new(puzzle)),
+    ]
 }

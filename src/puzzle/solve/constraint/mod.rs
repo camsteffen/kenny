@@ -2,7 +2,6 @@ mod cage_solution_vector_domain;
 mod cage_solutions;
 mod cage_vector_value;
 mod constraint_propagation;
-mod constraint_set;
 mod unary_constraints;
 mod vector_solved_cell;
 mod vector_subdomain;
@@ -13,7 +12,6 @@ mod vector_value_domain;
 pub use self::unary_constraints::apply_unary_constraints;
 pub use self::constraint_propagation::constraint_propagation;
 
-use self::constraint_set::ConstraintSet;
 use self::cage_solution_vector_domain::CageSolutionVectorDomainConstraint;
 use self::cage_solutions::CageSolutionsConstraint;
 use self::cage_vector_value::CageVectorValueConstraint;
