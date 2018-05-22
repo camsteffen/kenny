@@ -17,3 +17,7 @@ png = "0.6.2"
 rand = "0.3.15"
 rusttype = "0.2.1"
 vec_map = "0.8.0"
+
+[[bin]]
+name = "camcam"
+path = "src/bin/camcam/main.rs"
