@@ -1,6 +1,7 @@
 use collections::square::SquareIndex;
 use fnv::FnvHashMap;
 
+#[derive(Default)]
 pub struct PuzzleMarkupChanges {
     pub cell_domain_value_removals: FnvHashMap<SquareIndex, Vec<i32>>,
     pub cell_solutions: Vec<(SquareIndex, i32)>,
@@ -8,14 +9,6 @@ pub struct PuzzleMarkupChanges {
 }
 
 impl PuzzleMarkupChanges {
-    pub fn new() -> Self {
-        Self {
-            cell_domain_value_removals: FnvHashMap::default(),
-            cell_solutions: Vec::new(),
-            cage_solution_removals: FnvHashMap::default(),
-        }
-    }
-
     pub fn clear(&mut self) {
         self.cell_domain_value_removals.clear();
         self.cell_solutions.clear();

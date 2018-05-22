@@ -22,7 +22,7 @@ use self::markup::PuzzleMarkupChanges;
 use std::path::Path;
 
 pub fn solve_puzzle(puzzle: &Puzzle, step_images_path: Option<&Path>) -> PuzzleMarkup {
-    let mut changes = PuzzleMarkupChanges::new();
+    let mut changes = PuzzleMarkupChanges::default();
     apply_unary_constraints(puzzle, &mut changes);
     let mut markup = PuzzleMarkup::new(puzzle);
     markup.sync_changes(&mut changes);
