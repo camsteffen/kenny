@@ -1,6 +1,7 @@
 //! Generate and solve KenKen puzzles
 
 #![cfg_attr(feature="cargo-clippy", allow(doc_markdown))]
+#![feature(generators, generator_trait)]
 #![feature(ascii_ctype)]
 #![feature(conservative_impl_trait)]
 #![feature(inclusive_range_syntax)]
@@ -20,6 +21,7 @@ extern crate fnv;
 extern crate linked_hash_map;
 extern crate linked_hash_set;
 
+pub mod gen_utils;
 pub mod puzzle;
 
 pub use self::puzzle::Puzzle;

@@ -16,6 +16,7 @@ num = "0.1.37"
 png = "0.6.2"
 rand = "0.3.15"
 rusttype = "0.2.1"
+tempfile = "3.0.1"
 vec_map = "0.8.0"
 
 [[bin]]
