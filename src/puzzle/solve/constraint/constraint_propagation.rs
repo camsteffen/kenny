@@ -1,6 +1,5 @@
 use puzzle::Puzzle;
 use puzzle::solve::PuzzleMarkup;
-use puzzle::solve::StepWriter;
 use puzzle::solve::markup::PuzzleMarkupChanges;
 use puzzle::solve::constraint::Constraint;
 use puzzle::solve::constraint::vector_solved_cell::VectorSolvedCellConstraint;
@@ -10,6 +9,7 @@ use puzzle::solve::constraint::cage_vector_value::CageVectorValueConstraint;
 use puzzle::solve::constraint::vector_subdomain::VectorSubdomainConstraint;
 use puzzle::solve::constraint::vector_value_cage::VectorValueCageConstraint;
 use puzzle::solve::constraint::cage_solution_vector_domain::CageSolutionVectorDomainConstraint;
+use puzzle::solve::step_writer::StepWriter;
 
 pub fn constraint_propagation(puzzle: &Puzzle, markup: &mut PuzzleMarkup,
                               changes: &mut PuzzleMarkupChanges, mut step_writer: Option<&mut StepWriter>) {
@@ -37,7 +37,7 @@ pub fn constraint_propagation(puzzle: &Puzzle, markup: &mut PuzzleMarkup,
     debug!("constraint propagation finished after {} iterations", loop_count);
 }
 
-fn constraint_set(puzzle: &Puzzle) -> Vec<Box<Constraint>> {
+fn constraint_set(puzzle: &Puzzle) -> Vec<Box<dyn Constraint>> {
     vec![
         Box::new(VectorSolvedCellConstraint::new()),
         Box::new(VectorValueDomainConstraint::new(puzzle.width)),

@@ -112,7 +112,7 @@ fn create_cell_cage_vector_map(puzzle: &Puzzle) -> Vec<(u32, Vec<VectorId>)> {
     (0..puzzle.width.pow(2) as usize).map(|i| {
         let index = SquareIndex(i);
         let cage_index = puzzle.cage_map[index];
-        let vector_ids = index.intersecting_vectors(puzzle.width as usize).into_iter().cloned()
+        let vector_ids = index.intersecting_vectors(puzzle.width as usize).iter().cloned()
             .filter(|v| {
                 puzzle.get_cage(cage_index).cells.iter()
                     .filter(|&&i| v.contains_sq_index(i, puzzle.width as usize))

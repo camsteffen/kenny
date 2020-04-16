@@ -15,7 +15,6 @@ use puzzle::Puzzle;
 use self::constraint::apply_unary_constraints;
 use self::constraint::constraint_propagation;
 use self::markup::PuzzleMarkupChanges;
-use self::step_writer::StepWriter;
 use std::path::PathBuf;
 use std::io;
 use std::fmt::Display;

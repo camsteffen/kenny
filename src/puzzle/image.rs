@@ -44,7 +44,7 @@ pub struct PuzzleImageBuilder<'a> {
 impl<'a> PuzzleImageBuilder<'a> {
 
     pub fn new(puzzle: &'a Puzzle) -> Self {
-        let font_data = include_bytes!("/Library/Fonts/Verdana.ttf");
+        let font_data = include_bytes!("../../res/Roboto-Regular.ttf");
         let font_collection = FontCollection::from_bytes(font_data as &[u8]);
         let font = font_collection.font_at(0).expect("load font");
 

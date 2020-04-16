@@ -2,8 +2,6 @@
 
 #![cfg_attr(feature="cargo-clippy", allow(doc_markdown))]
 #![feature(generators, generator_trait)]
-#![feature(ascii_ctype)]
-#![feature(slice_patterns)]
 #![feature(vec_resize_default)]
 
 #[macro_use]
