@@ -15,7 +15,6 @@ extern crate fnv;
 extern crate linked_hash_map;
 extern crate linked_hash_set;
 
-pub mod gen_utils;
 pub mod puzzle;
 
 pub use self::puzzle::Puzzle;

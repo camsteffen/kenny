@@ -8,20 +8,21 @@ use std::fmt;
 use std::iter::once;
 use std::str;
 use collections::square::SquareIndex;
+use puzzle::error::ParsePuzzleError;
 
 /// parse a `Puzzle` from a string
-pub fn parse_puzzle(s: &str) -> Result<Puzzle, String> {
+pub fn parse_puzzle(s: &str) -> Result<Puzzle, ParsePuzzleError> {
     let mut s = StringTokenIterator::new(s);
     let (i, token) = s.next_skip_space().ok_or("unexpected EOF")?;
     let size = token.number().ok_or_else(|| format_parse_error("invalid size", &token, &i))?;
     if size > u32::from((b'Z') - (b'A') + 1) {
-        return Err("size is too big".to_string())
+        return Err("size is too big".into())
     }
     let cage_cells = read_cage_cells(&mut s, size)?;
     let cage_targets = read_cage_targets(&mut s, cage_cells.len())?;
     debug_assert!(cage_cells.len() == cage_targets.len());
     if let Some((i, t)) = s.next_skip_space() {
-        return Err(format_parse_error("unexpected token", &t, &i))
+        return Err(format_parse_error("unexpected token", &t, &i).into())
     }
     let cages = cage_cells.into_iter().zip(cage_targets.into_iter())
         .map(|((cage_id, cells), (target, operator))| {

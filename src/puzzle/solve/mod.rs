@@ -16,11 +16,9 @@ use self::constraint::apply_unary_constraints;
 use self::constraint::constraint_propagation;
 use self::markup::PuzzleMarkupChanges;
 use std::path::PathBuf;
-use std::io;
-use std::fmt::Display;
-use std::fmt;
 use std::path::Path;
 use puzzle::solve::step_writer::StepWriterBuilder;
+use puzzle::error::SolveError;
 
 pub struct PuzzleSolver<'a> {
     puzzle: &'a Puzzle,
@@ -66,20 +64,6 @@ impl<'a> PuzzleSolver<'a> {
         }
         constraint_propagation(self.puzzle, &mut markup, &mut changes, step_writer.as_mut());
         Ok(markup)
-    }
-}
-
-pub enum SolveError {
-    CreateStepsDir(io::Error),
-    RemoveStepsDir(io::Error),
-}
-
-impl Display for SolveError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            SolveError::CreateStepsDir(e) => write!(f, "Error creating steps directory: {}", e),
-            SolveError::RemoveStepsDir(e) => write!(f, "Error removing steps directory: {}", e),
-        }
     }
 }
 

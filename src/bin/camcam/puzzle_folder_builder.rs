@@ -1,8 +1,8 @@
 extern crate tempfile;
 
 use tempfile::TempDir;
-use std::path::PathBuf;
-use std::io;
+use std::path::{PathBuf, Path};
+use std::{io, fs};
 use std::fs::File;
 use std::io::Write;
 use camcam::Puzzle;
@@ -10,16 +10,20 @@ use image::RgbImage;
 
 const IMG_EXT: &str = "jpg";
 
-pub struct PuzzleTempDir {
+pub struct PuzzleFolderBuilder {
     temp_dir: TempDir,
 }
 
-impl PuzzleTempDir {
+impl PuzzleFolderBuilder {
     pub fn new() -> io::Result<Self> {
         let s = Self {
             temp_dir: tempfile::tempdir()?,
         };
         Ok(s)
+    }
+
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), io::Error> {
+        fs::rename(&self.temp_dir, path)
     }
 
     pub fn steps_path(&self) -> PathBuf {
@@ -45,10 +49,3 @@ impl PuzzleTempDir {
         Ok(())
     }
 }
-
-impl Into<TempDir> for PuzzleTempDir {
-    fn into(self) -> TempDir {
-        self.temp_dir
-    }
-}
-
