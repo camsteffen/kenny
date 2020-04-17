@@ -1,11 +1,11 @@
-use collections::FnvLinkedHashSet;
-use collections::square::SquareIndex;
-use collections::square::VectorId;
+use crate::collections::FnvLinkedHashSet;
+use crate::collections::square::SquareIndex;
+use crate::collections::square::VectorId;
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
-use puzzle::Puzzle;
-use puzzle::solve::PuzzleMarkup;
-use puzzle::solve::PuzzleMarkupChanges;
+use crate::puzzle::Puzzle;
+use crate::puzzle::solve::PuzzleMarkup;
+use crate::puzzle::solve::PuzzleMarkupChanges;
 use super::Constraint;
 
 pub struct CageSolutionVectorDomainConstraint {

@@ -1,4 +1,4 @@
-use DEFAULT_PUZZLE_WIDTH;
+use crate::DEFAULT_PUZZLE_WIDTH;
 
 pub struct Options {
     pub image_width: Option<u32>,

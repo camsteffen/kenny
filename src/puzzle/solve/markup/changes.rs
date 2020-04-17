@@ -1,4 +1,4 @@
-use collections::square::SquareIndex;
+use crate::collections::square::SquareIndex;
 use fnv::FnvHashMap;
 
 #[derive(Default)]

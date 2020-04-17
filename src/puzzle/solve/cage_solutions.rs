@@ -1,10 +1,10 @@
-use collections::square::SquareIndex;
-use puzzle::Cage;
-use puzzle::Operator;
-use puzzle::Puzzle;
-use puzzle::solve::CellDomain;
-use puzzle::solve::CellVariable::*;
-use collections::Square;
+use crate::collections::square::SquareIndex;
+use crate::puzzle::Cage;
+use crate::puzzle::Operator;
+use crate::puzzle::Puzzle;
+use crate::puzzle::solve::CellDomain;
+use crate::puzzle::solve::CellVariable::*;
+use crate::collections::Square;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use fnv::FnvHashMap;

@@ -1,11 +1,11 @@
-use collections::square::SquareIndex;
+use crate::collections::square::SquareIndex;
 use num::Integer;
-use puzzle::Operator;
-use puzzle::Puzzle;
-use puzzle::solve::CellDomain;
+use crate::puzzle::Operator;
+use crate::puzzle::Puzzle;
+use crate::puzzle::solve::CellDomain;
 use std::collections::BTreeSet;
-use puzzle::solve::markup::PuzzleMarkupChanges;
-use puzzle::Cage;
+use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+use crate::puzzle::Cage;
 
 /// Applies all unary constraints to cell domains. Returns a list of all affected cells by index.
 pub fn apply_unary_constraints(puzzle: &Puzzle, change: &mut PuzzleMarkupChanges) -> Vec<SquareIndex> {

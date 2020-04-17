@@ -1,5 +1,5 @@
-use collections::range_set;
-use collections::RangeSet;
+use crate::collections::range_set;
+use crate::collections::RangeSet;
 use std::ops::Deref;
 
 #[derive(Clone)]

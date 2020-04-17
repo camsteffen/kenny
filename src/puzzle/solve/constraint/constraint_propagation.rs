@@ -1,15 +1,15 @@
-use puzzle::Puzzle;
-use puzzle::solve::PuzzleMarkup;
-use puzzle::solve::markup::PuzzleMarkupChanges;
-use puzzle::solve::constraint::Constraint;
-use puzzle::solve::constraint::vector_solved_cell::VectorSolvedCellConstraint;
-use puzzle::solve::constraint::vector_value_domain::VectorValueDomainConstraint;
-use puzzle::solve::constraint::cage_solutions::CageSolutionsConstraint;
-use puzzle::solve::constraint::cage_vector_value::CageVectorValueConstraint;
-use puzzle::solve::constraint::vector_subdomain::VectorSubdomainConstraint;
-use puzzle::solve::constraint::vector_value_cage::VectorValueCageConstraint;
-use puzzle::solve::constraint::cage_solution_vector_domain::CageSolutionVectorDomainConstraint;
-use puzzle::solve::step_writer::StepWriter;
+use crate::puzzle::Puzzle;
+use crate::puzzle::solve::PuzzleMarkup;
+use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+use crate::puzzle::solve::constraint::Constraint;
+use crate::puzzle::solve::constraint::vector_solved_cell::VectorSolvedCellConstraint;
+use crate::puzzle::solve::constraint::vector_value_domain::VectorValueDomainConstraint;
+use crate::puzzle::solve::constraint::cage_solutions::CageSolutionsConstraint;
+use crate::puzzle::solve::constraint::cage_vector_value::CageVectorValueConstraint;
+use crate::puzzle::solve::constraint::vector_subdomain::VectorSubdomainConstraint;
+use crate::puzzle::solve::constraint::vector_value_cage::VectorValueCageConstraint;
+use crate::puzzle::solve::constraint::cage_solution_vector_domain::CageSolutionVectorDomainConstraint;
+use crate::puzzle::solve::step_writer::StepWriter;
 
 pub fn constraint_propagation(puzzle: &Puzzle, markup: &mut PuzzleMarkup,
                               changes: &mut PuzzleMarkupChanges, mut step_writer: Option<&mut StepWriter>) {

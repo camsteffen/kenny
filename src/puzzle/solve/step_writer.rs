@@ -1,9 +1,9 @@
 //! Save images of the puzzle in a series of solution steps
 
-use collections::square::SquareIndex;
-use puzzle::Puzzle;
-use puzzle::image::PuzzleImageBuilder;
-use puzzle::solve::PuzzleMarkup;
+use crate::collections::square::SquareIndex;
+use crate::puzzle::Puzzle;
+use crate::puzzle::image::PuzzleImageBuilder;
+use crate::puzzle::solve::PuzzleMarkup;
 use std::path::Path;
 use std::path::PathBuf;
 

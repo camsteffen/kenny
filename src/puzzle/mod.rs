@@ -7,9 +7,9 @@ use std::io::Read;
 use std::ops::Index;
 use std::path::Path;
 
-use collections::square::Coord;
-use collections::square::Square;
-use puzzle::generate::generate_puzzle;
+use crate::collections::square::Coord;
+use crate::collections::square::Square;
+use crate::puzzle::generate::generate_puzzle;
 
 pub use self::cage::Cage;
 pub use self::cage::Operator;

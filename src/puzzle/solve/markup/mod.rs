@@ -2,11 +2,11 @@ mod changes;
 
 pub use self::changes::PuzzleMarkupChanges;
 
-use collections::Square;
+use crate::collections::Square;
 use fnv::FnvHashMap;
-use puzzle::Puzzle;
-use puzzle::solve::CellVariable;
-use puzzle::solve::cage_solutions::CageSolutionsSet;
+use crate::puzzle::Puzzle;
+use crate::puzzle::solve::CellVariable;
+use crate::puzzle::solve::cage_solutions::CageSolutionsSet;
 
 pub struct PuzzleMarkup {
     pub cell_variables: Square<CellVariable>,

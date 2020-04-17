@@ -1,12 +1,12 @@
-use collections::RangeSet;
+use crate::collections::RangeSet;
 use std::ops::{Index, IndexMut};
-use collections::square::VectorId;
-use puzzle::solve::markup::PuzzleMarkupChanges;
-use puzzle::Puzzle;
-use puzzle::solve::PuzzleMarkup;
+use crate::collections::square::VectorId;
+use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+use crate::puzzle::Puzzle;
+use crate::puzzle::solve::PuzzleMarkup;
 use super::Constraint;
-use collections::FnvLinkedHashSet;
-use collections::square::SquareIndex;
+use crate::collections::FnvLinkedHashSet;
+use crate::collections::square::SquareIndex;
 
 pub struct VectorValueDomainConstraint {
     data: VectorValueSet,

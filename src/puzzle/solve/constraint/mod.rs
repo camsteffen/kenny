@@ -12,8 +12,8 @@ pub use self::unary_constraints::apply_unary_constraints;
 pub use self::constraint_propagation::constraint_propagation;
 
 use super::markup::PuzzleMarkupChanges;
-use puzzle::Puzzle;
-use puzzle::solve::PuzzleMarkup;
+use crate::puzzle::Puzzle;
+use crate::puzzle::solve::PuzzleMarkup;
 
 pub trait Constraint {
 

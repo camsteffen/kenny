@@ -1,9 +1,9 @@
-use collections::Square;
-use collections::square::SquareIndex;
-use puzzle::Puzzle;
-use puzzle::solve::CellVariable;
-use puzzle::solve::markup::PuzzleMarkupChanges;
-use puzzle::solve::PuzzleMarkup;
+use crate::collections::Square;
+use crate::collections::square::SquareIndex;
+use crate::puzzle::Puzzle;
+use crate::puzzle::solve::CellVariable;
+use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+use crate::puzzle::solve::PuzzleMarkup;
 use super::Constraint;
 
 pub struct VectorSolvedCellConstraint {

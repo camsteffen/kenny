@@ -1,13 +1,13 @@
 //! If all possible solutions for a given value in a given vector are in a given cage, then the cage solution must
 //! contain the given value in the given vector
 
-use collections::FnvLinkedHashSet;
-use collections::square::VectorId;
-use puzzle::Puzzle;
-use puzzle::solve::cage_solutions::CageSolutions;
-use puzzle::solve::constraint::Constraint;
-use puzzle::solve::markup::PuzzleMarkup;
-use puzzle::solve::markup::PuzzleMarkupChanges;
+use crate::collections::FnvLinkedHashSet;
+use crate::collections::square::VectorId;
+use crate::puzzle::Puzzle;
+use crate::puzzle::solve::cage_solutions::CageSolutions;
+use crate::puzzle::solve::constraint::Constraint;
+use crate::puzzle::solve::markup::PuzzleMarkup;
+use crate::puzzle::solve::markup::PuzzleMarkupChanges;
 
 pub struct VectorValueCageConstraint {
     dirty_vector_values: FnvLinkedHashSet<(VectorId, i32)>,

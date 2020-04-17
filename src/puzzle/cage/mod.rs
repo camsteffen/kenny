@@ -2,7 +2,7 @@ mod operator;
 
 pub use self::operator::Operator;
 
-use collections::square::SquareIndex;
+use crate::collections::square::SquareIndex;
 
 /// A cage in a KenKen puzzle. Every cell in a KenKen puzzle belongs to a cage.
 /// Every cage has an operator and a target number.

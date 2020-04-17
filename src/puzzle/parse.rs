@@ -1,14 +1,14 @@
 //! Parse puzzles from text
 
-use puzzle::Cage;
-use puzzle::Operator;
-use puzzle::Puzzle;
+use crate::puzzle::Cage;
+use crate::puzzle::Operator;
+use crate::puzzle::Puzzle;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::iter::once;
 use std::str;
-use collections::square::SquareIndex;
-use puzzle::error::ParsePuzzleError;
+use crate::collections::square::SquareIndex;
+use crate::puzzle::error::ParsePuzzleError;
 
 /// parse a `Puzzle` from a string
 pub fn parse_puzzle(s: &str) -> Result<Puzzle, ParsePuzzleError> {

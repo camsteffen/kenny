@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::{io, fmt};
 use std::fmt::{Debug, Display};
-use puzzle::error::SolveError;
+use crate::puzzle::error::SolveError;
 use camcam::puzzle;
 use camcam::puzzle::error::{Error, ParsePuzzleError};
 

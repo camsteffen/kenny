@@ -11,14 +11,14 @@ pub use self::cell_domain::CellDomain;
 pub use self::cell_variable::CellVariable;
 pub use self::markup::PuzzleMarkup;
 
-use puzzle::Puzzle;
+use crate::puzzle::Puzzle;
 use self::constraint::apply_unary_constraints;
 use self::constraint::constraint_propagation;
 use self::markup::PuzzleMarkupChanges;
 use std::path::PathBuf;
 use std::path::Path;
-use puzzle::solve::step_writer::StepWriterBuilder;
-use puzzle::error::SolveError;
+use crate::puzzle::solve::step_writer::StepWriterBuilder;
+use crate::puzzle::error::SolveError;
 
 pub struct PuzzleSolver<'a> {
     puzzle: &'a Puzzle,

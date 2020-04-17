@@ -13,7 +13,7 @@ mod context;
 mod options;
 mod puzzle_folder_builder;
 
-use puzzle_folder_builder::PuzzleFolderBuilder;
+use crate::puzzle_folder_builder::PuzzleFolderBuilder;
 use camcam::puzzle::Puzzle;
 use camcam::puzzle;
 use camcam::puzzle::solve::PuzzleSolver;
@@ -23,9 +23,9 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use camcam::puzzle::PuzzleImageBuilder;
-use options::Options;
-use context::Context;
-use cli_error::CliError;
+use crate::options::Options;
+use crate::context::Context;
+use crate::cli_error::CliError;
 use camcam::puzzle::error::SolveError;
 
 type Result<T> = std::result::Result<T, CliError>;

@@ -1,14 +1,14 @@
-use collections::square::VectorId;
-use collections::square::Square;
-use collections::square::SquareIndex;
-use puzzle::solve::CellVariable;
+use crate::collections::square::VectorId;
+use crate::collections::square::Square;
+use crate::collections::square::SquareIndex;
+use crate::puzzle::solve::CellVariable;
 use itertools::Itertools;
-use puzzle::solve::CellDomain;
-use puzzle::solve::markup::PuzzleMarkupChanges;
-use puzzle::Puzzle;
-use puzzle::solve::PuzzleMarkup;
+use crate::puzzle::solve::CellDomain;
+use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+use crate::puzzle::Puzzle;
+use crate::puzzle::solve::PuzzleMarkup;
 use super::Constraint;
-use collections::FnvLinkedHashSet;
+use crate::collections::FnvLinkedHashSet;
 
 pub struct VectorSubdomainConstraint {
     dirty_vecs: FnvLinkedHashSet<VectorId>,

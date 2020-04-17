@@ -1,8 +1,8 @@
-use collections::Square;
-use collections::square::SquareIndex;
-use puzzle::Cage;
-use puzzle::Operator;
-use puzzle::Puzzle;
+use crate::collections::Square;
+use crate::collections::square::SquareIndex;
+use crate::puzzle::Cage;
+use crate::puzzle::Operator;
+use crate::puzzle::Puzzle;
 use rand::Rng;
 use rand::thread_rng;
 use std::mem;

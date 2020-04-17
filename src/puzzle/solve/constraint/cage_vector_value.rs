@@ -1,11 +1,11 @@
-use collections::square::{SquareIndex, VectorId};
+use crate::collections::square::{SquareIndex, VectorId};
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
-use puzzle::solve::markup::PuzzleMarkupChanges;
-use puzzle::Puzzle;
+use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+use crate::puzzle::Puzzle;
 use super::Constraint;
-use puzzle::solve::PuzzleMarkup;
-use collections::FnvLinkedHashSet;
+use crate::puzzle::solve::PuzzleMarkup;
+use crate::collections::FnvLinkedHashSet;
 
 /// A record of values known to be in a certain cage, in a certain vector
 pub struct CageVectorValueConstraint {

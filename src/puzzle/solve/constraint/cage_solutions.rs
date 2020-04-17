@@ -1,13 +1,13 @@
-use collections::FnvLinkedHashSet;
-use collections::Square;
-use puzzle::Operator;
-use puzzle::Puzzle;
-use puzzle::solve::CellDomain;
-use puzzle::solve::CellVariable;
-use puzzle::solve::markup::PuzzleMarkupChanges;
-use puzzle::solve::PuzzleMarkup;
+use crate::collections::FnvLinkedHashSet;
+use crate::collections::Square;
+use crate::puzzle::Operator;
+use crate::puzzle::Puzzle;
+use crate::puzzle::solve::CellDomain;
+use crate::puzzle::solve::CellVariable;
+use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+use crate::puzzle::solve::PuzzleMarkup;
 use super::Constraint;
-use puzzle::solve::cage_solutions::CageSolutions;
+use crate::puzzle::solve::cage_solutions::CageSolutions;
 
 /// Ensures that for every value in a cell domain, there is a possible solution of the corresponding cage
 /// with the value in that cell

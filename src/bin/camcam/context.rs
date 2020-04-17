@@ -1,9 +1,9 @@
-use puzzle_folder_builder::PuzzleFolderBuilder;
-use options::Options;
+use crate::puzzle_folder_builder::PuzzleFolderBuilder;
+use crate::options::Options;
 use std::path::{PathBuf, Path};
-use ::{DEFAULT_PATH, Result};
+use crate::{DEFAULT_PATH, Result};
 use std::fs;
-use cli_error::CliError;
+use crate::cli_error::CliError;
 
 type PathIterator = impl Iterator<Item=PathBuf>;
 
