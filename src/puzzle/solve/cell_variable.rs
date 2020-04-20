@@ -1,5 +1,5 @@
 use super::CellDomain;
-use self::CellVariable::*;
+use self::CellVariable::{Solved, Unsolved};
 
 #[derive(Clone)]
 pub enum CellVariable {
@@ -9,7 +9,7 @@ pub enum CellVariable {
 
 impl CellVariable {
 
-    pub fn unsolved_with_all(size: u32) -> CellVariable {
+    pub fn unsolved_with_all(size: usize) -> CellVariable {
         Unsolved(CellDomain::with_all(size))
     }
 

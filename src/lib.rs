@@ -1,8 +1,6 @@
 //! Generate and solve KenKen puzzles
 
-#![cfg_attr(feature="cargo-clippy", allow(doc_markdown))]
-#![feature(generators, generator_trait)]
-#![feature(vec_resize_default)]
+#![warn(trivial_numeric_casts)]
 
 #[macro_use]
 extern crate log;

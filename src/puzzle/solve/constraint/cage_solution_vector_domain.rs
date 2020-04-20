@@ -3,25 +3,25 @@ use crate::collections::square::SquareIndex;
 use crate::collections::square::VectorId;
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
-use crate::puzzle::Puzzle;
+use crate::puzzle::{Puzzle, CellRef};
 use crate::puzzle::solve::PuzzleMarkup;
 use crate::puzzle::solve::PuzzleMarkupChanges;
 use super::Constraint;
 
 pub struct CageSolutionVectorDomainConstraint {
-    cage_vector_cells: FnvHashMap<(u32, VectorId), FnvHashSet<SquareIndex>>,
-    dirty_cage_vectors: FnvLinkedHashSet<(u32, VectorId)>,
+    cage_vector_cells: FnvHashMap<(usize, VectorId), FnvHashSet<SquareIndex>>,
+    dirty_cage_vectors: FnvLinkedHashSet<(usize, VectorId)>,
 }
 
 impl CageSolutionVectorDomainConstraint {
     pub fn new(puzzle: &Puzzle) -> Self {
         let mut cage_vector_cells = FnvHashMap::default();
-        for (cage_index, cage) in puzzle.cages.iter().enumerate() {
-            for &index in &cage.cells {
-                for v in index.intersecting_vectors(puzzle.width as usize).to_vec() {
-                    cage_vector_cells.entry((cage_index as u32, v))
+        for cage in puzzle.cages().iter() {
+            for cell in cage.cells() {
+                for v in cell.index().intersecting_vectors(puzzle.width()).to_vec() {
+                    cage_vector_cells.entry((cage.index(), v))
                         .or_insert_with(FnvHashSet::default)
-                        .insert(index);
+                        .insert(cell.index());
                 }
             }
         }
@@ -36,19 +36,12 @@ impl CageSolutionVectorDomainConstraint {
 }
 
 impl Constraint for CageSolutionVectorDomainConstraint {
-    fn enforce_partial(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool {
-        while let Some((cage_index, vector_id)) = self.dirty_cage_vectors.pop_front() {
-            let count = enforce_cage_vector(puzzle, markup, cage_index, vector_id, changes);
-            if count > 0 { return true }
-        }
-        false
-    }
-
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
         for &(index, _) in &changes.cell_solutions {
-            let cage_index = puzzle.cage_map[index];
-            for v in index.intersecting_vectors(puzzle.width as usize).to_vec() {
-                let key = (cage_index, v);
+            let cell = puzzle.cell(index);
+            let cage = cell.cage();
+            for v in index.intersecting_vectors(puzzle.width()).to_vec() {
+                let key = (cage.index(), v);
                 let remove = self.cage_vector_cells.get_mut(&key).map_or(false, |cells| {
                     if cells.len() == 2 { true }
                     else {
@@ -63,8 +56,8 @@ impl Constraint for CageSolutionVectorDomainConstraint {
             }
         }
         for &index in changes.cell_domain_value_removals.keys() {
-            let cage_index = puzzle.cage_map[index];
-            for v in index.intersecting_vectors(puzzle.width as usize).to_vec() {
+            let cage_index = puzzle.cell(index).cage().index();
+            for v in index.intersecting_vectors(puzzle.width()).to_vec() {
                 let key = (cage_index, v);
                 if self.cage_vector_cells.contains_key(&key) {
                     self.dirty_cage_vectors.insert(key);
@@ -72,33 +65,44 @@ impl Constraint for CageSolutionVectorDomainConstraint {
             }
         }
     }
+
+    fn enforce_partial(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool {
+        while let Some((cage_index, vector_id)) = self.dirty_cage_vectors.pop_front() {
+            let count = enforce_cage_vector(puzzle, markup, cage_index, vector_id, changes);
+            if count > 0 { return true }
+        }
+        false
+    }
 }
 
-fn enforce_cage_vector(puzzle: &Puzzle, markup: &PuzzleMarkup, cage_index: u32, vector_id: VectorId, changes: &mut PuzzleMarkupChanges) -> u32 {
-    let cage_solutions = &markup.cage_solutions_set[cage_index as usize];
+fn enforce_cage_vector(puzzle: &Puzzle, markup: &PuzzleMarkup, cage_index: usize, vector_id: VectorId, changes: &mut PuzzleMarkupChanges) -> u32 {
+    let cage_solutions = &markup.cage_solutions()[cage_index];
     let soln_indices = cage_solutions.indices.iter().cloned().enumerate()
         .filter_map(|(i, sq_idx)| {
-            if vector_id.contains_sq_index(sq_idx, puzzle.width as usize) {
+            if vector_id.contains_sq_index(sq_idx, puzzle.width()) {
                 Some(i)
             } else { None }
         })
         .collect::<Vec<_>>();
-    let cage = &puzzle.get_cage(cage_index);
-    let cage_cells = cage.cells.iter().filter(|&&i| vector_id.contains_sq_index(i, puzzle.width as usize)).collect::<FnvHashSet<_>>();
-    let outide_domains = vector_id.iter_sq_pos(puzzle.width as usize)
+    let cage = puzzle.cage(cage_index);
+    let cage_cells = cage.cells()
+        .filter(|cell| vector_id.contains_sq_index(cell.index(), puzzle.width()))
+        .map(CellRef::index)
+        .collect::<FnvHashSet<_>>();
+    let outside_domains = vector_id.iter_sq_pos(puzzle.width())
         .filter_map(|i| {
             if cage_cells.contains(&i) { return None }
-            markup.cell_variables[i].unsolved().map(|d| (i, d))
+            markup.cells()[i].unsolved().map(|d| (i, d))
         })
         .collect::<Vec<_>>();
     let mut count = 0;
     'solutions: for (i, solution) in cage_solutions.solutions.iter().enumerate() {
         let values = soln_indices.iter().map(|&i| solution[i]).collect::<FnvHashSet<_>>();
-        for &(j, domain) in &outide_domains {
+        for &(j, domain) in &outside_domains {
             if domain.len() > values.len() { continue }
             if domain.iter().all(|v| values.contains(&v)) {
                 debug!("solution {:?} for cage at {:?} conflicts with cell domain at {:?}",
-                       solution, cage.cells[0].as_coord(puzzle.width as usize), j.as_coord(puzzle.width as usize));
+                       solution, cage.cell(0).coord(), puzzle.cell(j).coord());
                 changes.remove_cage_solution(cage_index, i);
                 count += 1;
                 continue 'solutions

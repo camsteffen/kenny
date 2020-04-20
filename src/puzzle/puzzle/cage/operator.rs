@@ -7,8 +7,8 @@ pub enum Operator { Add, Subtract, Multiply, Divide, Nop }
 impl Operator {
 
     /// Retrieve the character representation of the symbol
-    pub fn symbol(&self) -> Option<char> {
-        let symbol = match *self {
+    pub fn symbol(self) -> Option<char> {
+        let symbol = match self {
             Operator::Add      => '+',
             Operator::Subtract => '-',
             Operator::Multiply => '*',

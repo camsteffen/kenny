@@ -15,8 +15,8 @@ pub struct VectorValueCageConstraint {
 
 impl VectorValueCageConstraint {
     pub fn new(puzzle: &Puzzle) -> Self {
-        let dirty_vector_values = (0..puzzle.width as usize * 2).map(VectorId).flat_map(|v| {
-            (1..=puzzle.width as i32).map(move |i| (v, i))
+        let dirty_vector_values = (0..puzzle.width() * 2).map(VectorId).flat_map(|v| {
+            (1..=puzzle.width() as i32).map(move |i| (v, i))
         }).collect();
         Self {
             dirty_vector_values,
@@ -36,7 +36,7 @@ impl Constraint for VectorValueCageConstraint {
 
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
         for (&i, values) in &changes.cell_domain_value_removals {
-            for vector_id in i.intersecting_vectors(puzzle.width as usize).to_vec() {
+            for vector_id in i.intersecting_vectors(puzzle.width()).to_vec() {
                 for &value in values {
                     self.dirty_vector_values.insert((vector_id, value));
                 }
@@ -44,7 +44,7 @@ impl Constraint for VectorValueCageConstraint {
         }
 
         for &(sq_idx, value) in &changes.cell_solutions {
-            for vector_id in sq_idx.intersecting_vectors(puzzle.width as usize).to_vec() {
+            for vector_id in sq_idx.intersecting_vectors(puzzle.width()).to_vec() {
                 self.dirty_vector_values.remove(&(vector_id, value));
             }
         }
@@ -52,10 +52,10 @@ impl Constraint for VectorValueCageConstraint {
 }
 
 fn enforce_vector_value(vector: VectorId, value: i32, puzzle: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> u32 {
-    let mut cages = vector.iter_sq_pos(puzzle.width as usize).filter_map(|i| {
-        let has_value = markup.cell_variables[i].unsolved().map_or(false, |d| d.contains(value));
+    let mut cages = vector.iter_sq_pos(puzzle.width()).filter_map(|i| {
+        let has_value = markup.cells()[i].unsolved().map_or(false, |d| d.contains(value));
         if has_value {
-            Some(puzzle.cage_map[i])
+            Some(puzzle.cell(i).cage().index())
         } else {
             None
         }
@@ -67,9 +67,9 @@ fn enforce_vector_value(vector: VectorId, value: i32, puzzle: &Puzzle, markup: &
     if cages.any(|c| c != cage) {
         return 0
     }
-    let CageSolutions { indices, solutions, .. } = &markup.cage_solutions_set[cage as usize];
+    let CageSolutions { indices, solutions, .. } = &markup.cage_solutions()[cage as usize];
     let indices_in_vector = indices.iter().enumerate().filter_map(|(i, &sq_idx)| {
-        if vector.contains_sq_index(sq_idx, puzzle.width as usize) { Some(i) } else { None }
+        if vector.contains_sq_index(sq_idx, puzzle.width()) { Some(i) } else { None }
     }).collect::<Vec<_>>();
     debug_assert!(!indices_in_vector.is_empty());
     let mut count = 0;

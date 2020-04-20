@@ -18,7 +18,7 @@ impl VectorSolvedCellConstraint {
         }
     }
 
-    pub fn enforce_solved_cell(&mut self, cell_variables: &Square<CellVariable>, index: SquareIndex, value: i32, changes: &mut PuzzleMarkupChanges) -> u32 {
+    pub fn enforce_solved_cell(cell_variables: &Square<CellVariable>, index: SquareIndex, value: i32, changes: &mut PuzzleMarkupChanges) -> u32 {
         let puzzle_width = cell_variables.width();
         let surrounding_indices = index.intersecting_vectors(puzzle_width).to_vec().into_iter()
             .flat_map(|v| v.iter_sq_pos(puzzle_width))
@@ -38,8 +38,8 @@ impl Constraint for VectorSolvedCellConstraint {
     
     fn enforce_partial(&mut self, _: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool {
         while let Some(index) = self.solved_cells.pop() {
-            let value = markup.cell_variables[index].unwrap_solved();
-            let count = self.enforce_solved_cell(&markup.cell_variables, index, value, changes);
+            let value = markup.cells()[index].unwrap_solved();
+            let count = Self::enforce_solved_cell(&markup.cells(), index, value, changes);
             if count > 0 { return true }
         }
         false

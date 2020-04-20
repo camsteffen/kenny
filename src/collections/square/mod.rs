@@ -9,32 +9,28 @@ use std::fmt::Display;
 use std::fmt;
 use std::mem;
 use std::ops::Deref;
-use std::ops::DerefMut;
 use std::ops::Index;
 use std::ops::IndexMut;
-use std::slice::Chunks;
-use std::slice::ChunksMut;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct SquareIndex(pub usize);
 
 impl SquareIndex {
-
-    pub fn row(&self, square_width: usize) -> usize {
+    pub fn row(self, square_width: usize) -> usize {
         self.0 / square_width
     }
 
-    pub fn col(&self, square_width: usize) -> usize {
+    pub fn col(self, square_width: usize) -> usize {
         self.0 % square_width
     }
 
     /// Create a `Coord` using the index of an element in a `Square` and the size of the `Square`.
-    pub fn as_coord(&self, size: usize) -> Coord {
+    pub fn as_coord(self, size: usize) -> Coord {
         Coord([self.row(size), self.col(size)])
     }
 
-    pub fn shared_vector(&self, other: SquareIndex, width: usize) -> Option<VectorId> {
-        let SquareIndex(pos1) = *self;
+    pub fn shared_vector(self, other: SquareIndex, width: usize) -> Option<VectorId> {
+        let SquareIndex(pos1) = self;
         let SquareIndex(pos2) = other;
         if pos1 / width == pos2 / width {
             Some(VectorId::row(pos1 / width))
@@ -46,12 +42,29 @@ impl SquareIndex {
     }
 
     /// Returns an array with the row and column intersecting at the given position
-    pub fn intersecting_vectors(&self, size: usize) -> [VectorId; 2] {
-        let SquareIndex(pos) = *self;
+    pub fn intersecting_vectors(self, size: usize) -> [VectorId; 2] {
+        let SquareIndex(pos) = self;
         [
             VectorId::row(pos / size),
             VectorId::col(pos % size),
         ]
+    }
+}
+
+/// A value that can be converted to a [SquareIndex] given the square size
+pub trait AsSquareIndex {
+    fn as_index(self, size: usize) -> SquareIndex;
+}
+
+impl AsSquareIndex for usize {
+    fn as_index(self, _size: usize) -> SquareIndex {
+        SquareIndex(self)
+    }
+}
+
+impl AsSquareIndex for SquareIndex {
+    fn as_index(self, _size: usize) -> SquareIndex {
+        self
     }
 }
 
@@ -71,10 +84,9 @@ pub struct Square<T> {
 }
 
 impl<T> Square<T> {
-
     /// Creates a new square with a specified width and fill with the default value
     pub fn with_width(width: usize) -> Square<T>
-            where T: Clone + Default {
+        where T: Clone + Default {
         Self {
             width,
             elements: vec![Default::default(); width.pow(2)],
@@ -83,7 +95,7 @@ impl<T> Square<T> {
 
     /// Create a new `Square` of a specified width and fill with a specified value
     pub fn with_width_and_value(width: usize, val: T) -> Square<T>
-            where T: Clone {
+        where T: Clone {
         Square {
             width,
             elements: vec![val; width.pow(2)],
@@ -105,36 +117,22 @@ impl<T> Square<T> {
     }
 
     /// Returns an iterator over the rows of the square
-    pub fn rows(&self) -> Chunks<T> {
+    pub fn rows(&self) -> impl Iterator<Item=&[T]> {
         self.elements.chunks(self.width)
     }
 
     /// Returns a mutable iterator over the rows of the square
-    pub fn rows_mut(&mut self) -> ChunksMut<T> {
+    pub fn rows_mut(&mut self) -> impl Iterator<Item=&mut [T]> {
         self.elements.chunks_mut(self.width)
     }
 
     /// Returns an iterator over every element, paired with its `Coord`
-    pub fn iter_coord(&self) -> CoordIter<T> {
+    pub fn iter_coord(&self) -> impl Iterator<Item=(Coord, &T)> {
         CoordIter {
             size: self.width,
             index: 0,
             data: self.elements.as_slice(),
         }
-    }
-}
-
-impl<T> Deref for Square<T> {
-    type Target = [T];
-
-    fn deref(&self) -> &[T] {
-        &self.elements
-    }
-}
-
-impl<T> DerefMut for Square<T> {
-    fn deref_mut(&mut self) -> &mut [T] {
-        &mut self.elements
     }
 }
 
@@ -166,7 +164,7 @@ impl<T> IndexMut<SquareIndex> for Square<T> {
 }
 
 impl<T> fmt::Display for Square<T>
-where T: Display + Ord {
+    where T: Display + Ord {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let len = self.elements.iter().max().unwrap()
             .to_string().len();
@@ -193,7 +191,7 @@ impl<'a, T> Iterator for CoordIter<'a, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index >= self.size.pow(2) {
-            return None
+            return None;
         }
         let data = mem::replace(&mut self.data, &[]);
         let (first, remaining) = data.split_first().unwrap();

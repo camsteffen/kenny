@@ -3,15 +3,14 @@ use std::fmt::Debug;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use super::SquareIndex;
+use crate::collections::square::AsSquareIndex;
 
 /// A `Coord` struct represents coordinates of an element in a `Square`.
 #[derive(Clone, Copy)]
 pub struct Coord(pub [usize; 2]);
 
-impl Coord {
-
-    /// Convert to the index of a `Square`.
-    pub fn as_index(&self, size: usize) -> SquareIndex {
+impl AsSquareIndex for Coord {
+    fn as_index(self, size: usize) -> SquareIndex {
         SquareIndex(self[0] * size + self[1])
     }
 }

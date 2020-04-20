@@ -3,21 +3,21 @@ use crate::collections::square::SquareIndex;
 use crate::puzzle::Cage;
 use crate::puzzle::Operator;
 use crate::puzzle::Puzzle;
-use rand::Rng;
 use rand::thread_rng;
 use std::mem;
 use std::collections::VecDeque;
+use rand::seq::SliceRandom;
 
 const MAX_CAGE_SIZE: usize = 4;
 const MAX_AVG_CAGE_SIZE: f32 = 2.2;
 const CAGE_SIZE_DISTRIBUTION: f32 = 0.5;
 
-pub fn generate_puzzle(width: u32) -> Puzzle {
-    let (puzzle, _) = generate_puzzle_with_solution(width);
+pub fn generate_untested_puzzle(width: usize) -> Puzzle {
+    let (puzzle, _) = generate_untested_puzzle_with_solution(width);
     puzzle
 }
 
-pub fn generate_puzzle_with_solution(width: u32) -> (Puzzle, Square<i32>) {
+pub fn generate_untested_puzzle_with_solution(width: usize) -> (Puzzle, Square<i32>) {
     let solution = random_latin_square(width);
     debug!("Solution:\n{}", &solution);
     let cage_cells = generate_cage_cells(width);
@@ -25,17 +25,17 @@ pub fn generate_puzzle_with_solution(width: u32) -> (Puzzle, Square<i32>) {
         let values = cells.iter().map(|&i| solution[i]).collect::<Vec<_>>();
         let operator = random_operator(&values);
         let target = find_cage_target(operator, &values);
-        Cage { cells, operator, target }
+        Cage::new(target, operator, cells)
     }).collect();
     let puzzle = Puzzle::new(width, cages);
     (puzzle, solution)
 }
 
-fn random_latin_square(width: u32) -> Square<i32> {
+fn random_latin_square(width: usize) -> Square<i32> {
     let mut rng = thread_rng();
     let mut generate_seed = || {
         let mut seed = (0..width as i32).collect::<Vec<_>>();
-        rng.shuffle(&mut seed);
+        seed.shuffle(&mut rng);
         seed
     };
     let seeds = [generate_seed(), generate_seed()];
@@ -52,7 +52,7 @@ fn shuffled_inner_borders(square_width: usize) -> Vec<usize> {
     let mut rng = thread_rng();
     let num_borders = square_width * (square_width - 1) * 2;
     let mut borders = (0..num_borders).collect::<Vec<_>>();
-    rng.shuffle(&mut borders);
+    borders.shuffle(&mut rng);
     borders
 }
 
@@ -68,8 +68,8 @@ fn cells_touching_border(square_width: usize, border_id: usize) -> (SquareIndex,
     (SquareIndex(a), SquareIndex(b))
 }
 
-fn generate_cage_cells(puzzle_width: u32) -> Vec<Vec<SquareIndex>> {
-    let puzzle_width = puzzle_width as usize;
+fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<SquareIndex>> {
+    let puzzle_width = puzzle_width;
     let num_cells = puzzle_width.pow(2);
     let cage_map = (0..num_cells).collect();
     let mut cage_map = Square::from_vec(cage_map).unwrap();
@@ -81,9 +81,9 @@ fn generate_cage_cells(puzzle_width: u32) -> Vec<Vec<SquareIndex>> {
         for _ in 0..border_count {
             let border_id = borders.pop_front().unwrap();
             let (cell1, cell2) = cells_touching_border(puzzle_width, border_id);
-            let (mut cage1, mut cage2) = (cage_map[cell1], cage_map[cell2]);
-            if cage1 > cage2 { mem::swap(&mut cage1, &mut cage2) }
-            let cage_size = cages[cage1].len() + cages[cage2].len();
+            let (mut cage_a, mut cage_b) = (cage_map[cell1], cage_map[cell2]);
+            if cage_a > cage_b { mem::swap(&mut cage_a, &mut cage_b) }
+            let cage_size = cages[cage_a].len() + cages[cage_b].len();
             if cage_size != target_cage_size {
                 if cage_size > target_cage_size {
                     borders.push_back(border_id);
@@ -91,14 +91,14 @@ fn generate_cage_cells(puzzle_width: u32) -> Vec<Vec<SquareIndex>> {
                 continue
             }
             let a = cages.pop().unwrap();
-            if cage2 == cages.len() {
-                for &i in &a { cage_map[i] = cage1 }
-                cages[cage1].extend(a);
+            if cage_b == cages.len() {
+                for &i in &a { cage_map[i] = cage_a }
+                cages[cage_a].extend(a);
             } else {
-                for &i in &a { cage_map[i] = cage2 }
-                let b = mem::replace(&mut cages[cage2], a);
-                for &i in &b { cage_map[i] = cage1 }
-                cages[cage1].extend(b);
+                for &i in &a { cage_map[i] = cage_b }
+                let b = mem::replace(&mut cages[cage_b], a);
+                for &i in &b { cage_map[i] = cage_a }
+                cages[cage_a].extend(b);
             }
             if cages.len() == min_cage_count {
                 break 'target_cage_sizes
@@ -112,7 +112,7 @@ fn random_operator(values: &[i32]) -> Operator {
     if values.len() == 1 { return Operator::Nop }
     let mut rng = thread_rng();
     let operators = possible_operators(values);
-    *rng.choose(&operators).unwrap()
+    *operators.choose(&mut rng).unwrap()
 }
 
 fn possible_operators(values: &[i32]) -> Vec<Operator> {

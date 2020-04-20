@@ -14,8 +14,8 @@ use crate::puzzle::error::ParsePuzzleError;
 pub fn parse_puzzle(s: &str) -> Result<Puzzle, ParsePuzzleError> {
     let mut s = StringTokenIterator::new(s);
     let (i, token) = s.next_skip_space().ok_or("unexpected EOF")?;
-    let size = token.number().ok_or_else(|| format_parse_error("invalid size", &token, &i))?;
-    if size > u32::from((b'Z') - (b'A') + 1) {
+    let size = token.number().ok_or_else(|| format_parse_error("invalid size", &token, &i))? as usize;
+    if size > usize::from((b'Z') - (b'A') + 1) {
         return Err("size is too big".into())
     }
     let cage_cells = read_cage_cells(&mut s, size)?;
@@ -35,11 +35,7 @@ pub fn parse_puzzle(s: &str) -> Result<Puzzle, ParsePuzzleError> {
                 },
             }
             let operator = operator.unwrap_or(Operator::Nop);
-            let cage = Cage {
-                cells,
-                target: target as i32,
-                operator,
-            };
+            let cage = Cage::new(target as i32, operator, cells);
             Ok(cage)
         })
         .collect::<Result<_, _>>()?;
@@ -165,13 +161,13 @@ impl<'a> Iterator for StringTokenIterator<'a> {
     }
 }
 
-fn read_cage_cells(s: &mut StringTokenIterator, size: u32) -> Result<BTreeMap<char, Vec<SquareIndex>>, String> {
+fn read_cage_cells(s: &mut StringTokenIterator, size: usize) -> Result<BTreeMap<char, Vec<SquareIndex>>, ParsePuzzleError> {
     let mut cages = BTreeMap::new();
-    for cell in 0..(size * size) as usize {
+    for cell in 0..(size * size) {
         let (i, token) = s.next_skip_space().ok_or("unexpected EOF")?;
         let l = token.letter().ok_or_else(|| format_parse_error("invalid cage id", &token, &i))?;
         if !l.is_uppercase() {
-            return Err(format_parse_error("invalid cage id", &l, &i));
+            return Err(format_parse_error("invalid cage id", &l, &i).into());
         }
         cages.entry(l).or_insert_with(Vec::new).push(SquareIndex(cell));
     }

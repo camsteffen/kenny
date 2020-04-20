@@ -1,35 +1,48 @@
-use crate::DEFAULT_PUZZLE_WIDTH;
+use std::path::{PathBuf, Path};
 
+use failure::{err_msg, Fallible};
+
+use crate::{DEFAULT_PUZZLE_WIDTH, DEFAULT_PATH};
+
+#[derive(Clone)]
 pub struct Options {
     pub image_width: Option<u32>,
-    pub output_path: Option<String>,
-    pub source: Source,
-    pub solve: Option<Solve>,
-    pub save_image: bool,
+    output_path: Option<PathBuf>,
+    source: Source,
+    solve: Option<Solve>,
+    save_image: bool,
 }
 
 impl Options {
-    pub fn from_args() -> Self {
+    pub fn from_args() -> Fallible<Self> {
         Self::from_arg_matches(&clap_app().get_matches())
     }
 
-    fn from_arg_matches(matches: &clap::ArgMatches) -> Self {
-        Self {
+    fn from_arg_matches(matches: &clap::ArgMatches) -> Fallible<Self> {
+        let mut options = Self {
             image_width: matches.value_of("image_width")
                 .map(|s| s.parse().expect("invalid image width")),
-            output_path: matches.value_of("output_path").map(|s| s.to_owned()),
+            output_path: matches.value_of("output_path").map(PathBuf::from),
             source: match matches.value_of("input") {
                 Some(path) => Source::File(path.to_owned()),
-                None => Source::Generate(Generate {
-                    count: matches.value_of("count")
-                        .map(|s| s.parse::<u32>().expect("invalid count"))
-                        .unwrap_or(1),
-                    width: matches.value_of("width")
-                        .map(|s| s.parse::<u32>().expect("invalid width"))
-                        .unwrap_or(DEFAULT_PUZZLE_WIDTH),
-                    save_puzzle: matches.is_present("save_puzzle"),
-                    unsolvable: matches.is_present("unsolvable"),
-                }),
+                None => {
+                    let exclude_solvable = matches.is_present("exclude-unsolvable");
+                    let include_unsolvable = matches.is_present("include-unsolvable");
+                    if exclude_solvable && !include_unsolvable {
+                        return Err(err_msg("All puzzles are excluded"))
+                    }
+                    Source::Generate(Generate {
+                        count: matches.value_of("count")
+                            .map(|s| s.parse::<u32>().expect("invalid count"))
+                            .unwrap_or(1),
+                        width: matches.value_of("width")
+                            .map(|s| s.parse::<usize>().expect("invalid width"))
+                            .unwrap_or(DEFAULT_PUZZLE_WIDTH),
+                        save_puzzle: matches.is_present("save_puzzle"),
+                        exclude_solvable,
+                        include_unsolvable,
+                    })
+                },
             },
             solve: if matches.is_present("solve") {
                 Some(Solve {
@@ -38,7 +51,13 @@ impl Options {
                 })
             } else { None },
             save_image: matches.is_present("save_image"),
+        };
+        if options.save_any() {
+            options.output_path.get_or_insert_with(|| PathBuf::from(DEFAULT_PATH));
+        } else if options.output_path.is_some() {
+            return Err(err_msg("output path specified but nothing to save"))
         }
+        Ok(options)
     }
 
 
@@ -59,20 +78,58 @@ impl Options {
         }
         false
     }
+
+    pub fn output_path(&self) -> Option<&Path> {
+        self.output_path.as_deref()
+    }
+
+    pub fn source(&self) -> &Source {
+        &self.source
+    }
+
+    pub fn solve(&self) -> Option<&Solve> {
+        self.solve.as_ref()
+    }
+
+    pub fn save_image(&self) -> bool {
+        self.save_image
+    }
 }
 
+#[derive(Clone)]
 pub enum Source {
     File(String),
     Generate(Generate),
 }
 
-pub struct Generate {
-    pub count: u32,
-    pub width: u32,
-    pub save_puzzle: bool,
-    pub unsolvable: bool,
+impl Source {
+    /*
+    pub fn file(&self) -> Option<&str> {
+        match self {
+            Source::File(f) => Some(f),
+            _ => None,
+        }
+    }
+    */
+
+    pub fn generate(&self) -> Option<&Generate> {
+        match self {
+            Source::Generate(g) => Some(g),
+            _ => None,
+        }
+    }
 }
 
+#[derive(Clone)]
+pub struct Generate {
+    pub count: u32,
+    pub width: usize,
+    pub save_puzzle: bool,
+    pub exclude_solvable: bool,
+    pub include_unsolvable: bool,
+}
+
+#[derive(Clone)]
 pub struct Solve {
     pub save_image: bool,
     pub save_step_images: bool,
@@ -117,8 +174,12 @@ fn clap_app<'a>() -> clap::App<'a, 'a> {
             .requires("generate")
             .takes_value(true)
             .help("the number of puzzles to generate (and solve)"))
-        .arg(clap::Arg::with_name("unsolvable")
-            .long("unsolvable")
+        .arg(clap::Arg::with_name("exclude_solvable")
+            .long("exclude-solvable")
+            .requires("generate")
+            .help("exclude solvable generated puzzles"))
+        .arg(clap::Arg::with_name("include_unsolvable")
+            .long("include-unsolvable")
             .requires("generate")
             .help("include unsolvable generated puzzles"))
         .arg(clap::Arg::with_name("save_puzzle")

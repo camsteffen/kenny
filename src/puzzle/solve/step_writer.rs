@@ -6,6 +6,7 @@ use crate::puzzle::image::PuzzleImageBuilder;
 use crate::puzzle::solve::PuzzleMarkup;
 use std::path::Path;
 use std::path::PathBuf;
+use failure::{Fallible, ResultExt};
 
 pub struct StepWriter {
     image_width: Option<u32>,
@@ -14,21 +15,21 @@ pub struct StepWriter {
 }
 
 impl StepWriter {
-    pub fn write_next(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changed_cells: &[SquareIndex]) {
+    pub fn write_next(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changed_cells: &[SquareIndex]) -> Fallible<()> {
         let mut path = self.path.clone();
         path.push(format!("step_{}.jpeg", self.index));
         debug!("writing step image: {}", path.display());
         let mut builder = PuzzleImageBuilder::new(puzzle);
         builder
             .highlighted_cells(Some(changed_cells))
-            .cell_variables(Some(&markup.cell_variables));
+            .cell_variables(Some(&markup.cells()));
         if let Some(image_width) = self.image_width {
             builder.image_width(image_width);
         }
         let image = builder.build();
-        image.save(&path).unwrap_or_else(|e|
-            panic!(format!("unable to save step image to {}: {}", path.display(), e)));
+        image.save(&path).with_context(|e| format!("Error saving step image to {}: {}", path.display(), e))?;
         self.index += 1;
+        Ok(())
     }
 }
 

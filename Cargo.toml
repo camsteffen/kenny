@@ -2,22 +2,24 @@
 name = "camcam"
 version = "0.1.0"
 authors = ["Cameron Steffen <cam.steffen94@gmail.com>"]
+edition = '2018'
 
 [dependencies]
-clap = "2.27.1"
-env_logger = "0.4.2"
+clap = "2.33.0"
+env_logger = "0.7.1"
+failure = "0.1.7"
 fnv = "1.0.6"
-image = "0.12.3"
-itertools = "0.5.9"
-linked-hash-map = "0.5.0"
-linked_hash_set = "0.1.1"
-log = "0.3.7"
-num = "0.1.37"
-png = "0.6.2"
-rand = "0.3.15"
-rusttype = "0.2.1"
-tempfile = "3.0.1"
-vec_map = "0.8.0"
+image = "0.23.3"
+itertools = "0.9.0"
+linked-hash-map = "0.5.2"
+linked_hash_set = "0.1.3"
+log = "0.4.8"
+num = "0.2.1"
+png = "0.16.2"
+rand = "0.7.3"
+rusttype = "0.8.3"
+tempfile = "3.1.0"
+vec_map = "0.8.1"
 
 [[bin]]
 name = "camcam"

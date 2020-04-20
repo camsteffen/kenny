@@ -1,24 +1,26 @@
 //! solve KenKen puzzles
 
+use std::path::Path;
+use std::path::PathBuf;
+
+use failure::Fallible;
+
+use crate::puzzle::Puzzle;
+use crate::puzzle::solve::step_writer::StepWriterBuilder;
+
+pub use self::cell_domain::CellDomain;
+pub use self::cell_variable::CellVariable;
+use self::constraint::apply_unary_constraints;
+use self::constraint::constraint_propagation;
+pub use self::markup::PuzzleMarkup;
+pub use self::markup::PuzzleMarkupChanges;
+
 mod cage_solutions;
 mod cell_domain;
 mod cell_variable;
 mod constraint;
 mod markup;
 mod step_writer;
-
-pub use self::cell_domain::CellDomain;
-pub use self::cell_variable::CellVariable;
-pub use self::markup::PuzzleMarkup;
-
-use crate::puzzle::Puzzle;
-use self::constraint::apply_unary_constraints;
-use self::constraint::constraint_propagation;
-use self::markup::PuzzleMarkupChanges;
-use std::path::PathBuf;
-use std::path::Path;
-use crate::puzzle::solve::step_writer::StepWriterBuilder;
-use crate::puzzle::error::SolveError;
 
 pub struct PuzzleSolver<'a> {
     puzzle: &'a Puzzle,
@@ -47,7 +49,7 @@ impl<'a> PuzzleSolver<'a> {
         self
     }
 
-    pub fn solve(&self) -> Result<PuzzleMarkup, SolveError> {
+    pub fn solve(&self) -> Fallible<PuzzleMarkup> {
         let mut changes = PuzzleMarkupChanges::default();
         apply_unary_constraints(self.puzzle, &mut changes);
         let mut markup = PuzzleMarkup::new(self.puzzle);
@@ -60,9 +62,9 @@ impl<'a> PuzzleSolver<'a> {
             builder.build()
         });
         if let Some(step_writer) = step_writer.as_mut() {
-            step_writer.write_next(self.puzzle, &markup, &[]);
+            step_writer.write_next(self.puzzle, &markup, &[])?;
         }
-        constraint_propagation(self.puzzle, &mut markup, &mut changes, step_writer.as_mut());
+        constraint_propagation(self.puzzle, &mut markup, &mut changes, step_writer.as_mut())?;
         Ok(markup)
     }
 }

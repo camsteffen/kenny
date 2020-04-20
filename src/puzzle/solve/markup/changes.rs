@@ -5,7 +5,7 @@ use fnv::FnvHashMap;
 pub struct PuzzleMarkupChanges {
     pub cell_domain_value_removals: FnvHashMap<SquareIndex, Vec<i32>>,
     pub cell_solutions: Vec<(SquareIndex, i32)>,
-    pub cage_solution_removals: FnvHashMap<u32, Vec<usize>>,
+    pub cage_solution_removals: FnvHashMap<usize, Vec<usize>>,
 }
 
 impl PuzzleMarkupChanges {
@@ -22,17 +22,18 @@ impl PuzzleMarkupChanges {
     }
 
     pub fn remove_value_from_cell(&mut self, index: SquareIndex, value: i32) {
-        self.cell_domain_value_removals.entry(index).or_insert_with(Vec::new).push(value);
+        self.cell_domain_value_removals.entry(index)
+            .or_insert_with(Vec::new)
+            .push(value);
     }
 
     pub fn solve_cell(&mut self, index: SquareIndex, value: i32) {
         self.cell_solutions.push((index, value));
     }
 
-    pub fn remove_cage_solution(&mut self, cage_index: u32, solution_index: usize) {
-        if cage_index == 0 {
-            debug!("der");
-        }
-        self.cage_solution_removals.entry(cage_index).or_insert_with(Vec::new).push(solution_index);
+    pub fn remove_cage_solution(&mut self, cage_index: usize, solution_index: usize) {
+        self.cage_solution_removals.entry(cage_index)
+            .or_insert_with(Vec::new)
+            .push(solution_index);
     }
 }

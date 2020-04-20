@@ -2,19 +2,19 @@
 
 extern crate rusttype;
 
-const BLACK: Rgb<u8> = Rgb { data: [0; 3] };
-const WHITE: Rgb<u8> = Rgb { data: [255; 3] };
+const BLACK: Rgb<u8> = Rgb([0; 3]);
+const WHITE: Rgb<u8> = Rgb([255; 3]);
 
-const COLOR_CELL_BORDER:  Rgb<u8> = Rgb { data: [205; 3] };
+const COLOR_CELL_BORDER:  Rgb<u8> = Rgb([205; 3]);
 const COLOR_CAGE_BORDER: Rgb<u8> = BLACK;
 const COLOR_BG: Rgb<u8> = WHITE;
-const COLOR_HIGHLIGHT_BG: Rgb<u8> = Rgb { data: [255, 255, 150] };
+const COLOR_HIGHLIGHT_BG: Rgb<u8> = Rgb([255, 255, 150]);
 
 const BORDER_CELL_RATIO: u32 = 25;
 const DEFAULT_CELL_WIDTH: u32 = 60;
 
 use crate::collections::Square;
-use crate::collections::square::Coord;
+use crate::collections::square::{Coord, AsSquareIndex};
 use crate::collections::square::SquareIndex;
 use fnv::FnvHashSet;
 use image::Pixel;
@@ -45,12 +45,12 @@ impl<'a> PuzzleImageBuilder<'a> {
 
     pub fn new(puzzle: &'a Puzzle) -> Self {
         let font_data = include_bytes!("../../res/Roboto-Regular.ttf");
-        let font_collection = FontCollection::from_bytes(font_data as &[u8]);
+        let font_collection = FontCollection::from_bytes(font_data as &[u8]).expect("Error loading font");
         let font = font_collection.font_at(0).expect("load font");
 
         let cell_width = DEFAULT_CELL_WIDTH;
         let border_width = Self::calc_border_width(cell_width);
-        let image_width = Self::calc_image_width(cell_width, puzzle.width, border_width);
+        let image_width = Self::calc_image_width(cell_width, puzzle.width(), border_width);
 
         Self {
             puzzle,
@@ -66,13 +66,13 @@ impl<'a> PuzzleImageBuilder<'a> {
     pub fn cell_width(&mut self, cell_width: u32) -> &mut Self {
         self.cell_width = cell_width;
         self.border_width = Self::calc_border_width(cell_width);
-        self.image_width = Self::calc_image_width(cell_width, self.puzzle.width as u32, self.border_width);
+        self.image_width = Self::calc_image_width(cell_width, self.puzzle.width(), self.border_width);
         self
     }
 
     pub fn image_width(&mut self, image_width: u32) -> &mut Self {
         let a = BORDER_CELL_RATIO.checked_mul(image_width).expect("image width is too big");
-        let b = BORDER_CELL_RATIO * self.puzzle.width as u32 + 1;
+        let b = BORDER_CELL_RATIO * self.puzzle.width() as u32 + 1;
         self.cell_width(a / b)
     }
 
@@ -89,7 +89,7 @@ impl<'a> PuzzleImageBuilder<'a> {
     pub fn build(&self) -> RgbImage {
         let mut buffer = match self.highlighted_cells {
             Some(highlighted_cells) =>
-                Self::buffer_with_highlighted_cells(highlighted_cells, self.image_width, self.cell_width, self.puzzle.width),
+                Self::buffer_with_highlighted_cells(highlighted_cells, self.image_width, self.cell_width, self.puzzle.width()),
             None => RgbImage::from_pixel(self.image_width, self.image_width, COLOR_BG),
         };
         self.draw_grid(&mut buffer);
@@ -104,16 +104,16 @@ impl<'a> PuzzleImageBuilder<'a> {
         cell_width / BORDER_CELL_RATIO
     }
 
-    fn calc_image_width(cell_width: u32, puzzle_width: u32, border_width: u32) -> u32 {
+    fn calc_image_width(cell_width: u32, puzzle_width: usize, border_width: u32) -> u32 {
         cell_width * puzzle_width as u32 + border_width
     }
 
     fn buffer_with_highlighted_cells(highlighted_cells: &[SquareIndex], image_width: u32, cell_width: u32,
-                                     puzzle_width: u32) -> RgbImage {
+                                     puzzle_width: usize) -> RgbImage {
         let highlighted_cells = highlighted_cells.iter().cloned().collect::<FnvHashSet<_>>();
         RgbImage::from_fn(image_width, image_width, |i, j| {
             let index = Coord([(j / cell_width) as usize, (i / cell_width) as usize])
-                .as_index(puzzle_width as usize);
+                .as_index(puzzle_width);
             if highlighted_cells.contains(&index) {
                 COLOR_HIGHLIGHT_BG
             } else {
@@ -123,8 +123,8 @@ impl<'a> PuzzleImageBuilder<'a> {
     }
 
     fn draw_grid(&self, buffer: &mut RgbImage) {
-        let image_width = self.cell_width * self.puzzle.width as u32 + self.border_width;
-        let cells_width = self.cell_width * self.puzzle.width as u32;
+        let image_width = self.cell_width * self.puzzle.width() as u32 + self.border_width;
+        let cells_width = self.cell_width * self.puzzle.width() as u32;
 
         // draw outer border
         draw_rectangle(buffer, 0, 0, cells_width, self.border_width, COLOR_CAGE_BORDER);
@@ -133,11 +133,11 @@ impl<'a> PuzzleImageBuilder<'a> {
         draw_rectangle(buffer, 0, self.border_width, self.border_width, image_width, COLOR_CAGE_BORDER);
 
         // draw horizontal line segments
-        for i in 1..self.puzzle.width as usize { // row
-            for j in 0..self.puzzle.width as usize { // col
+        for i in 1..self.puzzle.width() { // row
+            for j in 0..self.puzzle.width() { // col
                 let pos1 = Coord([i - 1, j]);
                 let pos2 = Coord([i, j]);
-                let color = if self.puzzle.cage_index_at(pos1) == self.puzzle.cage_index_at(pos2) {
+                let color = if self.puzzle.cell(pos1).cage().index() == self.puzzle.cell(pos2).cage().index() {
                     COLOR_CELL_BORDER
                 } else {
                     COLOR_CAGE_BORDER
@@ -151,11 +151,11 @@ impl<'a> PuzzleImageBuilder<'a> {
         }
 
         // draw vertical line segments
-        for i in 0..self.puzzle.width as usize { // row
-            for j in 1..self.puzzle.width as usize { // col
+        for i in 0..self.puzzle.width() { // row
+            for j in 1..self.puzzle.width() { // col
                 let pos1 = Coord([i, j - 1]);
                 let pos2 = Coord([i, j]);
-                let color = if self.puzzle.cage_index_at(pos1) == self.puzzle.cage_index_at(pos2) {
+                let color = if self.puzzle.cell(pos1).cage().index() == self.puzzle.cell(pos2).cage().index() {
                     COLOR_CELL_BORDER
                 } else {
                     COLOR_CAGE_BORDER
@@ -169,15 +169,15 @@ impl<'a> PuzzleImageBuilder<'a> {
         }
 
         // draw intersections
-        for i in 1..self.puzzle.width as usize {
-            for j in 1..self.puzzle.width as usize {
-                let first = self.puzzle.cage_index_at(Coord([i - 1, j - 1]));
+        for i in 1..self.puzzle.width() {
+            for j in 1..self.puzzle.width() {
+                let first = self.puzzle.cell(Coord([i - 1, j - 1])).cage().index();
                 let pos = [
                     Coord([i - 1, j]),
                     Coord([i, j - 1]),
                     Coord([i, j]),
                 ];
-                let color = if pos.iter().all(|pos| self.puzzle.cage_index_at(*pos) == first) {
+                let color = if pos.iter().all(|pos| self.puzzle.cell(*pos).cage().index() == first) {
                     COLOR_CELL_BORDER
                 } else {
                     COLOR_CAGE_BORDER
@@ -195,14 +195,13 @@ impl<'a> PuzzleImageBuilder<'a> {
         let scale = Scale::uniform(self.cell_width as f32 * 0.25);
         let v_metrics = self.font.v_metrics(scale);
 
-        for cage in &self.puzzle.cages {
-            let text = match cage.operator.symbol() {
-                Some(symbol) => format!("{}{}", cage.target, symbol),
-                None => cage.target.to_string(),
+        for cage in self.puzzle.cages().iter() {
+            let text = match cage.operator().symbol() {
+                Some(symbol) => format!("{}{}", cage.target(), symbol),
+                None => cage.target().to_string(),
             };
 
-            let index = *cage.cells.iter().min().unwrap();
-            let pos = index.as_coord(self.puzzle.width as usize);
+            let pos = *cage.cells().min_by_key(|cell| cell.index()).unwrap().coord();
 
             let pad = self.cell_width / 16;
             let offset = point(
@@ -246,7 +245,7 @@ impl<'a> PuzzleImageBuilder<'a> {
             let point = point(
                 (pos[1] as u32 * self.cell_width + self.border_width + 1) as f32 + char_x as f32 * v_metrics.ascent,
                 ((pos[0] as u32 + 1) * self.cell_width - 2) as f32 - char_y as f32 * v_metrics.ascent);
-            let glyph = self.font.glyph(c).expect(&format!("No glyph for {}", c))
+            let glyph = self.font.glyph(c)
                 .scaled(scale)
                 .positioned(point);
             overlay_glyph(buffer, &glyph);
@@ -266,7 +265,7 @@ impl<'a> PuzzleImageBuilder<'a> {
         let mut chars = s.chars();
         let c = chars.next().unwrap();
         if chars.next().is_some() { panic!("{} has too many characters", value) }
-        let glyph = self.font.glyph(c).unwrap_or_else(|| panic!("No glyph for {}", c))
+        let glyph = self.font.glyph(c)
             .scaled(scale);
         let h_metrics = glyph.h_metrics();
         let x = (pos[1] as u32 * self.cell_width + self.border_width) as f32 + ((self.cell_width - self.border_width) as f32 - h_metrics.advance_width) / 2.0;

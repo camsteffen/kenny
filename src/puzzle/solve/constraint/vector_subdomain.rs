@@ -22,7 +22,7 @@ impl VectorSubdomainConstraint {
         }
     }
 
-    fn enforce_vector(&self, cell_variables: &Square<CellVariable>, vector_id: VectorId, change: &mut PuzzleMarkupChanges) -> u32 {
+    fn enforce_vector(cell_variables: &Square<CellVariable>, vector_id: VectorId, change: &mut PuzzleMarkupChanges) -> u32 {
         let size = cell_variables.width();
 
         // organize cells by domain size
@@ -45,7 +45,7 @@ impl VectorSubdomainConstraint {
             cells = cells.into_iter().merge(cells2).collect();
             let max_size = i + 2;
             'combinations: for cells in cells.iter().cloned().combinations(max_size) {
-                let mut domain = CellDomain::new(size as u32);
+                let mut domain = CellDomain::new(size);
                 for &cell in &cells {
                     for j in cell_variables[cell].unsolved().unwrap() {
                         if domain.insert(j) && domain.len() > max_size {
@@ -81,7 +81,7 @@ impl VectorSubdomainConstraint {
 impl Constraint for VectorSubdomainConstraint {
     fn enforce_partial(&mut self, _: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool {
         while let Some(vector_id) = self.dirty_vecs.front().cloned() {
-            let count = self.enforce_vector(&markup.cell_variables, vector_id, changes);
+            let count = Self::enforce_vector(&markup.cells(), vector_id, changes);
             if count == 0 {
                 self.dirty_vecs.pop_front();
             } else {
@@ -93,7 +93,7 @@ impl Constraint for VectorSubdomainConstraint {
 
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
         for &index in changes.cell_domain_value_removals.keys() {
-            for &vector_id in &index.intersecting_vectors(puzzle.width as usize) {
+            for &vector_id in &index.intersecting_vectors(puzzle.width()) {
                 self.dirty_vecs.insert(vector_id);
             }
         }
