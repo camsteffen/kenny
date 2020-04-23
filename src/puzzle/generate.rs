@@ -7,6 +7,7 @@ use rand::thread_rng;
 use std::mem;
 use std::collections::VecDeque;
 use rand::seq::SliceRandom;
+use std::convert::TryInto;
 
 const MAX_CAGE_SIZE: usize = 4;
 const MAX_AVG_CAGE_SIZE: f32 = 2.2;
@@ -39,7 +40,7 @@ fn random_latin_square(width: usize) -> Square<i32> {
         seed
     };
     let seeds = [generate_seed(), generate_seed()];
-    let mut square: Square<i32> = Square::with_width_and_value(width as usize, 0);
+    let mut square: Square<i32> = Square::with_width_and_value(width, 0);
     for (i, row) in square.rows_mut().enumerate() {
         for (j, element) in row.iter_mut().enumerate() {
             *element = (seeds[0][i] + seeds[1][j]) % width as i32 + 1;
@@ -65,17 +66,16 @@ fn cells_touching_border(square_width: usize, border_id: usize) -> (SquareIndex,
         let c = a / b * square_width + a % b;
         (c, c + 1)
     };
-    (SquareIndex(a), SquareIndex(b))
+    (a.into(), b.into())
 }
 
 fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<SquareIndex>> {
-    let puzzle_width = puzzle_width;
     let num_cells = puzzle_width.pow(2);
-    let cage_map = (0..num_cells).collect();
-    let mut cage_map = Square::from_vec(cage_map).unwrap();
-    let mut cages = (0..num_cells).map(|i| vec![SquareIndex(i)]).collect::<Vec<_>>();
+    let mut cage_map: Square<usize> = (0..num_cells).collect::<Vec<_>>()
+        .try_into().unwrap();
+    let mut cages: Vec<Vec<SquareIndex>> = (0..num_cells).map(|i| vec![i.into()]).collect();
     let min_cage_count = (num_cells as f32 / MAX_AVG_CAGE_SIZE) as usize;
-    let mut borders =  VecDeque::from(shuffled_inner_borders(puzzle_width));
+    let mut borders = VecDeque::from(shuffled_inner_borders(puzzle_width));
     'target_cage_sizes: for target_cage_size in 2..=MAX_CAGE_SIZE {
         let border_count = (borders.len() as f32 * CAGE_SIZE_DISTRIBUTION) as usize;
         for _ in 0..border_count {

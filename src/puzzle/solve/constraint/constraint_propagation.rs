@@ -32,9 +32,9 @@ pub fn constraint_propagation(
         let has_changes = constraints.iter_mut().any(|c|
             c.enforce_partial(puzzle, markup, changes));
         if !has_changes { break }
-        markup.sync_changes(changes);
+        markup.sync_changes(puzzle, changes);
         if let Some(step_writer) = &mut step_writer {
-            let changed_cells = changes.cell_domain_value_removals.keys().cloned().collect::<Vec<_>>();
+            let changed_cells = changes.cell_domain_value_removals.keys().copied().collect::<Vec<_>>();
             step_writer.write_next(puzzle, markup, &changed_cells)?;
         }
         loop_count += 1;

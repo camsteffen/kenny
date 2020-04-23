@@ -169,7 +169,7 @@ fn read_cage_cells(s: &mut StringTokenIterator, size: usize) -> Result<BTreeMap<
         if !l.is_uppercase() {
             return Err(format_parse_error("invalid cage id", &l, &i).into());
         }
-        cages.entry(l).or_insert_with(Vec::new).push(SquareIndex(cell));
+        cages.entry(l).or_insert_with(Vec::new).push(cell.into());
     }
     Ok(cages)
 }

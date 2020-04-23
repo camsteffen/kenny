@@ -1,6 +1,6 @@
 use crate::collections::Square;
 use crate::collections::square::SquareIndex;
-use crate::puzzle::Puzzle;
+use crate::puzzle::{Puzzle, CellRef};
 use crate::puzzle::solve::CellVariable;
 use crate::puzzle::solve::markup::PuzzleMarkupChanges;
 use crate::puzzle::solve::PuzzleMarkup;
@@ -18,28 +18,24 @@ impl VectorSolvedCellConstraint {
         }
     }
 
-    pub fn enforce_solved_cell(cell_variables: &Square<CellVariable>, index: SquareIndex, value: i32, changes: &mut PuzzleMarkupChanges) -> u32 {
-        let puzzle_width = cell_variables.width();
-        let surrounding_indices = index.intersecting_vectors(puzzle_width).to_vec().into_iter()
-            .flat_map(|v| v.iter_sq_pos(puzzle_width))
-            .filter(|&i| cell_variables[i].unsolved_and_contains(value));
-        let mut count = 0;
-        for i in surrounding_indices {
-            changes.remove_value_from_cell(i, value);
-            count += 1;
-        }
-        debug!("removed {} instances of {} surrounding solved cell at {:?}", count, value,
-            index.as_coord(puzzle_width));
+    pub fn enforce_solved_cell(puzzle: &Puzzle, cell_variables: &Square<CellVariable>, cell: CellRef, value: i32, changes: &mut PuzzleMarkupChanges) -> u32 {
+        let count = cell.vectors().iter().copied()
+            .flat_map(|v| puzzle.vector_cells(v))
+            .filter(|cell| cell_variables[cell.index()].unsolved_and_contains(value))
+            .map(|cell| changes.remove_value_from_cell(cell.index(), value))
+            .count() as u32;
+        debug!("removed {} instances of {} surrounding solved cell at {:?}", count, value, cell.coord());
         count
     }
 }
 
 impl Constraint for VectorSolvedCellConstraint {
     
-    fn enforce_partial(&mut self, _: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool {
+    fn enforce_partial(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool {
         while let Some(index) = self.solved_cells.pop() {
+            let cell = puzzle.cell(index);
             let value = markup.cells()[index].unwrap_solved();
-            let count = Self::enforce_solved_cell(&markup.cells(), index, value, changes);
+            let count = Self::enforce_solved_cell(puzzle, &markup.cells(), cell, value, changes);
             if count > 0 { return true }
         }
         false

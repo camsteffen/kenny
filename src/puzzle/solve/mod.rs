@@ -53,7 +53,7 @@ impl<'a> PuzzleSolver<'a> {
         let mut changes = PuzzleMarkupChanges::default();
         apply_unary_constraints(self.puzzle, &mut changes);
         let mut markup = PuzzleMarkup::new(self.puzzle);
-        markup.sync_changes(&mut changes);
+        markup.sync_changes(self.puzzle, &mut changes);
         let mut step_writer = self.steps.as_ref().map(|steps| {
             let mut builder = StepWriterBuilder::new(&steps.path);
             if let Some(image_width) = steps.image_width {

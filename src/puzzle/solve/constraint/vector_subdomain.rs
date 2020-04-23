@@ -1,4 +1,4 @@
-use crate::collections::square::VectorId;
+use crate::collections::square::{VectorId, IsSquare};
 use crate::collections::square::Square;
 use crate::collections::square::SquareIndex;
 use crate::puzzle::solve::CellVariable;
@@ -8,17 +8,17 @@ use crate::puzzle::solve::markup::PuzzleMarkupChanges;
 use crate::puzzle::Puzzle;
 use crate::puzzle::solve::PuzzleMarkup;
 use super::Constraint;
-use crate::collections::FnvLinkedHashSet;
+use crate::collections::LinkedAHashSet;
 
 pub struct VectorSubdomainConstraint {
-    dirty_vecs: FnvLinkedHashSet<VectorId>,
+    dirty_vecs: LinkedAHashSet<VectorId>,
 }
 
 impl VectorSubdomainConstraint {
 
     pub fn new() -> Self {
         Self {
-            dirty_vecs: FnvLinkedHashSet::default(),
+            dirty_vecs: Default::default(),
         }
     }
 
@@ -28,7 +28,7 @@ impl VectorSubdomainConstraint {
         // organize cells by domain size
         let mut cells_by_domain_size = vec![Vec::new(); size - 3];
         for i in 0..size {
-            let sq_pos = vector_id.vec_pos_to_sq_pos(i, size);
+            let sq_pos = cell_variables.vector_point(vector_id, i);
             if let Some(domain) = cell_variables[sq_pos].unsolved() {
                 let len = domain.len();
                 if len < size - 1 {
@@ -44,7 +44,7 @@ impl VectorSubdomainConstraint {
         'domain_sizes: for (i, cells2) in cells_by_domain_size.into_iter().enumerate().filter(|(_, cells)| !cells.is_empty()) {
             cells = cells.into_iter().merge(cells2).collect();
             let max_size = i + 2;
-            'combinations: for cells in cells.iter().cloned().combinations(max_size) {
+            'combinations: for cells in cells.iter().copied().combinations(max_size) {
                 let mut domain = CellDomain::new(size);
                 for &cell in &cells {
                     for j in cell_variables[cell].unsolved().unwrap() {
@@ -54,11 +54,11 @@ impl VectorSubdomainConstraint {
                     }
                 }
                 debug!("values {:?} are in cells {:?}", domain.iter().collect::<Vec<_>>(),
-                    cells.iter().map(|i| i.as_coord(size)).collect::<Vec<_>>());
-                let mut iter = cells.iter().cloned();
+                    cells.iter().map(|&i| cell_variables.coord_at(i)).collect::<Vec<_>>());
+                let mut iter = cells.iter().copied();
                 let mut cell = iter.next();
                 for i in 0..size {
-                    let sq_pos = vector_id.vec_pos_to_sq_pos(i, size);
+                    let sq_pos = cell_variables.vector_point(vector_id, i);
                     let in_group = cell.map_or(false, |i| sq_pos == i);
                     if in_group {
                         cell = iter.next();
@@ -80,7 +80,7 @@ impl VectorSubdomainConstraint {
 
 impl Constraint for VectorSubdomainConstraint {
     fn enforce_partial(&mut self, _: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool {
-        while let Some(vector_id) = self.dirty_vecs.front().cloned() {
+        while let Some(vector_id) = self.dirty_vecs.front().copied() {
             let count = Self::enforce_vector(&markup.cells(), vector_id, changes);
             if count == 0 {
                 self.dirty_vecs.pop_front();
@@ -93,7 +93,7 @@ impl Constraint for VectorSubdomainConstraint {
 
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
         for &index in changes.cell_domain_value_removals.keys() {
-            for &vector_id in &index.intersecting_vectors(puzzle.width()) {
+            for vector_id in puzzle.cell(index).vectors().iter().copied() {
                 self.dirty_vecs.insert(vector_id);
             }
         }

@@ -1,3 +1,4 @@
+
 #[derive(Clone)]
 pub struct RangeSet {
     size: usize,
@@ -25,12 +26,12 @@ impl RangeSet {
     }
 
     pub fn insert(&mut self, n: usize) -> bool {
-        let missing = !self.domain[n];
-        if missing {
-            self.domain[n] = true;
-            self.size += 1
+        if self.domain[n] {
+            return false
         }
-        missing
+        self.domain[n] = true;
+        self.size += 1;
+        true
     }
 
     pub fn is_empty(&self) -> bool {
@@ -38,12 +39,12 @@ impl RangeSet {
     }
 
     pub fn remove(&mut self, n: usize) -> bool {
-        let exists = self.domain[n];
-        if exists {
-            self.domain[n] = false;
-            self.size -= 1;
+        if !self.domain[n] {
+            return false
         }
-        exists
+        self.domain[n] = false;
+        self.size -= 1;
+        true
     }
 
     pub fn contains(&self, n: usize) -> bool {

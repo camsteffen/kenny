@@ -1,11 +1,10 @@
-use fnv::FnvHashSet;
 use std::hash::Hash;
 use std::iter::FromIterator;
 
 /// A stack that also behaves like a set (it cannot contain duplicate values).
 /// It is optimized to work with small values.
 pub struct SetStack<T> {
-    set: FnvHashSet<T>,
+    set: AHashSet<T>,
     queue: Vec<T>,
 }
 
@@ -13,7 +12,7 @@ impl<T: Hash + Eq + Copy> SetStack<T> {
 
     pub fn new() -> Self {
         Self {
-            set: FnvHashSet::default(),
+            set: AHashSet::default(),
             queue: Vec::new(),
         }
     }

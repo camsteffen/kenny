@@ -20,6 +20,7 @@ use camcam::puzzle::solve::PuzzleSolver;
 
 use crate::context::{Context, PuzzleContext};
 use crate::options::Options;
+use std::iter;
 
 mod context;
 mod options;
@@ -44,7 +45,7 @@ fn puzzles_iter(options: &Options) -> Box<dyn Iterator<Item=Fallible<Puzzle>>> {
     match options.source() {
         options::Source::File(path) => {
             let path = PathBuf::from(path);
-            Box::new(std::iter::once_with(move || {
+            Box::new(iter::once_with(move || {
                 println!("reading puzzle from \"{}\"", path.display());
                 Puzzle::from_file(path)
             }))
@@ -118,12 +119,14 @@ fn on_do_solve_puzzle(context: &PuzzleContext, solve_options: &options::Solve) -
     println!("Solving puzzle");
     let solver = build_solver(context)?;
     let markup = solver.solve()?;
-    let solved = markup.is_solved();
-    if solved {
+    let solved = if let Some(solution) = markup.solution() {
+        assert!(context.puzzle().verify_solution(&solution));
         println!("Puzzle solved");
+        true
     } else {
         println!("Puzzle could not be solved");
-    }
+        false
+    };
 
     if let options::Source::Generate(context) = context.options().source() {
         if !context.include_unsolvable && !solved {

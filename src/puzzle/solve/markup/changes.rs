@@ -1,11 +1,11 @@
 use crate::collections::square::SquareIndex;
-use fnv::FnvHashMap;
+use ahash::AHashMap;
 
 #[derive(Default)]
 pub struct PuzzleMarkupChanges {
-    pub cell_domain_value_removals: FnvHashMap<SquareIndex, Vec<i32>>,
+    pub cell_domain_value_removals: AHashMap<SquareIndex, Vec<i32>>,
     pub cell_solutions: Vec<(SquareIndex, i32)>,
-    pub cage_solution_removals: FnvHashMap<usize, Vec<usize>>,
+    pub cage_solution_removals: AHashMap<usize, Vec<usize>>,
 }
 
 impl PuzzleMarkupChanges {

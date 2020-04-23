@@ -24,4 +24,20 @@ pub trait Constraint {
     /// Partially enforces this constraint on the current puzzle. The constraint will be checked until one unit of
     /// change is found and added to `changes`. Returns `false` if no changes are found.
     fn enforce_partial(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool;
+
+    // TODO remove default implementation
+    // TODO use this
+    fn state(&self) -> State {
+        State::PENDING
+    }
+}
+
+pub enum State {
+    /// There is pending work to determine if this constraint is satisfied.
+    PENDING,
+    /// An inconsistency has been detected with this constraint on the puzzle markup.
+    /// In other words, there are puzzle markup changes ready.
+    INCONSISTENT,
+    /// The constraint is satisfied (with the last seen puzzle markup). No pending work.
+    SATISFIED,
 }

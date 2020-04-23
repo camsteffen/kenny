@@ -1,5 +1,4 @@
-use crate::collections::FnvLinkedHashSet;
-use crate::collections::Square;
+use crate::collections::{Square, LinkedAHashSet};
 use crate::puzzle::Operator;
 use crate::puzzle::Puzzle;
 use crate::puzzle::solve::CellDomain;
@@ -8,11 +7,12 @@ use crate::puzzle::solve::markup::PuzzleMarkupChanges;
 use crate::puzzle::solve::PuzzleMarkup;
 use super::Constraint;
 use crate::puzzle::solve::cage_solutions::CageSolutions;
+use crate::puzzle::solve::constraint::State;
 
 /// Ensures that for every value in a cell domain, there is a possible solution of the corresponding cage
 /// with the value in that cell
 pub struct CageSolutionsConstraint {
-    dirty_cages: FnvLinkedHashSet<usize>,
+    dirty_cages: LinkedAHashSet<usize>,
 }
 
 impl CageSolutionsConstraint {
@@ -36,7 +36,7 @@ impl CageSolutionsConstraint {
         let mut count = 0;
 
         // remove values from cell domains that are not in a cage solution
-        for (i, sq_index) in cage_solutions.indices.iter().cloned().enumerate() {
+        for (i, sq_index) in cage_solutions.indices.iter().copied().enumerate() {
             let domain = cell_variables[sq_index].unwrap_unsolved();
             let no_solutions = domain.iter()
                     .filter(|&n| !soln_domain[i].contains(n))
@@ -70,5 +70,13 @@ impl Constraint for CageSolutionsConstraint {
             if count > 0 { return true }
         }
         false
+    }
+
+    fn state(&self) -> State {
+        if self.dirty_cages.is_empty() {
+            State::SATISFIED
+        } else {
+            State::PENDING
+        }
     }
 }
