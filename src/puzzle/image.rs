@@ -11,6 +11,8 @@ const COLOR_HIGHLIGHT_BG: Rgb<u8> = Rgb([255, 255, 150]);
 const BORDER_CELL_RATIO: u32 = 25;
 const DEFAULT_CELL_WIDTH: u32 = 60;
 
+const ROBOTO_FONT: &[u8] = include_bytes!("../../res/Roboto-Regular.ttf");
+
 use crate::collections::Square;
 use crate::collections::square::{Coord, AsSquareIndex};
 use crate::collections::square::SquareIndex;
@@ -43,8 +45,7 @@ pub struct PuzzleImageBuilder<'a> {
 impl<'a> PuzzleImageBuilder<'a> {
 
     pub fn new(puzzle: &'a Puzzle) -> Self {
-        let font_data = include_bytes!("../../res/Roboto-Regular.ttf");
-        let font_collection = FontCollection::from_bytes(font_data as &[u8]).expect("Error loading font");
+        let font_collection = FontCollection::from_bytes(ROBOTO_FONT).expect("Error loading font");
         let font = font_collection.font_at(0).expect("load font");
 
         let cell_width = DEFAULT_CELL_WIDTH;

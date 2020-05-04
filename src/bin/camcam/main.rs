@@ -1,5 +1,7 @@
-#[deny(trivial_numeric_casts)]
-#[deny(trivial_casts)]
+#![warn(rust_2018_idioms)]
+#![warn(trivial_casts)]
+#![warn(trivial_numeric_casts)]
+#![warn(unused_qualifications)]
 
 #[macro_use]
 extern crate log;
@@ -34,7 +36,7 @@ fn start(context: &Context) -> Fallible<()> {
     match context.options().source() {
         options::Source::File(path) => {
             start_file(context, path)?;
-        }
+        },
         &options::Source::Generate(options::Generate { count, width, .. }) => {
             start_generate(context, count, width)?;
         },
@@ -91,7 +93,7 @@ fn log_puzzle(puzzle: &Puzzle) {
     }
 }
 
-fn on_solve_puzzle(context: &PuzzleContext) -> Fallible<bool> {
+fn on_solve_puzzle(context: &PuzzleContext<'_>) -> Fallible<bool> {
     if let Some(solve) = context.options().solve() {
         let solved = on_do_solve_puzzle(&context, solve)?;
         let include = context.options().source().generate().map_or(true, |generate|

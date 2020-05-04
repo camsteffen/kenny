@@ -82,8 +82,10 @@ pub trait IsSquare {
     }
 
     fn vectors(&self) -> Vectors {
-        let cols = (0..self.width()).map(VectorId::col as fn(usize) -> VectorId);
-        let rows = (0..self.width()).map(VectorId::row as fn(usize) -> VectorId);
+        let col: fn(usize) -> VectorId = VectorId::col;
+        let row: fn(usize) -> VectorId = VectorId::row;
+        let cols = (0..self.width()).map(col);
+        let rows = (0..self.width()).map(row);
         return cols.chain(rows);
     }
 
@@ -214,9 +216,9 @@ impl<T, I: AsSquareIndex> IndexMut<I> for Square<T> {
     }
 }
 
-impl<T> fmt::Display for Square<T>
+impl<T> Display for Square<T>
     where T: Display + Ord {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let len = self.elements.iter().max().unwrap()
             .to_string().len();
         for row in self.rows() {

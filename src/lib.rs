@@ -1,7 +1,9 @@
 //! Generate and solve KenKen puzzles
 
-#![warn(trivial_numeric_casts)]
 #![warn(rust_2018_idioms)]
+#![warn(trivial_casts)]
+#![warn(trivial_numeric_casts)]
+#![warn(unused_qualifications)]
 
 #[macro_use]
 extern crate log;

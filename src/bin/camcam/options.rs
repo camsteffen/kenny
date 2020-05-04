@@ -20,7 +20,7 @@ impl Options {
         Self::from_arg_matches(&clap_app().get_matches())
     }
 
-    fn from_arg_matches(matches: &ArgMatches) -> Fallible<Self> {
+    fn from_arg_matches(matches: &ArgMatches<'_>) -> Fallible<Self> {
         let save_all = matches.is_present("save_all");
         let mut options = Self {
             image_width: matches.value_of("image_width")

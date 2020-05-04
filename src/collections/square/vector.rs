@@ -42,12 +42,12 @@ impl VectorId {
         let width = square.width();
         assert!(self.index() < width);
         let (start, end, step) = match self.dimension() {
-            Dimension::Row => (
+            Row => (
                 width * self.index(),
                 width * (self.index() + 1),
                 1
             ),
-            Dimension::Col => (
+            Col => (
                 self.index(),
                 self.index() + square.len(),
                 width
