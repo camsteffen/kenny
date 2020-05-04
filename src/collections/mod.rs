@@ -1,3 +1,4 @@
+pub mod iterator_ext;
 pub mod range_set;
 pub mod square;
 

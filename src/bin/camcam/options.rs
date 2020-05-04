@@ -1,9 +1,10 @@
 use std::path::{Path, PathBuf};
 
-use clap::{Arg, ArgGroup, ArgMatches};
+use clap::{ArgMatches};
 use failure::{err_msg, Fallible};
 
-use crate::{DEFAULT_PATH, DEFAULT_PUZZLE_WIDTH};
+const DEFAULT_PUZZLE_WIDTH: usize = 4;
+const DEFAULT_PATH: &str = "output";
 
 #[derive(Clone)]
 pub struct Options {
@@ -20,6 +21,7 @@ impl Options {
     }
 
     fn from_arg_matches(matches: &ArgMatches) -> Fallible<Self> {
+        let save_all = matches.is_present("save_all");
         let mut options = Self {
             image_width: matches.value_of("image_width")
                 .map(|s| s.parse().expect("invalid image width")),
@@ -27,11 +29,13 @@ impl Options {
             source: match matches.value_of("input") {
                 Some(path) => Source::File(path.to_owned()),
                 None => {
-                    let exclude_solvable = matches.is_present("exclude-unsolvable");
-                    let include_unsolvable = matches.is_present("include-unsolvable");
-                    if exclude_solvable && !include_unsolvable {
-                        return Err(err_msg("All puzzles are excluded"));
-                    }
+                    let (include_solvable, include_unsolvable) = if matches.is_present("allow_unsolvable") {
+                        (true, true)
+                    } else if matches.is_present("unsolvable_only") {
+                        (false, true)
+                    } else {
+                        (true, false)
+                    };
                     Source::Generate(Generate {
                         count: matches.value_of("count")
                             .map(|s| s.parse::<u32>().expect("invalid count"))
@@ -39,19 +43,19 @@ impl Options {
                         width: matches.value_of("width")
                             .map(|s| s.parse::<usize>().expect("invalid width"))
                             .unwrap_or(DEFAULT_PUZZLE_WIDTH),
-                        save_puzzle: matches.is_present("save_puzzle"),
-                        exclude_solvable,
+                        save_puzzle: matches.is_present("save_puzzle") || save_all,
+                        include_solvable,
                         include_unsolvable,
                     })
                 }
             },
             solve: if matches.is_present("solve") {
                 Some(Solve {
-                    save_image: matches.is_present("save_solved_image"),
-                    save_step_images: matches.is_present("save_step_images"),
+                    save_image: matches.is_present("save_solved_image") || save_all,
+                    save_step_images: matches.is_present("save_step_images") || save_all,
                 })
             } else { None },
-            save_image: matches.is_present("save_image"),
+            save_image: matches.is_present("save_image") || save_all,
         };
         if options.save_any() {
             options.output_path = Some(matches.value_of("output_path").unwrap().into())
@@ -104,15 +108,6 @@ pub enum Source {
 }
 
 impl Source {
-    /*
-    pub fn file(&self) -> Option<&str> {
-        match self {
-            Source::File(f) => Some(f),
-            _ => None,
-        }
-    }
-    */
-
     pub fn generate(&self) -> Option<&Generate> {
         match self {
             Source::Generate(g) => Some(g),
@@ -126,7 +121,7 @@ pub struct Generate {
     pub count: u32,
     pub width: usize,
     pub save_puzzle: bool,
-    pub exclude_solvable: bool,
+    pub include_solvable: bool,
     pub include_unsolvable: bool,
 }
 
@@ -136,12 +131,15 @@ pub struct Solve {
     pub save_step_images: bool,
 }
 
+fn clap_app() -> clap::App<'static, 'static> {
+    use clap::{App, AppSettings, Arg, ArgGroup};
 
-fn clap_app<'a>() -> clap::App<'a, 'a> {
-    clap::App::new("CamCam")
+    App::new("CamCam")
         .author("Cameron Steffen <cam.steffen94@gmail.com>")
-        .about("Solve KenKen Puzzles")
-        .setting(clap::AppSettings::ArgRequiredElseHelp)
+        .help("Solve KenKen Puzzles")
+        .setting(AppSettings::ArgRequiredElseHelp)
+        // can use in clap 3.0 when released
+        // .replace("--save-all", &["--save-puzzle", "--save-image", "--save-solved-image", "--save-step-images"])
         .group(ArgGroup::with_name("source")
             .args(&["generate", "input"])
             .required(true))
@@ -166,8 +164,9 @@ fn clap_app<'a>() -> clap::App<'a, 'a> {
             .value_name("WIDTH")
             .requires("generate")
             .help("set the width and height of the generated puzzle"))
-        .arg(Arg::with_name("output")
+        .arg(Arg::with_name("output_path")
             .long("output-path")
+            .short("o")
             .help("directory to save files")
             .default_value(DEFAULT_PATH))
         .arg(Arg::with_name("count")
@@ -176,14 +175,19 @@ fn clap_app<'a>() -> clap::App<'a, 'a> {
             .requires("generate")
             .takes_value(true)
             .help("the number of puzzles to generate (and solve)"))
-        .arg(Arg::with_name("exclude_solvable")
-            .long("exclude-solvable")
-            .requires("generate")
-            .help("exclude solvable generated puzzles"))
-        .arg(Arg::with_name("include_unsolvable")
-            .long("include-unsolvable")
+        // todo no solutions and multiple solutions
+        .arg(Arg::with_name("allow_unsolvable")
+            .long("allow-unsolvable")
             .requires("generate")
             .help("include unsolvable generated puzzles"))
+        .arg(Arg::with_name("unsolvable_only")
+            .long("unsolvable-only")
+            .requires("generate")
+            .conflicts_with("allow_unsolvable")
+            .help("exclude solvable generated puzzles"))
+        .arg(Arg::with_name("save_all")
+            .long("save-all")
+            .help("save all optional files"))
         .arg(Arg::with_name("save_puzzle")
             .long("save-puzzle")
             .requires("generate")

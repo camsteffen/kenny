@@ -1,18 +1,22 @@
-use crate::collections::square::{SquareIndex, UnitSquare, IsSquare};
-use crate::puzzle::{CageRef, CellRef};
-use crate::puzzle::Operator;
-use crate::puzzle::Puzzle;
-use crate::puzzle::solve::CellDomain;
-use crate::puzzle::solve::CellVariable::{Solved, Unsolved};
-use crate::collections::Square;
+use std::mem;
 use std::ops::Deref;
 use std::ops::DerefMut;
-use std::mem;
+
+use ahash::{AHashMap, AHashSet};
+use vec_map::VecMap;
+
+use crate::collections::square::IsSquare;
+use crate::collections::Square;
+use crate::puzzle::{CageRef, CellId, CellRef, Value};
+use crate::puzzle::Operator;
+use crate::puzzle::Puzzle;
+use crate::puzzle::solve::ValueSet;
+use crate::puzzle::solve::CellVariable::{Solved, Unsolved};
+
 use super::CellVariable;
 use super::markup::PuzzleMarkupChanges;
-use vec_map::VecMap;
-use ahash::{AHashSet, AHashMap};
 
+#[derive(Clone)]
 pub struct CageSolutionsSet {
     data: Vec<CageSolutions>,
 }
@@ -20,20 +24,19 @@ pub struct CageSolutionsSet {
 impl CageSolutionsSet {
     pub fn new(puzzle: &Puzzle) -> Self {
         Self {
-            // cage_map: puzzle.cell_cage_indices().clone(),
-            data: puzzle.cages().iter().map(|cage| {
-                let indices = cage.cells().map(CellRef::index).collect();
-                CageSolutions::new(indices)
+            data: puzzle.cages().map(|cage| {
+                let ids = cage.cells().map(CellRef::id).collect();
+                CageSolutions::new(ids)
             }).collect(),
         }
     }
 
     pub fn init(&mut self, puzzle: &Puzzle, cell_variables: &Square<CellVariable>) {
-        let mut cages_iter = puzzle.cages().iter();
+        let mut cages_iter = puzzle.cages();
         for cage_solutions in &mut self.data {
             let cage = cages_iter.next().unwrap();
             if cage.operator() != Operator::Nop {
-                let cell_variables = cage.cells().map(|cell| &cell_variables[cell.index()]).collect::<Vec<_>>();
+                let cell_variables = cage.cells().map(|cell| &cell_variables[cell.id()]).collect::<Vec<_>>();
                 cage_solutions.init(puzzle, cage, &cell_variables);
             }
         }
@@ -42,8 +45,8 @@ impl CageSolutionsSet {
     pub fn apply_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
         struct CageData {
             remove_indices: Vec<usize>,
-            solved_cells: Vec<(SquareIndex, i32)>,
-            removed_values: Vec<(SquareIndex, i32)>,
+            solved_cells: Vec<(CellId, Value)>,
+            removed_values: Vec<(CellId, Value)>,
         }
         impl CageData {
             fn new() -> Self {
@@ -57,28 +60,28 @@ impl CageSolutionsSet {
 
         let mut data = VecMap::default();
 
-        for (&cage_index, values) in &changes.cage_solution_removals {
-            data.entry(cage_index).or_insert_with(CageData::new).remove_indices.extend(values);
+        for (&cage_id, values) in &changes.cage_solution_removals {
+            data.entry(cage_id).or_insert_with(CageData::new).remove_indices.extend(values);
         }
 
-        for &(index, value) in &changes.cell_solutions {
-            let cage_index = puzzle.cell(index).cage().index();
-            data.entry(cage_index).or_insert_with(CageData::new).solved_cells.push((index, value));
+        for &(id, value) in &changes.cell_solutions {
+            let cage_id = puzzle.cell(id).cage_id();
+            data.entry(cage_id).or_insert_with(CageData::new).solved_cells.push((id, value));
         }
 
         let solved_cells = changes.cell_solutions.iter().map(|&(i, _)| i).collect::<AHashSet<_>>();
 
-        for (&index, values) in &changes.cell_domain_value_removals {
-            let cage_index = puzzle.cell(index).cage().index();
-            if solved_cells.contains(&index) { continue }
-            let cage_data = data.entry(cage_index).or_insert_with(CageData::new);
+        for (&id, values) in &changes.cell_domain_value_removals {
+            let cage_id = puzzle.cell(id).cage_id();
+            if solved_cells.contains(&id) { continue }
+            let cage_data = data.entry(cage_id).or_insert_with(CageData::new);
             for &value in values {
-                cage_data.removed_values.push((index, value));
+                cage_data.removed_values.push((id, value));
             }
         }
 
-        for (cage_index, cage_data) in data {
-            self[cage_index].apply_changes(&cage_data.remove_indices, &cage_data.solved_cells, &cage_data.removed_values);
+        for (cage_id, cage_data) in data {
+            self[cage_id].apply_changes(&cage_data.remove_indices, &cage_data.solved_cells, &cage_data.removed_values);
         }
     }
 }
@@ -98,21 +101,22 @@ impl DerefMut for CageSolutionsSet {
 }
 
 /// A set of possible solutions for one cage
+#[derive(Clone)]
 pub struct CageSolutions {
-    /// the indices of the unsolved cells in the cage
-    pub indices: Vec<SquareIndex>,
-    /// a list of all possible solutions for a cage. the numbers correspond to the cells represented in indices
+    /// the indices of the unsolved cells in the cage (not every cell in the cage)
+    pub cell_ids: Vec<CellId>,
+    /// a list of all possible solutions for a cage. the numbers correspond to the cells represented in cell_ids
     pub solutions: Vec<Vec<i32>>,
     /// Cell index -> Cage unsolved cell index
-    index_map: AHashMap<SquareIndex, usize>,
+    index_map: AHashMap<CellId, usize>,
 }
 
 impl CageSolutions {
 
-    pub fn new(indices: Vec<SquareIndex>) -> Self {
+    pub fn new(indices: Vec<CellId>) -> Self {
         let index_map = Self::build_index_map(&indices);
         Self {
-            indices,
+            cell_ids: indices,
             solutions: Vec::new(),
             index_map,
         }
@@ -127,25 +131,25 @@ impl CageSolutions {
             Operator::Nop => panic!("cannot init CageSolutions with a Nop cage"),
         };
 
-        debug!("solutions: {:?}", self.solutions);
+        debug!("cage at {:?} solutions: {:?}", cage.coord(), self.solutions);
     }
 
     pub fn num_cells(&self) -> usize {
-        self.indices.len()
+        self.cell_ids.len()
     }
 
-    pub fn apply_changes(&mut self, remove_indices: &[usize], solved_cells: &[(SquareIndex, i32)], removed_values: &[(SquareIndex, i32)]) {
+    pub fn apply_changes(&mut self, remove_indices: &[usize], solved_cells: &[(CellId, i32)], removed_values: &[(CellId, i32)]) {
         let remove_indices = remove_indices.iter().copied().collect::<AHashSet<_>>();
 
         let solved_cells = solved_cells.iter().map(|&(i, v)| (self.index_map[&i], v)).collect::<Vec<_>>();
         let remove_cells = solved_cells.iter().map(|&(i, _)| i).collect::<AHashSet<_>>();
 
-        let len = self.indices.len() - solved_cells.len();
-        let indices = mem::replace(&mut self.indices, Vec::with_capacity(len));
+        let len = self.cell_ids.len() - solved_cells.len();
+        let cell_ids = mem::replace(&mut self.cell_ids, Vec::with_capacity(len));
         let mut keep_indices = Vec::with_capacity(len);
-        let indices = indices.into_iter().enumerate().filter(|&(i, _)| !remove_cells.contains(&i));
-        for (i, sq_idx) in indices {
-            self.indices.push(sq_idx);
+        let cell_ids = cell_ids.into_iter().enumerate().filter(|&(i, _)| !remove_cells.contains(&i));
+        for (i, sq_idx) in cell_ids {
+            self.cell_ids.push(sq_idx);
             keep_indices.push(i);
         }
         let removed_values = removed_values.iter().map(|&(i, v)| (self.index_map[&i], v)).collect::<Vec<_>>();
@@ -165,19 +169,19 @@ impl CageSolutions {
         self.reset_index_map();
     }
 
-    pub fn remove_indices(&mut self, indices: &[SquareIndex]) {
-        let capacity = self.indices.len() - indices.len();
+    pub fn remove_indices(&mut self, indices: &[CellId]) {
+        let capacity = self.cell_ids.len() - indices.len();
         if capacity == 0 {
-            self.indices.clear();
+            self.cell_ids.clear();
             self.solutions.clear();
             self.index_map.clear();
             return
         }
         let indices_set = indices.iter().copied().collect::<AHashSet<_>>();
         let solution_indices_set = indices.iter()
-            .map(|&i| self.indices.iter().position(|&j| j == i).unwrap())
+            .map(|&i| self.cell_ids.iter().position(|&j| j == i).unwrap())
             .collect::<AHashSet<_>>();
-        self.indices.retain(|i| !indices_set.contains(i));
+        self.cell_ids.retain(|i| !indices_set.contains(i));
         for solution in &mut self.solutions {
             *solution = solution.iter_mut().enumerate()
                 .filter_map(|(i, &mut j)| {
@@ -188,17 +192,17 @@ impl CageSolutions {
         self.reset_index_map();
     }
 
-    pub fn remove_cell_domain_value(&mut self, index: SquareIndex, value: i32) {
+    pub fn remove_cell_domain_value(&mut self, index: CellId, value: i32) {
         let index = self.index_map[&index];
         self.solutions.retain(|solution| solution[index] != value);
     }
 
-    fn build_index_map(indices: &[SquareIndex]) -> AHashMap<SquareIndex, usize> {
+    fn build_index_map(indices: &[CellId]) -> AHashMap<CellId, usize> {
         indices.iter().copied().enumerate().map(|(i, sq_i)| (sq_i, i)).collect()
     }
 
     fn reset_index_map(&mut self) {
-        self.index_map = Self::build_index_map(&self.indices);
+        self.index_map = Self::build_index_map(&self.cell_ids);
     }
 
     fn init_add(puzzle: &Puzzle, cage: CageRef, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
@@ -209,7 +213,7 @@ impl CageSolutions {
             match cell_variable {
                 &Solved(v) => solved_sum += v,
                 Unsolved(domain) => {
-                    indices.push(cage.cell(i).index());
+                    indices.push(cage.cell(i).id());
                     cell_domains.push(domain);
                 },
             }
@@ -217,7 +221,7 @@ impl CageSolutions {
         let remain_sum = cage.target() - solved_sum;
         let mut solution = vec![0; indices.len()];
         let mut solutions = Vec::new();
-        Self::init_add_next(0, puzzle_width, remain_sum, &indices, &cell_domains, &mut solution, &mut solutions);
+        Self::init_add_next(0, puzzle, remain_sum, &indices, &cell_domains, &mut solution, &mut solutions);
         solutions
     }
 
@@ -229,7 +233,7 @@ impl CageSolutions {
             match cell_variable {
                 &Solved(v) => solved_product *= v,
                 Unsolved(domain) => {
-                    indices.push(cage.cell(i).index());
+                    indices.push(cage.cell(i).id());
                     cell_domains.push(domain);
                 },
             }
@@ -237,7 +241,7 @@ impl CageSolutions {
         let remain_product = cage.target() / solved_product;
         let mut solution = vec![0; indices.len()];
         let mut solutions = Vec::new();
-        Self::init_multiply_next(0, puzzle_width, remain_product, &indices, &cell_domains, &mut solution, &mut solutions);
+        Self::init_multiply_next(0, puzzle, remain_product, &indices, &cell_domains, &mut solution, &mut solutions);
         solutions
     }
 
@@ -252,7 +256,7 @@ impl CageSolutions {
                 solutions.push(vec![n; 1]);
             }
             let m = known_val + cage.target();
-            if m <= puzzle_width as i32 && domain.contains(m) {
+            if m <= puzzle.width() as i32 && domain.contains(m) {
                 solutions.push(vec![m; 1]);
             }
         } else {
@@ -263,7 +267,7 @@ impl CageSolutions {
                     solutions.push(vec![n, m]);
                 }
                 let m = n + cage.target();
-                if m <= puzzle_width as i32 && domains[1].contains(m) {
+                if m <= puzzle.width() as i32 && domains[1].contains(m) {
                     solutions.push(vec![n, m]);
                 }
             }
@@ -282,7 +286,7 @@ impl CageSolutions {
                 solutions.push(vec![n; 1]);
             }
             let m = known_val * cage.target();
-            if m <= puzzle_width as i32 && domain.contains(m) {
+            if m <= puzzle.width() as i32 && domain.contains(m) {
                 solutions.push(vec![m; 1]);
             }
         } else {
@@ -293,7 +297,7 @@ impl CageSolutions {
                     solutions.push(vec![n, m]);
                 }
                 let m = n * cage.target();
-                if m <= puzzle_width as i32 && domains[1].contains(m) {
+                if m <= puzzle.width() as i32 && domains[1].contains(m) {
                     solutions.push(vec![n, m]);
                 }
             }
@@ -303,21 +307,24 @@ impl CageSolutions {
 
     fn init_add_next(
         i: usize,
-        puzzle_width: usize,
+        puzzle: &Puzzle,
         remain_sum: i32,
-        indices: &[SquareIndex],
-        cell_domains: &[&CellDomain],
+        cell_ids: &[CellId],
+        cell_domains: &[&ValueSet],
         solution: &mut [i32],
         solutions: &mut Vec<Vec<i32>>)
     {
         let collides = |n: i32, vals: &[i32]| {
             (0..i)
                 .filter(|&j| vals[j] == n)
-                .any(|j| UnitSquare::new(puzzle_width).shared_vector(indices[i], indices[j]).is_some())
+                .any(|j| puzzle.shared_vector(cell_ids[i], cell_ids[j]).is_some())
         };
         if remain_sum <= 0 { return }
+        if solution.is_empty() {
+            todo!();
+        }
         if i == solution.len() - 1 {
-            if remain_sum > puzzle_width as i32 { return }
+            if remain_sum > puzzle.width() as i32 { return }
             if !cell_domains[i].contains(remain_sum) { return }
             if collides(remain_sum, &solution[..i]) { return }
             solution[i] = remain_sum;
@@ -327,27 +334,27 @@ impl CageSolutions {
                 if n >= remain_sum { break }
                 if collides(n, &solution[..i]) { continue }
                 solution[i] = n;
-                Self::init_add_next(i + 1, puzzle_width, remain_sum - n, indices, cell_domains, solution, solutions);
+                Self::init_add_next(i + 1, puzzle, remain_sum - n, cell_ids, cell_domains, solution, solutions);
             }
         }
     }
 
     fn init_multiply_next(
         i: usize,
-        puzzle_width: usize,
+        puzzle: &Puzzle,
         remain_product: i32,
-        indices: &[SquareIndex],
-        cell_domains: &[&CellDomain],
+        cell_ids: &[CellId],
+        cell_domains: &[&ValueSet],
         solution: &mut [i32],
         solutions: &mut Vec<Vec<i32>>)
     {
         let collides = |n: i32, vals: &[i32]| {
             (0..i).filter(|&j| vals[j] == n)
-                .any(|j| UnitSquare::new(puzzle_width).shared_vector(indices[i], indices[j]).is_some())
+                .any(|j| puzzle.shared_vector(cell_ids[i], cell_ids[j]).is_some())
         };
         if remain_product <= 0 { return }
         if i == solution.len() - 1 {
-            if remain_product > puzzle_width as i32 { return }
+            if remain_product > puzzle.width() as i32 { return }
             if !cell_domains[i].contains(remain_product) { return }
             if collides(remain_product, &solution[..i]) { return }
             solution[i] = remain_product;
@@ -358,7 +365,7 @@ impl CageSolutions {
                 if remain_product % n != 0 { continue }
                 if collides(n, &solution[..i]) { continue }
                 solution[i] = n;
-                Self::init_multiply_next(i + 1, puzzle_width, remain_product / n, indices, cell_domains, solution, solutions);
+                Self::init_multiply_next(i + 1, puzzle, remain_product / n, cell_ids, cell_domains, solution, solutions);
             }
         }
     }

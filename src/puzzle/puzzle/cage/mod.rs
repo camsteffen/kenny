@@ -1,8 +1,8 @@
-mod operator;
+use crate::puzzle::CellId;
 
 pub use self::operator::Operator;
 
-use crate::collections::square::SquareIndex;
+mod operator;
 
 // TODO rename to CageData and CageRef to Cage
 /// A cage in a KenKen puzzle. Every cell in a KenKen puzzle belongs to a cage.
@@ -18,12 +18,12 @@ pub struct Cage {
     operator: Operator,
 
     /// A list of the positions of the cells in this cage
-    pub(in super) cell_indices: Vec<SquareIndex>,
+    pub(in super) cell_ids: Vec<CellId>,
 }
 
 impl Cage {
-    pub fn new(target: i32, operator: Operator, cell_indices: Vec<SquareIndex>) -> Self {
-        Self { target, operator, cell_indices }
+    pub fn new(target: i32, operator: Operator, cell_indices: Vec<CellId>) -> Self {
+        Self { target, operator, cell_ids: cell_indices }
     }
 
     pub fn target(&self) -> i32 {

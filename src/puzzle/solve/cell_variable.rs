@@ -1,16 +1,17 @@
-use super::CellDomain;
+use super::ValueSet;
 use self::CellVariable::{Solved, Unsolved};
+use crate::puzzle::Value;
 
 #[derive(Clone)]
 pub enum CellVariable {
-    Solved(i32),
-    Unsolved(CellDomain),
+    Solved(Value),
+    Unsolved(ValueSet),
 }
 
 impl CellVariable {
 
     pub fn unsolved_with_all(size: usize) -> CellVariable {
-        Unsolved(CellDomain::with_all(size))
+        Unsolved(ValueSet::with_all(size))
     }
 
     pub fn is_solved(&self) -> bool {
@@ -42,7 +43,7 @@ impl CellVariable {
         }
     }
 
-    pub fn unsolved(&self) -> Option<&CellDomain> {
+    pub fn unsolved(&self) -> Option<&ValueSet> {
         match self {
             Unsolved(domain) => Some(domain),
             _ => None,
@@ -56,14 +57,14 @@ impl CellVariable {
         }
     }
 
-    pub fn unwrap_unsolved(&self) -> &CellDomain {
+    pub fn unwrap_unsolved(&self) -> &ValueSet {
         match self {
             Unsolved(d) => d,
             _ => panic!("Not Unsolved"),
         }
     }
 
-    pub fn unwrap_unsolved_mut(&mut self) -> &mut CellDomain {
+    pub fn unwrap_unsolved_mut(&mut self) -> &mut ValueSet {
         match self {
             Unsolved(d) => d,
             _ => panic!("Not Unsolved"),

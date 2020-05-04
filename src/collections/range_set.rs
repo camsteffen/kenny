@@ -51,11 +51,13 @@ impl RangeSet {
         self.domain[n]
     }
 
+    /*
     pub fn clear(&mut self) {
         for e in &mut self.domain {
             *e = false;
         }
     }
+    */
 
     pub fn single_value(&self) -> Option<usize> {
         match self.size {

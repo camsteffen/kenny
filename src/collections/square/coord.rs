@@ -1,7 +1,6 @@
 use std::fmt;
 use std::fmt::Debug;
-use super::SquareIndex;
-use crate::collections::square::{AsSquareIndex, VectorId};
+use crate::collections::square::VectorId;
 
 /// A `Coord` struct represents coordinates of an element in a `Square`.
 #[derive(Clone, Copy)]
@@ -12,21 +11,15 @@ impl Coord {
         Self([col, row])
     }
 
-    pub fn row(self) -> usize { self.0[0] }
+    pub fn col(self) -> usize { self.0[0] }
 
-    pub fn col(self) -> usize { self.0[1] }
+    pub fn row(self) -> usize { self.0[1] }
 
     pub fn vectors(self) -> [VectorId; 2] {
         [
             VectorId::row(self.row()),
             VectorId::col(self.col()),
         ]
-    }
-}
-
-impl AsSquareIndex for Coord {
-    fn as_square_index(self, size: usize) -> SquareIndex {
-        SquareIndex(self.row() * size + self.col())
     }
 }
 

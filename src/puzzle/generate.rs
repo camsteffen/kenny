@@ -1,6 +1,5 @@
 use crate::collections::Square;
-use crate::collections::square::SquareIndex;
-use crate::puzzle::Cage;
+use crate::puzzle::{Cage, Value, Solution, CellId};
 use crate::puzzle::Operator;
 use crate::puzzle::Puzzle;
 use rand::thread_rng;
@@ -18,7 +17,7 @@ pub fn generate_untested_puzzle(width: usize) -> Puzzle {
     puzzle
 }
 
-pub fn generate_untested_puzzle_with_solution(width: usize) -> (Puzzle, Square<i32>) {
+pub fn generate_untested_puzzle_with_solution(width: usize) -> (Puzzle, Solution) {
     let solution = random_latin_square(width);
     debug!("Solution:\n{}", &solution);
     let cage_cells = generate_cage_cells(width);
@@ -32,7 +31,7 @@ pub fn generate_untested_puzzle_with_solution(width: usize) -> (Puzzle, Square<i
     (puzzle, solution)
 }
 
-fn random_latin_square(width: usize) -> Square<i32> {
+fn random_latin_square(width: usize) -> Square<Value> {
     let mut rng = thread_rng();
     let mut generate_seed = || {
         let mut seed = (0..width as i32).collect::<Vec<_>>();
@@ -57,7 +56,7 @@ fn shuffled_inner_borders(square_width: usize) -> Vec<usize> {
     borders
 }
 
-fn cells_touching_border(square_width: usize, border_id: usize) -> (SquareIndex, SquareIndex) {
+fn cells_touching_border(square_width: usize, border_id: usize) -> (CellId, CellId) {
     let a = border_id / 2;
     let (a, b) = if border_id % 2 == 0 {
         (a, a + square_width)
@@ -69,11 +68,11 @@ fn cells_touching_border(square_width: usize, border_id: usize) -> (SquareIndex,
     (a.into(), b.into())
 }
 
-fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<SquareIndex>> {
+fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<CellId>> {
     let num_cells = puzzle_width.pow(2);
     let mut cage_map: Square<usize> = (0..num_cells).collect::<Vec<_>>()
         .try_into().unwrap();
-    let mut cages: Vec<Vec<SquareIndex>> = (0..num_cells).map(|i| vec![i.into()]).collect();
+    let mut cages: Vec<Vec<CellId>> = (0..num_cells).map(|i| vec![i.into()]).collect();
     let min_cage_count = (num_cells as f32 / MAX_AVG_CAGE_SIZE) as usize;
     let mut borders = VecDeque::from(shuffled_inner_borders(puzzle_width));
     'target_cage_sizes: for target_cage_size in 2..=MAX_CAGE_SIZE {
@@ -128,7 +127,7 @@ fn possible_operators(values: &[i32]) -> Vec<Operator> {
     operators
 }
 
-fn find_cage_target(operator: Operator, values: &[i32]) -> i32 {
+fn find_cage_target(operator: Operator, values: &[Value]) -> Value {
     match operator {
         Operator::Add => values.iter().sum(),
         Operator::Subtract => {

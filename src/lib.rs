@@ -4,16 +4,21 @@
 
 #[macro_use]
 extern crate log;
-extern crate itertools;
-extern crate num;
-extern crate image;
-extern crate rand;
-extern crate rusttype;
-extern crate linked_hash_map;
-extern crate linked_hash_set;
-
-pub mod puzzle;
 
 pub use self::puzzle::Puzzle;
 
+pub mod puzzle;
+
 mod collections;
+
+// todo unit tests
+// todo documentation
+// todo license
+// todo investigate KenKen license
+// todo integrate "preemptive set"
+// todo see if any constraint is redundant with another constraint, especially preemptive sets
+// todo identify constraints that "require" other constraints to be applied first
+// todo prioritize and re-order constraint set by usage data
+// todo remove fallible dependency (deprecated)
+// todo add option for search-required puzzles
+// todo add test cases for "no search required"

@@ -18,8 +18,8 @@ use crate::collections::square::{Coord, AsSquareIndex};
 use crate::collections::square::SquareIndex;
 use image::Pixel;
 use image::{Rgb, RgbImage};
-use crate::puzzle::Puzzle;
-use crate::puzzle::solve::CellDomain;
+use crate::puzzle::{Puzzle, Value};
+use crate::puzzle::solve::ValueSet;
 use crate::puzzle::solve::CellVariable;
 use rusttype::Font;
 use rusttype::FontCollection;
@@ -33,6 +33,7 @@ pub struct PuzzleImageBuilder<'a> {
 
     cell_variables: Option<&'a Square<CellVariable>>,
     highlighted_cells: Option<&'a [SquareIndex]>,
+    solution: Option<&'a Square<Value>>,
 
     image_width: u32,
     cell_width: u32,
@@ -60,6 +61,7 @@ impl<'a> PuzzleImageBuilder<'a> {
             font,
             cell_variables: None,
             highlighted_cells: None,
+            solution: None,
         }
     }
 
@@ -86,6 +88,11 @@ impl<'a> PuzzleImageBuilder<'a> {
         self
     }
 
+    pub fn solution(&mut self, solution: Option<&'a Square<Value>>) -> &mut Self {
+        self.solution = solution;
+        self
+    }
+
     pub fn build(&self) -> RgbImage {
         let mut buffer = match self.highlighted_cells {
             Some(highlighted_cells) =>
@@ -96,6 +103,8 @@ impl<'a> PuzzleImageBuilder<'a> {
         self.draw_cage_glyphs(&mut buffer);
         if let Some(cell_variables) = self.cell_variables {
             self.draw_markup(&mut buffer, cell_variables);
+        } else if let Some(solution) = self.solution {
+            self.draw_solution(&mut buffer, solution);
         }
         buffer
     }
@@ -137,7 +146,7 @@ impl<'a> PuzzleImageBuilder<'a> {
             for j in 0..self.puzzle.width() { // col
                 let pos1 = Coord::new(j, i - 1);
                 let pos2 = Coord::new(j, i);
-                let color = if self.puzzle.cell(pos1).cage().index() == self.puzzle.cell(pos2).cage().index() {
+                let color = if self.puzzle.cell(pos1).cage_id() == self.puzzle.cell(pos2).cage_id() {
                     COLOR_CELL_BORDER
                 } else {
                     COLOR_CAGE_BORDER
@@ -155,7 +164,7 @@ impl<'a> PuzzleImageBuilder<'a> {
             for j in 1..self.puzzle.width() { // col
                 let pos1 = Coord::new(j - 1, i);
                 let pos2 = Coord::new(j, i);
-                let color = if self.puzzle.cell(pos1).cage().index() == self.puzzle.cell(pos2).cage().index() {
+                let color = if self.puzzle.cell(pos1).cage_id() == self.puzzle.cell(pos2).cage_id() {
                     COLOR_CELL_BORDER
                 } else {
                     COLOR_CAGE_BORDER
@@ -171,13 +180,13 @@ impl<'a> PuzzleImageBuilder<'a> {
         // draw intersections
         for i in 1..self.puzzle.width() {
             for j in 1..self.puzzle.width() {
-                let first = self.puzzle.cell(Coord::new(j - 1, i - 1)).cage().index();
+                let first = self.puzzle.cell(Coord::new(j - 1, i - 1)).cage_id();
                 let pos = [
                     Coord::new(j, i - 1),
                     Coord::new(j - 1, i),
                     Coord::new(j, i),
                 ];
-                let color = if pos.iter().all(|pos| self.puzzle.cell(*pos).cage().index() == first) {
+                let color = if pos.iter().all(|pos| self.puzzle.cell(*pos).cage_id() == first) {
                     COLOR_CELL_BORDER
                 } else {
                     COLOR_CAGE_BORDER
@@ -195,13 +204,13 @@ impl<'a> PuzzleImageBuilder<'a> {
         let scale = Scale::uniform(self.cell_width as f32 * 0.25);
         let v_metrics = self.font.v_metrics(scale);
 
-        for cage in self.puzzle.cages().iter() {
+        for cage in self.puzzle.cages() {
             let text = match cage.operator().symbol() {
                 Some(symbol) => format!("{}{}", cage.target(), symbol),
                 None => cage.target().to_string(),
             };
 
-            let pos = cage.cells().min_by_key(|cell| cell.index()).unwrap().coord();
+            let pos = cage.cells().min_by_key(|cell| cell.id()).unwrap().coord();
 
             let pad = self.cell_width / 16;
             let offset = point(
@@ -227,7 +236,13 @@ impl<'a> PuzzleImageBuilder<'a> {
         }
     }
 
-    fn draw_domain(&self, buffer: &mut RgbImage, pos: Coord, domain: &CellDomain) {
+    fn draw_solution(&self, buffer: &mut RgbImage, solution: &Square<Value>) {
+        for (pos, value) in solution.iter_coord() {
+            self.draw_cell_solution(buffer, pos, *value)
+        }
+    }
+
+    fn draw_domain(&self, buffer: &mut RgbImage, pos: Coord, domain: &ValueSet) {
         // the maximum number of characters that can fit on one line in a cell
         const MAX_LINE_LEN: u32 = 5;
 

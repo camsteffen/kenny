@@ -1,13 +1,21 @@
-use crate::collections::square::SquareIndex;
+//! A unary constraint is a simple constraint that applies to an individual puzzle cell without regard to the domain of
+//! other cells.
+//! For example, if a cage has two cells, a target of 5, and a plus operator, it is known that, for each cell in that
+//! cage, the value must be less than 5.
+//! These constraints may be applied to the puzzle markup one time at the beginning of the solving process.
+//! They do not need to be re-checked as the solution progresses.
+
 use num::Integer;
-use crate::puzzle::{Operator, CageRef};
+use crate::puzzle::{Operator, CageRef, CellId};
 use crate::puzzle::Puzzle;
-use crate::puzzle::solve::CellDomain;
+use crate::puzzle::solve::ValueSet;
 use std::collections::BTreeSet;
 use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+use ahash::AHashSet;
+use crate::collections::square::VectorId;
 
 /// Applies all unary constraints to cell domains. Returns a list of all affected cells by index.
-pub fn apply_unary_constraints(puzzle: &Puzzle, change: &mut PuzzleMarkupChanges) -> Vec<SquareIndex> {
+pub fn apply_unary_constraints(puzzle: &Puzzle, change: &mut PuzzleMarkupChanges) -> Vec<CellId> {
     let affected_cells = BTreeSet::new();
     reduce_domains_by_cage(puzzle, change);
     affected_cells.into_iter().collect()
@@ -16,21 +24,22 @@ pub fn apply_unary_constraints(puzzle: &Puzzle, change: &mut PuzzleMarkupChanges
 fn reduce_domains_by_cage(puzzle: &Puzzle, change: &mut PuzzleMarkupChanges) {
     debug!("reducing cell domains by cage-specific info");
 
-    for cage in puzzle.cages().iter() {
-        reduce_cage(puzzle.width(), cage, change);
+    for cage in puzzle.cages() {
+        reduce_cage(puzzle, cage, change);
     }
 }
 
-fn reduce_cage(puzzle_width: usize, cage: CageRef, change: &mut PuzzleMarkupChanges) {
+fn reduce_cage(puzzle: &Puzzle, cage: CageRef, change: &mut PuzzleMarkupChanges) {
+    let puzzle_width = puzzle.width();
     match cage.operator() {
         Operator::Add => {
-            let start = cage.target() - cage.cell_count() as i32 + 2;
-            if start > puzzle_width as i32 { return }
-            debug!("values {}-{} cannot exist in cage at {:?}", start, puzzle_width,
-                cage.cell(0).coord());
-            for cell in cage.cells() {
-                for n in start..=puzzle_width as i32 {
-                    change.remove_value_from_cell(cell.index(), n);
+            let largest = largest_value_add(cage);
+            if largest < puzzle_width as i32 {
+                debug!("values greater than {} cannot exist in cage at {:?}", largest, cage.coord());
+                for cell in cage.cells() {
+                    for n in (largest + 1)..=puzzle_width as i32 {
+                        change.remove_value_from_cell(cell.id(), n);
+                    }
                 }
             }
         },
@@ -43,7 +52,7 @@ fn reduce_cage(puzzle_width: usize, cage: CageRef, change: &mut PuzzleMarkupChan
                 cage.cell(0).coord());
             for cell in cage.cells() {
                 for &n in &non_factors {
-                    change.remove_value_from_cell(cell.index(), n);
+                    change.remove_value_from_cell(cell.id(), n);
                 }
             }
         },
@@ -55,22 +64,25 @@ fn reduce_cage(puzzle_width: usize, cage: CageRef, change: &mut PuzzleMarkupChan
                 cage.cell(0).coord());
             for cell in cage.cells() {
                 for n in start..=cage.target() {
-                    change.remove_value_from_cell(cell.index(), n);
+                    change.remove_value_from_cell(cell.id(), n);
                 }
             }
         },
         Operator::Divide => {
-            let mut non_domain = CellDomain::with_all(puzzle_width);
-            for n in 1..=puzzle_width as i32 / cage.target() {
-                non_domain.remove(n);
-                non_domain.remove(n * cage.target());
-            }
+            let non_domain = {
+                let mut non_domain = ValueSet::with_all(puzzle_width);
+                for n in 1..=puzzle_width as i32 / cage.target() {
+                    non_domain.remove(n);
+                    non_domain.remove(n * cage.target());
+                }
+                non_domain
+            };
             if non_domain.is_empty() { return }
             debug!("values {:?} cannot exist in cage at {:?}", non_domain.iter().collect::<Vec<_>>(),
                 cage.cell(0).coord());
             for cell in cage.cells() {
                 for n in &non_domain {
-                    change.remove_value_from_cell(cell.index(), n);
+                    change.remove_value_from_cell(cell.id(), n);
                 }
             }
         },
@@ -78,7 +90,59 @@ fn reduce_cage(puzzle_width: usize, cage: CageRef, change: &mut PuzzleMarkupChan
             debug_assert_eq!(1, cage.cell_count());
             let cell = cage.cell(0);
             debug!("solving single cell cage at {:?}", cage.cell(0).coord());
-            change.solve_cell(cell.index(), cage.target());
+            change.solve_cell(cell.id(), cage.target());
         }
     }
+}
+
+/// Calculates the largest possible value in an addition cage
+fn largest_value_add(cage: CageRef) -> i32 {
+    // simple case
+    if cage.cell_count() == 2 {
+        return cage.target() - 1;
+    }
+
+    #[derive(Default)]
+    struct Group {
+        cells: Vec<CellId>,
+        vectors: AHashSet<VectorId>,
+    }
+
+    let mut groups: Vec<Group> = Vec::with_capacity(cage.cell_count());
+
+    // split cells into groups where each group does not have any cells that share a vector
+    for cell in cage.cells() {
+        let group = groups.iter_mut().find(|group| {
+            // find a group where none of the cells share a vector with this cell
+            cell.vectors().iter().all(|v| !group.vectors.contains(v))
+        });
+        let group = match group {
+            Some(group) => group,
+            None => {
+                // otherwise start a new group
+                groups.push(Group::default());
+                groups.last_mut().unwrap()
+            },
+        };
+        // add this cell and its vectors to the group
+        group.cells.push(cell.id());
+        group.vectors.extend(cell.vectors().iter());
+    }
+
+    // sort bigger groups first
+    groups.sort_unstable_by(|a, b| b.cells.len().cmp(&a.cells.len()));
+
+    // fill in the cage with the smallest possible sum
+    let smallest_sum = groups.iter().enumerate()
+        // fill in cells of the first group with 1, the second group with 2, etc. and sum the values
+        .map(|(i, group)| (i + 1) * group.cells.len())
+        // sum the groups
+        .sum::<usize>();
+
+    // subtract one of the cells from the group with the largest values
+    let smallest_sum_with_blank = (smallest_sum - groups.len()) as i32;
+
+    // TODO largest value PER GROUP
+    // largest possible cell value
+    cage.target() - smallest_sum_with_blank
 }

@@ -55,6 +55,8 @@ impl PuzzleFolderBuilder {
     }
 }
 
+// todo cfg?
+#[cfg(not(debug_assertions))]
 impl Drop for PuzzleFolderBuilder {
     fn drop(&mut self) {
         if !self.saved {

@@ -4,13 +4,18 @@ use std::fmt;
 use std::fmt::Debug;
 use self::Dimension::{Col, Row};
 use super::Coord;
+use crate::collections::square::{IsSquare, SquareIndex};
+use std::iter::StepBy;
+use std::ops::Range;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Dimension { Row, Col }
 
 /// A row or column and its index
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct VectorId(pub usize);
+pub struct VectorId(usize);
+
+type VectorIndices = StepBy<Range<SquareIndex>>;
 
 impl VectorId {
     
@@ -33,12 +38,22 @@ impl VectorId {
         self.0 / 2
     }
 
-    /// Retrieves the vector that intersects this vector at a given position
-    pub fn intersect_at(self, index: usize) -> VectorId {
-        match self.dimension() {
-            Row => Self::col(index),
-            Col => Self::row(index),
-        }
+    pub fn indices(self, square: impl IsSquare) -> VectorIndices {
+        let width = square.width();
+        assert!(self.index() < width);
+        let (start, end, step) = match self.dimension() {
+            Dimension::Row => (
+                width * self.index(),
+                width * (self.index() + 1),
+                1
+            ),
+            Dimension::Col => (
+                self.index(),
+                self.index() + square.len(),
+                width
+            ),
+        };
+        (start..end).step_by(step)
     }
 
     pub fn intersects_coord(self, coord: Coord) -> bool {
@@ -62,5 +77,20 @@ impl Debug for VectorId {
 impl From<VectorId> for usize {
     fn from(vector_id: VectorId) -> Self {
         vector_id.0
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::collections::square::{UnitSquare, VectorId};
+
+    #[test]
+    fn indices() {
+        assert_eq!(
+            vec![0, 3, 6],
+            VectorId::col(0)
+                .indices(UnitSquare::new(3))
+                .map(usize::from)
+                .collect::<Vec<usize>>());
     }
 }

@@ -1,18 +1,18 @@
-mod coord;
-mod vector;
+use std::cmp::Ord;
+use std::convert::TryFrom;
+use std::fmt::{Debug, Display, Formatter};
+use std::fmt;
+use std::iter::{Chain, Map};
+use std::ops::{Deref, Index, IndexMut, Range};
 
 pub use self::coord::Coord;
 pub use self::vector::Dimension;
 pub use self::vector::VectorId;
 
-use std::cmp::Ord;
-use std::fmt::{Display, Debug, Formatter};
-use std::fmt;
-use std::ops::{Index, IndexMut, Range, Deref};
-use std::convert::TryFrom;
-use std::iter;
+mod coord;
+mod vector;
 
-type VectorIndices = iter::Map<iter::StepBy<Range<usize>>, fn(usize) -> SquareIndex>;
+type Vectors = Chain<Map<Range<usize>, fn(usize) -> VectorId>, Map<Range<usize>, fn(usize) -> VectorId>>;
 
 #[derive(Clone, Copy)]
 pub struct SquareWidth(usize);
@@ -40,24 +40,29 @@ pub trait IsSquare {
         self.width().pow(2)
     }
 
-    fn col_at(&self, index: impl Into<SquareIndex>) -> usize {
-        let index = usize::from(index.into());
+    fn col_at(&self, index: usize) -> usize {
         assert!(index < self.len());
         index % self.width()
     }
 
-    fn row_at(&self, index: impl Into<SquareIndex>) -> usize {
-        let index = usize::from(index.into());
+    fn row_at(&self, index: usize) -> usize {
         assert!(index < self.len());
         index / self.width()
     }
 
-    fn coord_at(&self, index: impl Into<SquareIndex>) -> Coord {
-        let index = index.into();
+    fn coord_at(&self, index: usize) -> Coord {
         Coord::new(self.col_at(index), self.row_at(index))
     }
 
-    fn index_to_vector_point(&self, index: impl Into<SquareIndex>, vector_id: VectorId) -> usize {
+    fn index_is_in_vector(&self, index: usize, vector_id: VectorId) -> bool {
+        let vector_index = match vector_id.dimension() {
+            Dimension::Row => self.row_at(index),
+            Dimension::Col => self.col_at(index),
+        };
+        vector_index == vector_id.index()
+    }
+
+    fn index_to_vector_point(&self, index: usize, vector_id: VectorId) -> usize {
         assert!(vector_id.index() < self.width());
         match vector_id.dimension() {
             Dimension::Row => self.col_at(index),
@@ -66,25 +71,20 @@ pub trait IsSquare {
     }
 
     fn shared_vector(&self, a: SquareIndex, b: SquareIndex) -> Option<VectorId> {
-        let SquareIndex(pos1) = a;
-        let SquareIndex(pos2) = b;
         let width = self.width();
-        if pos1 / width == pos2 / width {
-            Some(VectorId::row(pos1 / width))
-        } else if pos1 % width == pos2 % width {
-            Some(VectorId::col(pos1 % width))
+        if a / width == b / width {
+            Some(VectorId::row(a / width))
+        } else if a % width == b % width {
+            Some(VectorId::col(a % width))
         } else {
             None
         }
     }
 
-    fn vector_indices(&self, vector_id: VectorId) -> VectorIndices {
-        assert!(vector_id.index() < self.width());
-        let (start, end, step) = match vector_id.dimension() {
-            Dimension::Row => (self.width() * vector_id.index(), (self.width() + 1) * vector_id.index(), 1),
-            Dimension::Col => (vector_id.index(), vector_id.index() + self.len(), self.width()),
-        };
-        (start..end).step_by(step).map(SquareIndex::from)
+    fn vectors(&self) -> Vectors {
+        let cols = (0..self.width()).map(VectorId::col as fn(usize) -> VectorId);
+        let rows = (0..self.width()).map(VectorId::row as fn(usize) -> VectorId);
+        return cols.chain(rows);
     }
 
     fn vector_point(&self, vector_id: VectorId, position: usize) -> SquareIndex {
@@ -100,8 +100,7 @@ pub trait IsSquare {
     fn width(&self) -> usize;
 }
 
-#[deprecated]
-type SquareIndex = usize;
+pub type SquareIndex = usize;
 
 /// A value that can be converted to a [SquareIndex] given the square size
 pub trait AsSquareIndex: Copy {
@@ -110,13 +109,13 @@ pub trait AsSquareIndex: Copy {
 
 impl AsSquareIndex for usize {
     fn as_square_index(self, _width: usize) -> SquareIndex {
-        SquareIndex(self)
+        self
     }
 }
 
-impl AsSquareIndex for SquareIndex {
-    fn as_square_index(self, _width: usize) -> SquareIndex {
-        self
+impl AsSquareIndex for Coord {
+    fn as_square_index(self, size: usize) -> SquareIndex {
+        self.row() * size + self.col()
     }
 }
 
@@ -173,6 +172,14 @@ impl<T> Square<T> {
         self.elements.iter().enumerate()
             .map(move |(i, e)| (self.coord_at(i), e))
     }
+
+    pub fn vector(&self, vector_id: VectorId) -> impl Iterator<Item=&T> {
+        vector_id.indices(self).map(move |i| &self[i])
+    }
+
+    pub fn vector_with_indices(&self, vector_id: VectorId) -> impl Iterator<Item=(usize, &T)> {
+        vector_id.indices(self).map(move |i| (i, &self[i]))
+    }
 }
 
 impl<T> Deref for Square<T> {
@@ -183,13 +190,13 @@ impl<T> Deref for Square<T> {
     }
 }
 
-impl<T> IsSquare for Square<T> {
+impl<T> IsSquare for &Square<T> {
     fn len(&self) -> usize {
         self.elements.len()
     }
 
     fn width(&self) -> usize {
-        self.width()
+        self.width
     }
 }
 
@@ -227,6 +234,7 @@ pub struct UnitSquare {
 }
 
 impl UnitSquare {
+    #[cfg(test)]
     pub fn new(width: usize) -> Self {
         Self { width }
     }
@@ -262,8 +270,9 @@ impl<T> TryFrom<Vec<T>> for Square<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::collections::Square;
     use std::convert::TryFrom;
+
+    use crate::collections::Square;
     use crate::collections::square::NonSquareLength;
 
     #[test]
@@ -277,7 +286,7 @@ mod tests {
     }
 
     mod is_square {
-        use crate::collections::square::{UnitSquare, IsSquare, VectorId, SquareIndex};
+        use crate::collections::square::{IsSquare, UnitSquare, VectorId};
 
         #[test]
         fn index_to_vector_point() {
@@ -285,18 +294,8 @@ mod tests {
         }
 
         #[test]
-        fn vector_indices() {
-            assert_eq!(
-                vec![0, 3, 6],
-                UnitSquare::new(3)
-                    .vector_indices(VectorId::col(0))
-                    .map(From::from)
-                    .collect::<Vec<usize>>());
-        }
-
-        #[test]
         fn vector_point() {
-            assert_eq!(SquareIndex::from(8), UnitSquare::new(3).vector_point(VectorId::row(2), 2));
+            assert_eq!(8, UnitSquare::new(3).vector_point(VectorId::row(2), 2));
         }
     }
 }
