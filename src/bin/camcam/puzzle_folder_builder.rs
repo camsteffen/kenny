@@ -1,5 +1,3 @@
-extern crate tempfile;
-
 use std::{fs, io};
 use std::path::{Path, PathBuf};
 

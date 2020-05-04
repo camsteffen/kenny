@@ -1,17 +1,15 @@
 #[deny(trivial_numeric_casts)]
 #[deny(trivial_casts)]
-extern crate camcam;
-extern crate clap;
-extern crate env_logger;
-extern crate image;
+
 #[macro_use]
 extern crate log;
-extern crate tempfile;
 
 use std::fs;
+use std::panic::{catch_unwind, resume_unwind};
 use std::path::PathBuf;
 
 use failure::Fallible;
+use itertools::Itertools;
 
 use camcam::puzzle::Puzzle;
 use camcam::puzzle::PuzzleImageBuilder;
@@ -19,8 +17,6 @@ use camcam::puzzle::solve::{PuzzleSolver, SolveResult};
 
 use crate::context::{Context, PuzzleContext};
 use crate::options::Options;
-use itertools::Itertools;
-use std::panic::{catch_unwind, resume_unwind};
 
 mod context;
 mod options;

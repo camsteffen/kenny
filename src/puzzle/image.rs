@@ -1,7 +1,5 @@
 //! Generate images for unsolved or solved puzzles
 
-extern crate rusttype;
-
 const BLACK: Rgb<u8> = Rgb([0; 3]);
 const WHITE: Rgb<u8> = Rgb([255; 3]);
 
