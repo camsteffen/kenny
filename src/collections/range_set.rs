@@ -1,4 +1,3 @@
-
 #[derive(Clone)]
 pub struct RangeSet {
     size: usize,
@@ -6,7 +5,6 @@ pub struct RangeSet {
 }
 
 impl RangeSet {
-
     pub fn new(size: usize) -> RangeSet {
         RangeSet {
             size: 0,
@@ -27,7 +25,7 @@ impl RangeSet {
 
     pub fn insert(&mut self, n: usize) -> bool {
         if self.domain[n] {
-            return false
+            return false;
         }
         self.domain[n] = true;
         self.size += 1;
@@ -40,7 +38,7 @@ impl RangeSet {
 
     pub fn remove(&mut self, n: usize) -> bool {
         if !self.domain[n] {
-            return false
+            return false;
         }
         self.domain[n] = false;
         self.size -= 1;
@@ -79,14 +77,14 @@ pub struct Iter<'a> {
     index: usize,
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl Iterator for Iter<'_> {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
         for i in self.index..self.domain.len() {
             if self.domain[i] {
                 self.index = i + 1;
-                return Some(i)
+                return Some(i);
             }
         }
         None
@@ -94,7 +92,7 @@ impl<'a> Iterator for Iter<'a> {
 }
 
 impl Extend<usize> for RangeSet {
-    fn extend<I: IntoIterator<Item=usize>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = usize>>(&mut self, iter: I) {
         for i in iter {
             self.domain[i] = true;
         }

@@ -10,8 +10,8 @@ mod image;
 mod parse;
 mod puzzle;
 
-pub use puzzle::*;
 use crate::collections::Square;
+pub use puzzle::*;
 
 pub type CageId = usize;
 pub type CellId = usize;

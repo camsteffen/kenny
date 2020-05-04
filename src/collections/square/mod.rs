@@ -1,8 +1,8 @@
 use std::cmp::Ord;
 use std::convert::TryFrom;
-use std::fmt::{Debug, Display, Formatter};
 use std::fmt;
-use std::iter::{Chain, Map};
+use std::fmt::{Debug, Display, Formatter};
+use std::iter::{Chain, Map, StepBy};
 use std::ops::{Deref, Index, IndexMut, Range};
 
 pub use self::coord::Coord;
@@ -12,7 +12,9 @@ pub use self::vector::VectorId;
 mod coord;
 mod vector;
 
-type Vectors = Chain<Map<Range<usize>, fn(usize) -> VectorId>, Map<Range<usize>, fn(usize) -> VectorId>>;
+type Vectors =
+    Chain<Map<Range<usize>, fn(usize) -> VectorId>, Map<Range<usize>, fn(usize) -> VectorId>>;
+type VectorIndices = StepBy<Range<SquareIndex>>;
 
 #[derive(Clone, Copy)]
 pub struct SquareWidth(usize);
@@ -81,6 +83,16 @@ pub trait IsSquare {
         }
     }
 
+    fn vector_indices(&self, vector: VectorId) -> VectorIndices {
+        let width = self.width();
+        assert!(vector.index() < width);
+        let (start, end, step) = match vector.dimension() {
+            Dimension::Row => (width * vector.index(), width * (vector.index() + 1), 1),
+            Dimension::Col => (vector.index(), vector.index() + self.len(), width),
+        };
+        (start..end).step_by(step)
+    }
+
     fn vectors(&self) -> Vectors {
         let col: fn(usize) -> VectorId = VectorId::col;
         let row: fn(usize) -> VectorId = VectorId::row;
@@ -131,7 +143,9 @@ pub struct Square<T> {
 impl<T> Square<T> {
     /// Creates a new square with a specified width and fill with the default value
     pub fn with_width(width: usize) -> Square<T>
-        where T: Clone + Default {
+    where
+        T: Clone + Default,
+    {
         Self {
             width,
             elements: vec![Default::default(); width.pow(2)],
@@ -140,7 +154,9 @@ impl<T> Square<T> {
 
     /// Create a new `Square` of a specified width and fill with a specified value
     pub fn with_width_and_value(width: usize, val: T) -> Square<T>
-        where T: Clone {
+    where
+        T: Clone,
+    {
         Square {
             width,
             elements: vec![val; width.pow(2)],
@@ -153,34 +169,35 @@ impl<T> Square<T> {
     }
 
     /// Returns an iterator over the rows of the square
-    pub fn cols(&self) -> impl Iterator<Item=impl Iterator<Item=&T> + '_> + '_ {
+    pub fn cols(&self) -> impl Iterator<Item = impl Iterator<Item = &T> + '_> + '_ {
         (0..self.width())
-            .map(move |col| (0..self.width())
-                .map(move |row| &self[Coord::new(col, row)]))
+            .map(move |col| (0..self.width()).map(move |row| &self[Coord::new(col, row)]))
     }
 
     /// Returns an iterator over the rows of the square
-    pub fn rows(&self) -> impl Iterator<Item=&[T]> {
+    pub fn rows(&self) -> impl Iterator<Item = &[T]> {
         self.elements.chunks(self.width)
     }
 
     /// Returns a mutable iterator over the rows of the square
-    pub fn rows_mut(&mut self) -> impl Iterator<Item=&mut [T]> {
+    pub fn rows_mut(&mut self) -> impl Iterator<Item = &mut [T]> {
         self.elements.chunks_mut(self.width)
     }
 
     /// Returns an iterator over every element, paired with its `Coord`
-    pub fn iter_coord(&self) -> impl Iterator<Item=(Coord, &T)> {
-        self.elements.iter().enumerate()
+    pub fn iter_coord(&self) -> impl Iterator<Item = (Coord, &T)> {
+        self.elements
+            .iter()
+            .enumerate()
             .map(move |(i, e)| (self.coord_at(i), e))
     }
 
-    pub fn vector(&self, vector_id: VectorId) -> impl Iterator<Item=&T> {
-        vector_id.indices(self).map(move |i| &self[i])
+    pub fn vector(&self, vector_id: VectorId) -> impl Iterator<Item = &T> {
+        self.vector_indices(vector_id).map(move |i| &self[i])
     }
 
-    pub fn vector_with_indices(&self, vector_id: VectorId) -> impl Iterator<Item=(usize, &T)> {
-        vector_id.indices(self).map(move |i| (i, &self[i]))
+    pub fn vector_indexed(&self, vector_id: VectorId) -> impl Iterator<Item = (usize, &T)> {
+        self.vector_indices(vector_id).map(move |i| (i, &self[i]))
     }
 }
 
@@ -217,10 +234,11 @@ impl<T, I: AsSquareIndex> IndexMut<I> for Square<T> {
 }
 
 impl<T> Display for Square<T>
-    where T: Display + Ord {
+where
+    T: Display + Ord,
+{
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let len = self.elements.iter().max().unwrap()
-            .to_string().len();
+        let len = self.elements.iter().max().unwrap().to_string().len();
         for row in self.rows() {
             for element in row {
                 write!(f, "{:>1$} ", element, len)?;
@@ -269,13 +287,12 @@ impl<T> TryFrom<Vec<T>> for Square<T> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use std::convert::TryFrom;
 
-    use crate::collections::Square;
     use crate::collections::square::NonSquareLength;
+    use crate::collections::Square;
 
     #[test]
     fn try_from_vec() {
@@ -292,12 +309,26 @@ mod tests {
 
         #[test]
         fn index_to_vector_point() {
-            assert_eq!(2, UnitSquare::new(3).index_to_vector_point(7, VectorId::col(1)));
+            assert_eq!(
+                2,
+                UnitSquare::new(3).index_to_vector_point(7, VectorId::col(1))
+            );
         }
 
         #[test]
         fn vector_point() {
             assert_eq!(8, UnitSquare::new(3).vector_point(VectorId::row(2), 2));
+        }
+
+        #[test]
+        fn vector_indices() {
+            assert_eq!(
+                vec![0, 3, 6],
+                UnitSquare::new(3)
+                    .vector_indices(VectorId::col(0))
+                    .map(usize::from)
+                    .collect::<Vec<usize>>()
+            );
         }
     }
 }

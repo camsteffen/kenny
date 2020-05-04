@@ -2,18 +2,23 @@
 /// that can be in a cage.
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[allow(missing_docs)]
-pub enum Operator { Add, Subtract, Multiply, Divide, Nop }
+pub enum Operator {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Nop,
+}
 
 impl Operator {
-
     /// Retrieve the character representation of the symbol
     pub fn symbol(self) -> Option<char> {
         let symbol = match self {
-            Operator::Add      => '+',
+            Operator::Add => '+',
             Operator::Subtract => '-',
             Operator::Multiply => '*',
-            Operator::Divide   => '/',
-            Operator::Nop      => return None,
+            Operator::Divide => '/',
+            Operator::Nop => return None,
         };
         Some(symbol)
     }
@@ -25,7 +30,7 @@ impl Operator {
             '-' => Operator::Subtract,
             '*' => Operator::Multiply,
             '/' => Operator::Divide,
-            _ => return None
+            _ => return None,
         };
         Some(o)
     }

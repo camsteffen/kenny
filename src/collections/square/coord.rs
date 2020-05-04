@@ -1,6 +1,6 @@
+use crate::collections::square::VectorId;
 use std::fmt;
 use std::fmt::Debug;
-use crate::collections::square::VectorId;
 
 /// A `Coord` struct represents coordinates of an element in a `Square`.
 #[derive(Clone, Copy)]
@@ -11,15 +11,16 @@ impl Coord {
         Self([col, row])
     }
 
-    pub fn col(self) -> usize { self.0[0] }
+    pub fn col(self) -> usize {
+        self.0[0]
+    }
 
-    pub fn row(self) -> usize { self.0[1] }
+    pub fn row(self) -> usize {
+        self.0[1]
+    }
 
     pub fn vectors(self) -> [VectorId; 2] {
-        [
-            VectorId::row(self.row()),
-            VectorId::col(self.col()),
-        ]
+        [VectorId::row(self.row()), VectorId::col(self.col())]
     }
 }
 

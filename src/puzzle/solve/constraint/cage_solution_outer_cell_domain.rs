@@ -1,13 +1,13 @@
-use crate::collections::LinkedAHashSet;
-use crate::collections::square::VectorId;
-use crate::puzzle::{Puzzle, CageRef, CageId, CellId};
-use crate::puzzle::solve::{PuzzleMarkup, ValueSet};
-use crate::puzzle::solve::PuzzleMarkupChanges;
 use super::Constraint;
+use crate::collections::square::VectorId;
+use crate::collections::LinkedAHashSet;
+use crate::puzzle::solve::cage_solutions::CageSolutions;
 use crate::puzzle::solve::constraint::State;
+use crate::puzzle::solve::PuzzleMarkupChanges;
+use crate::puzzle::solve::{PuzzleMarkup, ValueSet};
+use crate::puzzle::{CageId, CageRef, CellId, Puzzle};
 use ahash::{AHashMap, AHashSet};
 use std::collections::hash_map::Entry;
-use crate::puzzle::solve::cage_solutions::CageSolutions;
 
 /// Summary: A cage solution must not conflict with a cell's domain outside of the cage
 ///
@@ -31,7 +31,8 @@ impl CageSolutionOuterCellDomainConstraint {
         for cage in puzzle.cages() {
             for cell in cage.cells() {
                 for &v in &cell.vectors() {
-                    cage_vector_cells.entry((cage.id(), v))
+                    cage_vector_cells
+                        .entry((cage.id(), v))
                         .or_insert_with(AHashSet::new)
                         .insert(cell.id());
                 }
@@ -77,10 +78,18 @@ impl Constraint for CageSolutionOuterCellDomainConstraint {
         }
     }
 
-    fn enforce_partial(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool {
+    fn enforce_partial(
+        &mut self,
+        puzzle: &Puzzle,
+        markup: &PuzzleMarkup,
+        changes: &mut PuzzleMarkupChanges,
+    ) -> bool {
         while let Some((cage_id, vector_id)) = self.dirty_cage_vectors.pop_front() {
-            let count = enforce_cage_vector(puzzle, markup, puzzle.cage(cage_id), vector_id, changes);
-            if count > 0 { return true }
+            let count =
+                enforce_cage_vector(puzzle, markup, puzzle.cage(cage_id), vector_id, changes);
+            if count > 0 {
+                return true;
+            }
         }
         false
     }
@@ -100,17 +109,24 @@ fn enforce_cage_vector(
     markup: &PuzzleMarkup,
     cage: CageRef<'_>,
     vector_id: VectorId,
-    changes: &mut PuzzleMarkupChanges
+    changes: &mut PuzzleMarkupChanges,
 ) -> u32 {
-    let CageSolutions { cell_ids, solutions, .. } = &markup.cage_solutions()[cage.id()];
+    let CageSolutions {
+        cell_ids,
+        solutions,
+        ..
+    } = &markup.cage_solutions()[cage.id()];
 
     if cell_ids.is_empty() {
         // the cage is solved
-        return 0
+        return 0;
     }
 
     // indices within each solution where the cell is part of the vector
-    let soln_indices = cell_ids.iter().copied().enumerate()
+    let soln_indices = cell_ids
+        .iter()
+        .copied()
+        .enumerate()
         .filter(|&(_, sq_idx)| puzzle.cell(sq_idx).is_in_vector(vector_id))
         .map(|(i, _)| i)
         .collect::<Vec<_>>();
@@ -119,12 +135,13 @@ fn enforce_cage_vector(
     }
 
     // cell domains in the vector, outside the cage, where domain size <= solution size
-    let outside_domains: Vec<(CellId, &ValueSet)> = puzzle.vector_cells(vector_id)
+    let outside_domains: Vec<(CellId, &ValueSet)> = puzzle
+        .vector_cells(vector_id)
         .filter(|cell| cell.cage_id() != cage.id())
         .filter_map(|cell| {
             if let Some(domain) = markup.cells()[cell.id()].unsolved() {
                 if domain.len() <= soln_indices.len() {
-                    return Some((cell.id(), domain))
+                    return Some((cell.id(), domain));
                 }
             }
             None
@@ -140,12 +157,19 @@ fn enforce_cage_vector(
         let mut solution_values = ValueSet::new(puzzle.width());
         solution_values.extend(soln_indices.iter().map(|&i| solution[i]));
         for &(cell_id, cell_domain) in &outside_domains {
-            if cell_domain.iter().all(|value| solution_values.contains(value)) {
-                debug!("solution {:?} for cage at {:?} conflicts with cell domain at {:?}",
-                       solution, cage.coord(), puzzle.cell(cell_id).coord());
+            if cell_domain
+                .iter()
+                .all(|value| solution_values.contains(value))
+            {
+                debug!(
+                    "solution {:?} for cage at {:?} conflicts with cell domain at {:?}",
+                    solution,
+                    cage.coord(),
+                    puzzle.cell(cell_id).coord()
+                );
                 changes.remove_cage_solution(cage.id(), solution_index);
                 count += 1;
-                break
+                break;
             }
         }
     }

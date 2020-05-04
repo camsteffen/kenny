@@ -1,13 +1,13 @@
 //! If all possible solutions for a given value in a given vector are in a given cage, then the cage solution must
 //! contain the given value in the given vector
 
-use crate::collections::square::{VectorId, IsSquare};
-use crate::puzzle::{Puzzle, Value};
+use crate::collections::square::{IsSquare, VectorId};
+use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::cage_solutions::CageSolutions;
 use crate::puzzle::solve::constraint::Constraint;
 use crate::puzzle::solve::markup::PuzzleMarkup;
 use crate::puzzle::solve::markup::PuzzleMarkupChanges;
-use crate::collections::LinkedAHashSet;
+use crate::puzzle::{Puzzle, Value};
 use itertools::Itertools;
 
 /// If a value is known to be in a cage-vector it must not be in other cells in the vector
@@ -18,10 +18,13 @@ pub struct VectorValueCageConstraint {
 
 impl VectorValueCageConstraint {
     pub fn new(puzzle: &Puzzle) -> Self {
-        let dirty_vector_values = puzzle.vectors().flat_map(|v| {
-            (1..=puzzle.width() as i32).map(move |i| (v, i))
-        }).collect();
-        Self { dirty_vector_values }
+        let dirty_vector_values = puzzle
+            .vectors()
+            .flat_map(|v| (1..=puzzle.width() as i32).map(move |i| (v, i)))
+            .collect();
+        Self {
+            dirty_vector_values,
+        }
     }
 }
 
@@ -44,10 +47,17 @@ impl Constraint for VectorValueCageConstraint {
         }
     }
 
-    fn enforce_partial(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool {
+    fn enforce_partial(
+        &mut self,
+        puzzle: &Puzzle,
+        markup: &PuzzleMarkup,
+        changes: &mut PuzzleMarkupChanges,
+    ) -> bool {
         while let Some((vector, value)) = self.dirty_vector_values.pop_front() {
             let count = enforce_vector_value(vector, value, puzzle, markup, changes);
-            if count > 0 { return true; }
+            if count > 0 {
+                return true;
+            }
         }
         false
     }
@@ -60,12 +70,16 @@ fn enforce_vector_value(
     markup: &PuzzleMarkup,
     changes: &mut PuzzleMarkupChanges,
 ) -> u32 {
-    if vector.indices(puzzle).any(|i| markup.cells()[i].solved() == Some(value)) {
+    if puzzle
+        .vector_indices(vector)
+        .any(|i| markup.cells()[i].solved() == Some(value))
+    {
         return 0;
     }
 
     // cage containing all unsolved cells in the vector with the value in its domain
-    let cage = vector.indices(puzzle)
+    let cage = puzzle
+        .vector_indices(vector)
         .filter(|&i| markup.cells()[i].unsolved_and_contains(value))
         .map(|i| puzzle.cell(i).cage_id())
         .dedup()
@@ -75,10 +89,17 @@ fn enforce_vector_value(
         Err(_) => return 0,
     };
 
-    let CageSolutions { cell_ids, solutions, .. } = &markup.cage_solutions()[cage];
+    let CageSolutions {
+        cell_ids,
+        solutions,
+        ..
+    } = &markup.cage_solutions()[cage];
 
     // indices of cage solution cell_ids where the cell is in the vector
-    let indices_in_vector: Vec<_> = cell_ids.iter().copied().enumerate()
+    let indices_in_vector: Vec<_> = cell_ids
+        .iter()
+        .copied()
+        .enumerate()
         .filter(|&(_, id)| puzzle.cell(id).is_in_vector(vector))
         .map(|(i, _)| i)
         .collect();

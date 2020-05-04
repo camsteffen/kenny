@@ -5,24 +5,24 @@ use std::path::PathBuf;
 
 use failure::Fallible;
 
+use crate::puzzle::solve::step_writer::{StepWriter, StepWriterBuilder};
 use crate::puzzle::{Puzzle, Solution};
-use crate::puzzle::solve::step_writer::{StepWriterBuilder, StepWriter};
 
-pub use self::value_set::ValueSet;
 pub use self::cell_variable::CellVariable;
 use self::constraint::apply_unary_constraints;
 pub use self::markup::PuzzleMarkup;
 pub use self::markup::PuzzleMarkupChanges;
-use crate::puzzle::solve::search::{search_solution, SearchResult};
+pub use self::value_set::ValueSet;
 use crate::puzzle::solve::constraint::{ConstraintSet, PropagateResult};
+use crate::puzzle::solve::search::{search_solution, SearchResult};
 
 mod cage_solutions;
-mod search;
-mod value_set;
 mod cell_variable;
 mod constraint;
 mod markup;
+mod search;
 mod step_writer;
+mod value_set;
 
 pub enum SolveResult {
     /// The puzzle cannot be solved - there may be an error in the puzzle
@@ -79,7 +79,12 @@ impl<'a> PuzzleSolver<'a> {
             Some(solution) => solution,
             None => {
                 info!("Begin backtracking");
-                match search_solution(self.puzzle, &markup, &mut constraints, &mut step_writer.as_mut())? {
+                match search_solution(
+                    self.puzzle,
+                    &markup,
+                    &mut constraints,
+                    &mut step_writer.as_mut(),
+                )? {
                     SearchResult::NoSolutions => return Ok(SolveResult::Unsolvable),
                     SearchResult::SingleSolution(s) => s.solution,
                     SearchResult::MultipleSolutions => return Ok(SolveResult::MultipleSolutions),
@@ -91,15 +96,18 @@ impl<'a> PuzzleSolver<'a> {
     }
 
     fn start_step_writer(&self, markup: &mut PuzzleMarkup) -> Fallible<Option<StepWriter<'_>>> {
-        self.steps.as_ref().map(|steps| -> Fallible<StepWriter<'_>> {
-            let mut builder = StepWriterBuilder::new(self.puzzle, &steps.path);
-            if let Some(image_width) = steps.image_width {
-                builder.image_width(image_width);
-            }
-            let mut step_writer = builder.build();
-            step_writer.write_next(&markup, &[])?;
-            Ok(step_writer)
-        }).transpose()
+        self.steps
+            .as_ref()
+            .map(|steps| -> Fallible<StepWriter<'_>> {
+                let mut builder = StepWriterBuilder::new(self.puzzle, &steps.path);
+                if let Some(image_width) = steps.image_width {
+                    builder.image_width(image_width);
+                }
+                let mut step_writer = builder.build();
+                step_writer.write_next(&markup, &[])?;
+                Ok(step_writer)
+            })
+            .transpose()
     }
 }
 

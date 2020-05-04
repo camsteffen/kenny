@@ -1,10 +1,10 @@
-use crate::collections::{RangeSet, LinkedAHashSet};
-use std::ops::{Index, IndexMut};
-use crate::collections::square::{VectorId, IsSquare};
-use crate::puzzle::solve::markup::PuzzleMarkupChanges;
-use crate::puzzle::{Puzzle, CellRef, Value};
-use crate::puzzle::solve::PuzzleMarkup;
 use super::Constraint;
+use crate::collections::square::{IsSquare, VectorId};
+use crate::collections::{LinkedAHashSet, RangeSet};
+use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+use crate::puzzle::solve::PuzzleMarkup;
+use crate::puzzle::{CellRef, Puzzle, Value};
+use std::ops::{Index, IndexMut};
 
 /// If only one cell in a vector has a given value in its domain, then the cell has that value.
 #[derive(Clone)]
@@ -26,19 +26,26 @@ impl VectorValueDomainConstraint {
         puzzle: &Puzzle,
         vector_id: VectorId,
         n: i32,
-        change: &mut PuzzleMarkupChanges
+        change: &mut PuzzleMarkupChanges,
     ) -> bool {
-        let vec_val_pos = match self.data[vector_id][n as usize - 1].as_ref().and_then(RangeSet::single_value) {
+        let vec_val_pos = match self.data[vector_id][n as usize - 1]
+            .as_ref()
+            .and_then(RangeSet::single_value)
+        {
             Some(v) => v,
             None => return false,
         };
         let sq_pos = puzzle.vector_point(vector_id, vec_val_pos);
-        debug!("the only possible position for {} in {:?} is {:?}", n, vector_id, puzzle.coord_at(sq_pos));
+        debug!(
+            "the only possible position for {} in {:?} is {:?}",
+            n,
+            vector_id,
+            puzzle.coord_at(sq_pos)
+        );
         change.solve_cell(sq_pos, n);
         self.data.remove_cell_value(puzzle.cell(sq_pos), n);
         true
     }
-
 }
 
 impl Constraint for VectorValueDomainConstraint {
@@ -61,10 +68,17 @@ impl Constraint for VectorValueDomainConstraint {
         }
     }
 
-    fn enforce_partial(&mut self, puzzle: &Puzzle, _: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool {
+    fn enforce_partial(
+        &mut self,
+        puzzle: &Puzzle,
+        _: &PuzzleMarkup,
+        changes: &mut PuzzleMarkupChanges,
+    ) -> bool {
         while let Some((vector_id, value)) = self.dirty_vec_vals.pop_front() {
             let solved = self.enforce_vector_value(puzzle, vector_id, value, changes);
-            if solved { return true }
+            if solved {
+                return true;
+            }
         }
         false
     }
@@ -77,7 +91,10 @@ struct VectorValueIndexSet(Vec<Vec<Option<RangeSet>>>);
 impl VectorValueIndexSet {
     pub fn new(puzzle_width: usize) -> VectorValueIndexSet {
         let width = puzzle_width;
-        VectorValueIndexSet(vec![vec![Some(RangeSet::with_all(width)); width]; 2 * width])
+        VectorValueIndexSet(vec![
+            vec![Some(RangeSet::with_all(width)); width];
+            2 * width
+        ])
     }
 
     pub fn remove_cell_value(&mut self, cell: CellRef<'_>, value: Value) {

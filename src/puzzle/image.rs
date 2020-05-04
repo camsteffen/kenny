@@ -3,7 +3,7 @@
 const BLACK: Rgb<u8> = Rgb([0; 3]);
 const WHITE: Rgb<u8> = Rgb([255; 3]);
 
-const COLOR_CELL_BORDER:  Rgb<u8> = Rgb([205; 3]);
+const COLOR_CELL_BORDER: Rgb<u8> = Rgb([205; 3]);
 const COLOR_CAGE_BORDER: Rgb<u8> = BLACK;
 const COLOR_BG: Rgb<u8> = WHITE;
 const COLOR_HIGHLIGHT_BG: Rgb<u8> = Rgb([255, 255, 150]);
@@ -13,20 +13,20 @@ const DEFAULT_CELL_WIDTH: u32 = 60;
 
 const ROBOTO_FONT: &[u8] = include_bytes!("../../res/Roboto-Regular.ttf");
 
-use crate::collections::Square;
-use crate::collections::square::{Coord, AsSquareIndex};
 use crate::collections::square::SquareIndex;
+use crate::collections::square::{AsSquareIndex, Coord};
+use crate::collections::Square;
+use crate::puzzle::solve::CellVariable;
+use crate::puzzle::solve::ValueSet;
+use crate::puzzle::{Puzzle, Value};
+use ahash::AHashSet;
 use image::Pixel;
 use image::{Rgb, RgbImage};
-use crate::puzzle::{Puzzle, Value};
-use crate::puzzle::solve::ValueSet;
-use crate::puzzle::solve::CellVariable;
+use rusttype::point;
 use rusttype::Font;
 use rusttype::FontCollection;
-use rusttype::Scale;
-use rusttype::point;
 use rusttype::PositionedGlyph;
-use ahash::AHashSet;
+use rusttype::Scale;
 
 pub struct PuzzleImageBuilder<'a> {
     puzzle: &'a Puzzle,
@@ -43,7 +43,6 @@ pub struct PuzzleImageBuilder<'a> {
 }
 
 impl<'a> PuzzleImageBuilder<'a> {
-
     pub fn new(puzzle: &'a Puzzle) -> Self {
         let font_collection = FontCollection::from_bytes(ROBOTO_FONT).expect("Error loading font");
         let font = font_collection.font_at(0).expect("load font");
@@ -67,12 +66,15 @@ impl<'a> PuzzleImageBuilder<'a> {
     pub fn cell_width(&mut self, cell_width: u32) -> &mut Self {
         self.cell_width = cell_width;
         self.border_width = Self::calc_border_width(cell_width);
-        self.image_width = Self::calc_image_width(cell_width, self.puzzle.width(), self.border_width);
+        self.image_width =
+            Self::calc_image_width(cell_width, self.puzzle.width(), self.border_width);
         self
     }
 
     pub fn image_width(&mut self, image_width: u32) -> &mut Self {
-        let a = BORDER_CELL_RATIO.checked_mul(image_width).expect("image width is too big");
+        let a = BORDER_CELL_RATIO
+            .checked_mul(image_width)
+            .expect("image width is too big");
         let b = BORDER_CELL_RATIO * self.puzzle.width() as u32 + 1;
         self.cell_width(a / b)
     }
@@ -82,7 +84,10 @@ impl<'a> PuzzleImageBuilder<'a> {
         self
     }
 
-    pub fn cell_variables(&mut self, cell_variables: Option<&'a Square<CellVariable>>) -> &mut Self {
+    pub fn cell_variables(
+        &mut self,
+        cell_variables: Option<&'a Square<CellVariable>>,
+    ) -> &mut Self {
         self.cell_variables = cell_variables;
         self
     }
@@ -94,8 +99,12 @@ impl<'a> PuzzleImageBuilder<'a> {
 
     pub fn build(&self) -> RgbImage {
         let mut buffer = match self.highlighted_cells {
-            Some(highlighted_cells) =>
-                Self::buffer_with_highlighted_cells(highlighted_cells, self.image_width, self.cell_width, self.puzzle.width()),
+            Some(highlighted_cells) => Self::buffer_with_highlighted_cells(
+                highlighted_cells,
+                self.image_width,
+                self.cell_width,
+                self.puzzle.width(),
+            ),
             None => RgbImage::from_pixel(self.image_width, self.image_width, COLOR_BG),
         };
         self.draw_grid(&mut buffer);
@@ -116,8 +125,12 @@ impl<'a> PuzzleImageBuilder<'a> {
         cell_width * puzzle_width as u32 + border_width
     }
 
-    fn buffer_with_highlighted_cells(highlighted_cells: &[SquareIndex], image_width: u32, cell_width: u32,
-                                     puzzle_width: usize) -> RgbImage {
+    fn buffer_with_highlighted_cells(
+        highlighted_cells: &[SquareIndex],
+        image_width: u32,
+        cell_width: u32,
+        puzzle_width: usize,
+    ) -> RgbImage {
         let highlighted_cells = highlighted_cells.iter().copied().collect::<AHashSet<_>>();
         RgbImage::from_fn(image_width, image_width, |i, j| {
             let index = Coord::new((i / cell_width) as usize, (j / cell_width) as usize)
@@ -135,17 +148,48 @@ impl<'a> PuzzleImageBuilder<'a> {
         let cells_width = self.cell_width * self.puzzle.width() as u32;
 
         // draw outer border
-        draw_rectangle(buffer, 0, 0, cells_width, self.border_width, COLOR_CAGE_BORDER);
-        draw_rectangle(buffer, cells_width, 0, image_width, cells_width, COLOR_CAGE_BORDER);
-        draw_rectangle(buffer, self.border_width, cells_width, image_width, image_width, COLOR_CAGE_BORDER);
-        draw_rectangle(buffer, 0, self.border_width, self.border_width, image_width, COLOR_CAGE_BORDER);
+        draw_rectangle(
+            buffer,
+            0,
+            0,
+            cells_width,
+            self.border_width,
+            COLOR_CAGE_BORDER,
+        );
+        draw_rectangle(
+            buffer,
+            cells_width,
+            0,
+            image_width,
+            cells_width,
+            COLOR_CAGE_BORDER,
+        );
+        draw_rectangle(
+            buffer,
+            self.border_width,
+            cells_width,
+            image_width,
+            image_width,
+            COLOR_CAGE_BORDER,
+        );
+        draw_rectangle(
+            buffer,
+            0,
+            self.border_width,
+            self.border_width,
+            image_width,
+            COLOR_CAGE_BORDER,
+        );
 
         // draw horizontal line segments
-        for i in 1..self.puzzle.width() { // row
-            for j in 0..self.puzzle.width() { // col
+        for i in 1..self.puzzle.width() {
+            // row
+            for j in 0..self.puzzle.width() {
+                // col
                 let pos1 = Coord::new(j, i - 1);
                 let pos2 = Coord::new(j, i);
-                let color = if self.puzzle.cell(pos1).cage_id() == self.puzzle.cell(pos2).cage_id() {
+                let color = if self.puzzle.cell(pos1).cage_id() == self.puzzle.cell(pos2).cage_id()
+                {
                     COLOR_CELL_BORDER
                 } else {
                     COLOR_CAGE_BORDER
@@ -159,11 +203,14 @@ impl<'a> PuzzleImageBuilder<'a> {
         }
 
         // draw vertical line segments
-        for i in 0..self.puzzle.width() { // row
-            for j in 1..self.puzzle.width() { // col
+        for i in 0..self.puzzle.width() {
+            // row
+            for j in 1..self.puzzle.width() {
+                // col
                 let pos1 = Coord::new(j - 1, i);
                 let pos2 = Coord::new(j, i);
-                let color = if self.puzzle.cell(pos1).cage_id() == self.puzzle.cell(pos2).cage_id() {
+                let color = if self.puzzle.cell(pos1).cage_id() == self.puzzle.cell(pos2).cage_id()
+                {
                     COLOR_CELL_BORDER
                 } else {
                     COLOR_CAGE_BORDER
@@ -180,12 +227,11 @@ impl<'a> PuzzleImageBuilder<'a> {
         for i in 1..self.puzzle.width() {
             for j in 1..self.puzzle.width() {
                 let first = self.puzzle.cell(Coord::new(j - 1, i - 1)).cage_id();
-                let pos = [
-                    Coord::new(j, i - 1),
-                    Coord::new(j - 1, i),
-                    Coord::new(j, i),
-                ];
-                let color = if pos.iter().all(|pos| self.puzzle.cell(*pos).cage_id() == first) {
+                let pos = [Coord::new(j, i - 1), Coord::new(j - 1, i), Coord::new(j, i)];
+                let color = if pos
+                    .iter()
+                    .all(|pos| self.puzzle.cell(*pos).cage_id() == first)
+                {
                     COLOR_CELL_BORDER
                 } else {
                     COLOR_CAGE_BORDER
@@ -214,7 +260,9 @@ impl<'a> PuzzleImageBuilder<'a> {
             let pad = self.cell_width / 16;
             let offset = point(
                 ((pos.col() as u32 * self.cell_width) + self.border_width + pad) as f32,
-                ((pos.row() as u32 * self.cell_width) + self.border_width + pad) as f32 + v_metrics.ascent);
+                ((pos.row() as u32 * self.cell_width) + self.border_width + pad) as f32
+                    + v_metrics.ascent,
+            );
 
             for glyph in self.font.layout(&text, scale, offset) {
                 overlay_glyph(buffer, &glyph);
@@ -225,12 +273,8 @@ impl<'a> PuzzleImageBuilder<'a> {
     fn draw_markup(&self, buffer: &mut RgbImage, cell_variables: &Square<CellVariable>) {
         for (pos, cell) in cell_variables.iter_coord() {
             match cell {
-                CellVariable::Unsolved(domain) => {
-                    self.draw_domain(buffer, pos, domain)
-                },
-                CellVariable::Solved(value) => {
-                    self.draw_cell_solution(buffer, pos, *value)
-                },
+                CellVariable::Unsolved(domain) => self.draw_domain(buffer, pos, domain),
+                CellVariable::Solved(value) => self.draw_cell_solution(buffer, pos, *value),
             };
         }
     }
@@ -248,20 +292,25 @@ impl<'a> PuzzleImageBuilder<'a> {
         let scale = Scale::uniform(self.cell_width as f32 * 0.2);
         let v_metrics = self.font.v_metrics(scale);
 
-        if domain.len() as u32 > MAX_LINE_LEN * 2 { return }
+        if domain.len() as u32 > MAX_LINE_LEN * 2 {
+            return;
+        }
         let mut char_x = 0;
         let mut char_y = 0;
         for n in domain {
             let s = n.to_string();
             let mut chars = s.chars();
             let c = chars.next().unwrap();
-            if chars.next().is_some() { panic!("Expected a single char in {}", s) }
+            if chars.next().is_some() {
+                panic!("Expected a single char in {}", s)
+            }
             let point = point(
-                (pos.col() as u32 * self.cell_width + self.border_width + 1) as f32 + char_x as f32 * v_metrics.ascent,
-                ((pos.row() as u32 + 1) * self.cell_width - 2) as f32 - char_y as f32 * v_metrics.ascent);
-            let glyph = self.font.glyph(c)
-                .scaled(scale)
-                .positioned(point);
+                (pos.col() as u32 * self.cell_width + self.border_width + 1) as f32
+                    + char_x as f32 * v_metrics.ascent,
+                ((pos.row() as u32 + 1) * self.cell_width - 2) as f32
+                    - char_y as f32 * v_metrics.ascent,
+            );
+            let glyph = self.font.glyph(c).scaled(scale).positioned(point);
             overlay_glyph(buffer, &glyph);
             char_x += 1;
             if char_x == MAX_LINE_LEN {
@@ -278,17 +327,19 @@ impl<'a> PuzzleImageBuilder<'a> {
         let s = value.to_string();
         let mut chars = s.chars();
         let c = chars.next().unwrap();
-        if chars.next().is_some() { panic!("{} has too many characters", value) }
-        let glyph = self.font.glyph(c)
-            .scaled(scale);
+        if chars.next().is_some() {
+            panic!("{} has too many characters", value)
+        }
+        let glyph = self.font.glyph(c).scaled(scale);
         let h_metrics = glyph.h_metrics();
-        let x = (pos.col() as u32 * self.cell_width + self.border_width) as f32 + ((self.cell_width - self.border_width) as f32 - h_metrics.advance_width) / 2.0;
-        let y = ((pos.row() as u32 + 1) * self.cell_width) as f32 - ((self.cell_width - self.border_width) as f32 - v_metrics.ascent) / 2.0;
+        let x = (pos.col() as u32 * self.cell_width + self.border_width) as f32
+            + ((self.cell_width - self.border_width) as f32 - h_metrics.advance_width) / 2.0;
+        let y = ((pos.row() as u32 + 1) * self.cell_width) as f32
+            - ((self.cell_width - self.border_width) as f32 - v_metrics.ascent) / 2.0;
         let point = point(x, y);
         let glyph = glyph.positioned(point);
         overlay_glyph(buffer, &glyph);
     }
-
 }
 
 fn draw_rectangle(buffer: &mut RgbImage, x1: u32, y1: u32, x2: u32, y2: u32, color: Rgb<u8>) {
@@ -302,8 +353,11 @@ fn draw_rectangle(buffer: &mut RgbImage, x1: u32, y1: u32, x2: u32, y2: u32, col
 fn overlay_glyph(buffer: &mut RgbImage, glyph: &PositionedGlyph<'_>) {
     let bb = glyph.pixel_bounding_box().unwrap();
     glyph.draw(|x, y, v| {
-        if v == 0.0 { return };
-        buffer.get_pixel_mut(bb.min.x as u32 + x, bb.min.y as u32 + y)
+        if v == 0.0 {
+            return;
+        };
+        buffer
+            .get_pixel_mut(bb.min.x as u32 + x, bb.min.y as u32 + y)
             .apply(|c| (f32::from(c) * (1.0 - v)) as u8);
     });
 }

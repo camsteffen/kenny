@@ -5,11 +5,17 @@ pub trait IteratorExt: Iterator {
     /// Assumes both iterators are sorted.
     /// Analogous to "LEFT JOIN" in SQL.
     fn left_merge<T>(self, other: T) -> LeftMerge<Self, T::IntoIter, Self::Item>
-        where Self: Iterator + Sized,
-              T: IntoIterator<Item=Self::Item> {
+    where
+        Self: Iterator + Sized,
+        T: IntoIterator<Item = Self::Item>,
+    {
         let mut right = other.into_iter();
         let r = right.next();
-        LeftMerge { left: self, right, r_next: r }
+        LeftMerge {
+            left: self,
+            right,
+            r_next: r,
+        }
     }
 }
 
@@ -20,9 +26,11 @@ pub struct LeftMerge<L, R, T> {
 }
 
 impl<L, R, T> Iterator for LeftMerge<L, R, T>
-    where L: Iterator<Item=T>,
-          R: Iterator<Item=T>,
-          T: PartialEq {
+where
+    L: Iterator<Item = T>,
+    R: Iterator<Item = T>,
+    T: PartialEq,
+{
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -67,31 +75,45 @@ mod test {
 
     #[test]
     fn test2() {
-        let results: Vec<_> = vec![1, 2, 3, 4].into_iter().left_merge(vec![1, 2, 3, 4]).collect();
-        assert_eq!(Vec::new() as Vec<usize>, results);
+        let results: Vec<_> = vec![1, 2, 3, 4]
+            .into_iter()
+            .left_merge(vec![1, 2, 3, 4])
+            .collect();
+        let empty: Vec<usize> = Vec::new();
+        assert_eq!(empty, results);
     }
 
     #[test]
     fn test3() {
-        let results: Vec<_> = vec![1, 2, 3, 4].into_iter().left_merge(vec![1, 3]).collect();
+        let results: Vec<_> = vec![1, 2, 3, 4]
+            .into_iter()
+            .left_merge(vec![1, 3])
+            .collect();
         assert_eq!(vec![2, 4], results);
     }
 
     #[test]
     fn test4() {
-        let results: Vec<_> = vec![1, 2, 3, 4].into_iter().left_merge(vec![1, 2]).collect();
+        let results: Vec<_> = vec![1, 2, 3, 4]
+            .into_iter()
+            .left_merge(vec![1, 2])
+            .collect();
         assert_eq!(vec![3, 4], results);
     }
 
     #[test]
     fn test5() {
-        let results: Vec<_> = vec![1, 2, 3, 4].into_iter().left_merge(vec![3, 4]).collect();
+        let results: Vec<_> = vec![1, 2, 3, 4]
+            .into_iter()
+            .left_merge(vec![3, 4])
+            .collect();
         assert_eq!(vec![1, 2], results);
     }
 
     #[test]
     fn test6() {
         let results: Vec<_> = iter::empty().left_merge(vec![1, 2]).collect();
-        assert_eq!(vec![] as Vec<usize>, results);
+        let empty: Vec<usize> = vec![];
+        assert_eq!(empty, results);
     }
 }

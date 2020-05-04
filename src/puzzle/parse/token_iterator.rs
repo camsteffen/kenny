@@ -1,23 +1,25 @@
-use std::iter::Peekable;
-use std::str::CharIndices;
 use crate::puzzle::error::ParsePuzzleError;
 use crate::puzzle::parse::Token;
 use crate::puzzle::Operator;
+use std::iter::Peekable;
+use std::str::CharIndices;
 
 pub struct TokenIterator<'a> {
     chars: Peekable<CharIndices<'a>>,
 }
 
-impl<'a> TokenIterator<'a> {
+impl TokenIterator<'_> {
     pub fn new(s: &str) -> TokenIterator<'_> {
-        TokenIterator { chars: s.char_indices().peekable() }
+        TokenIterator {
+            chars: s.char_indices().peekable(),
+        }
     }
 
     pub fn next_skip_space(&mut self) -> Result<Option<(usize, Token)>, ParsePuzzleError> {
         loop {
             match self.next() {
-                Ok(Some((_, Token::Space))) => {},
-                next@_ => return next,
+                Ok(Some((_, Token::Space))) => {}
+                next @ _ => return next,
             }
         }
     }
@@ -30,17 +32,17 @@ impl<'a> TokenIterator<'a> {
                 Some(v) => {
                     idx = v.0;
                     c = v.1;
-                },
+                }
                 None => return Ok(None),
             };
             if c.is_whitespace() {
                 loop {
                     self.chars.next().unwrap();
                     if self.chars.peek().map_or(true, |(_, c)| !c.is_whitespace()) {
-                        break
+                        break;
                     }
                 }
-                break Token::Space
+                break Token::Space;
             }
             if c.is_ascii_digit() {
                 let mut s = c.to_string();
@@ -51,9 +53,9 @@ impl<'a> TokenIterator<'a> {
                             if c.is_ascii_digit() {
                                 s.push(c);
                             } else {
-                                break
+                                break;
                             }
-                        },
+                        }
                         None => break,
                     };
                 }
@@ -63,10 +65,10 @@ impl<'a> TokenIterator<'a> {
                 }
             } else if let Some(o) = Operator::from_symbol(c) {
                 self.chars.next().unwrap();
-                break Token::Operator(o)
+                break Token::Operator(o);
             } else if c >= 'A' && c <= 'Z' {
                 self.chars.next().unwrap();
-                break Token::Letter(c)
+                break Token::Letter(c);
             } else {
                 return Err(format!("invalid token: {}", c).into());
             }

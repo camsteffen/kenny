@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use clap::{ArgMatches};
+use clap::ArgMatches;
 use failure::{err_msg, Fallible};
 
 const DEFAULT_PUZZLE_WIDTH: usize = 4;
@@ -23,24 +23,28 @@ impl Options {
     fn from_arg_matches(matches: &ArgMatches<'_>) -> Fallible<Self> {
         let save_all = matches.is_present("save_all");
         let mut options = Self {
-            image_width: matches.value_of("image_width")
+            image_width: matches
+                .value_of("image_width")
                 .map(|s| s.parse().expect("invalid image width")),
             output_path: None,
             source: match matches.value_of("input") {
-                Some(path) => Source::File(path.to_owned()),
+                Some(path) => Source::File(path.into()),
                 None => {
-                    let (include_solvable, include_unsolvable) = if matches.is_present("allow_unsolvable") {
-                        (true, true)
-                    } else if matches.is_present("unsolvable_only") {
-                        (false, true)
-                    } else {
-                        (true, false)
-                    };
+                    let (include_solvable, include_unsolvable) =
+                        if matches.is_present("allow_unsolvable") {
+                            (true, true)
+                        } else if matches.is_present("unsolvable_only") {
+                            (false, true)
+                        } else {
+                            (true, false)
+                        };
                     Source::Generate(Generate {
-                        count: matches.value_of("count")
+                        count: matches
+                            .value_of("count")
                             .map(|s| s.parse::<u32>().expect("invalid count"))
                             .unwrap_or(1),
-                        width: matches.value_of("width")
+                        width: matches
+                            .value_of("width")
                             .map(|s| s.parse::<usize>().expect("invalid width"))
                             .unwrap_or(DEFAULT_PUZZLE_WIDTH),
                         save_puzzle: matches.is_present("save_puzzle") || save_all,
@@ -54,7 +58,9 @@ impl Options {
                     save_image: matches.is_present("save_solved_image") || save_all,
                     save_step_images: matches.is_present("save_step_images") || save_all,
                 })
-            } else { None },
+            } else {
+                None
+            },
             save_image: matches.is_present("save_image") || save_all,
         };
         if options.save_any() {
@@ -64,7 +70,6 @@ impl Options {
         }
         Ok(options)
     }
-
 
     /// returns true if any files are to be saved
     pub fn save_any(&self) -> bool {
@@ -103,11 +108,18 @@ impl Options {
 
 #[derive(Clone)]
 pub enum Source {
-    File(String),
+    File(PathBuf),
     Generate(Generate),
 }
 
 impl Source {
+    pub fn file(&self) -> Option<&Path> {
+        match self {
+            Source::File(path) => Some(path),
+            _ => None,
+        }
+    }
+
     pub fn generate(&self) -> Option<&Generate> {
         match self {
             Source::Generate(g) => Some(g),
@@ -140,71 +152,101 @@ fn clap_app() -> clap::App<'static, 'static> {
         .setting(AppSettings::ArgRequiredElseHelp)
         // can use in clap 3.0 when released
         // .replace("--save-all", &["--save-puzzle", "--save-image", "--save-solved-image", "--save-step-images"])
-        .group(ArgGroup::with_name("source")
-            .args(&["generate", "input"])
-            .required(true))
-        .arg(Arg::with_name("generate")
-            .short("g")
-            .long("generate")
-            .help("generate KenKen puzzle(s)"))
-        .arg(Arg::with_name("input")
-            .short("i")
-            .long("input")
-            .takes_value(true)
-            .value_name("PATH")
-            .help("read a KenKen puzzle from a file"))
-        .arg(Arg::with_name("solve")
-            .short("s")
-            .long("solve")
-            .help("solve KenKen puzzle(s)"))
-        .arg(Arg::with_name("width")
-            .short("w")
-            .long("width")
-            .takes_value(true)
-            .value_name("WIDTH")
-            .requires("generate")
-            .help("set the width and height of the generated puzzle"))
-        .arg(Arg::with_name("output_path")
-            .long("output-path")
-            .short("o")
-            .help("directory to save files")
-            .default_value(DEFAULT_PATH))
-        .arg(Arg::with_name("count")
-            .short("c")
-            .long("count")
-            .requires("generate")
-            .takes_value(true)
-            .help("the number of puzzles to generate (and solve)"))
+        .group(
+            ArgGroup::with_name("source")
+                .args(&["generate", "input"])
+                .required(true),
+        )
+        .arg(
+            Arg::with_name("generate")
+                .short("g")
+                .long("generate")
+                .help("generate KenKen puzzle(s)"),
+        )
+        .arg(
+            Arg::with_name("input")
+                .short("i")
+                .long("input")
+                .takes_value(true)
+                .value_name("PATH")
+                .help("read a KenKen puzzle from a file"),
+        )
+        .arg(
+            Arg::with_name("solve")
+                .short("s")
+                .long("solve")
+                .help("solve KenKen puzzle(s)"),
+        )
+        .arg(
+            Arg::with_name("width")
+                .short("w")
+                .long("width")
+                .takes_value(true)
+                .value_name("WIDTH")
+                .requires("generate")
+                .help("set the width and height of the generated puzzle"),
+        )
+        .arg(
+            Arg::with_name("output_path")
+                .long("output-path")
+                .short("o")
+                .help("directory to save files")
+                .default_value(DEFAULT_PATH),
+        )
+        .arg(
+            Arg::with_name("count")
+                .short("c")
+                .long("count")
+                .requires("generate")
+                .takes_value(true)
+                .help("the number of puzzles to generate (and solve)"),
+        )
         // todo no solutions and multiple solutions
-        .arg(Arg::with_name("allow_unsolvable")
-            .long("allow-unsolvable")
-            .requires("generate")
-            .help("include unsolvable generated puzzles"))
-        .arg(Arg::with_name("unsolvable_only")
-            .long("unsolvable-only")
-            .requires("generate")
-            .conflicts_with("allow_unsolvable")
-            .help("exclude solvable generated puzzles"))
-        .arg(Arg::with_name("save_all")
-            .long("save-all")
-            .help("save all optional files"))
-        .arg(Arg::with_name("save_puzzle")
-            .long("save-puzzle")
-            .requires("generate")
-            .help("save the puzzle to a file"))
-        .arg(Arg::with_name("save_image")
-            .long("save-image")
-            .help("save an image of the puzzle(s)"))
-        .arg(Arg::with_name("save_solved_image")
-            .long("save-solved-image")
-            .requires("solve")
-            .help("save an image of the solved (or partially solved) puzzle(s)"))
-        .arg(Arg::with_name("save_step_images")
-            .long("save-step-images")
-            .help("save an image of the puzzle at each step of the solving process"))
-        .arg(Arg::with_name("image_width")
-            .long("image-width")
-            .takes_value(true)
-            .value_name("PIXELS")
-            .help("sets the approx. width of saved images in pixels"))
+        .arg(
+            Arg::with_name("allow_unsolvable")
+                .long("allow-unsolvable")
+                .requires("generate")
+                .help("include unsolvable generated puzzles"),
+        )
+        .arg(
+            Arg::with_name("unsolvable_only")
+                .long("unsolvable-only")
+                .requires("generate")
+                .conflicts_with("allow_unsolvable")
+                .help("exclude solvable generated puzzles"),
+        )
+        .arg(
+            Arg::with_name("save_all")
+                .long("save-all")
+                .help("save all optional files"),
+        )
+        .arg(
+            Arg::with_name("save_puzzle")
+                .long("save-puzzle")
+                .requires("generate")
+                .help("save the puzzle to a file"),
+        )
+        .arg(
+            Arg::with_name("save_image")
+                .long("save-image")
+                .help("save an image of the puzzle(s)"),
+        )
+        .arg(
+            Arg::with_name("save_solved_image")
+                .long("save-solved-image")
+                .requires("solve")
+                .help("save an image of the solved (or partially solved) puzzle(s)"),
+        )
+        .arg(
+            Arg::with_name("save_step_images")
+                .long("save-step-images")
+                .help("save an image of the puzzle at each step of the solving process"),
+        )
+        .arg(
+            Arg::with_name("image_width")
+                .long("image-width")
+                .takes_value(true)
+                .value_name("PIXELS")
+                .help("sets the approx. width of saved images in pixels"),
+        )
 }

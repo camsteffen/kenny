@@ -29,7 +29,7 @@ impl ValueSet {
         self.0.is_empty()
     }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item=i32> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = i32> + '_ {
         self.into_iter()
     }
 
@@ -47,7 +47,7 @@ impl ValueSet {
 }
 
 impl Extend<i32> for ValueSet {
-    fn extend<T: IntoIterator<Item=i32>>(&mut self, iter: T) {
+    fn extend<T: IntoIterator<Item = i32>>(&mut self, iter: T) {
         for i in iter {
             self.insert(i);
         }

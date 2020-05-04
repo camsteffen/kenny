@@ -3,11 +3,11 @@ mod changes;
 pub use self::changes::PuzzleMarkupChanges;
 
 use crate::collections::Square;
-use crate::puzzle::Puzzle;
-use crate::puzzle::solve::CellVariable;
 use crate::puzzle::solve::cage_solutions::CageSolutionsSet;
-use std::convert::TryInto;
+use crate::puzzle::solve::CellVariable;
+use crate::puzzle::Puzzle;
 use ahash::AHashMap;
+use std::convert::TryInto;
 
 #[derive(Clone)]
 pub struct PuzzleMarkup {
@@ -19,7 +19,10 @@ pub struct PuzzleMarkup {
 impl PuzzleMarkup {
     pub fn new(puzzle: &Puzzle) -> Self {
         Self {
-            cell_variables: Square::with_width_and_value(puzzle.width(), CellVariable::unsolved_with_all(puzzle.width())),
+            cell_variables: Square::with_width_and_value(
+                puzzle.width(),
+                CellVariable::unsolved_with_all(puzzle.width()),
+            ),
             cage_solutions_set: CageSolutionsSet::new(puzzle),
             blank_cell_count: puzzle.cell_count() as u32,
         }
@@ -43,17 +46,19 @@ impl PuzzleMarkup {
 
     pub fn completed_values(&self) -> Option<Square<i32>> {
         if !self.is_completed() {
-            return None
+            return None;
         }
-        let values = self.cell_variables.iter()
+        let values = self
+            .cell_variables
+            .iter()
             .map(|v| v.unwrap_solved())
             .collect::<Vec<_>>()
-            .try_into().unwrap();
+            .try_into()
+            .unwrap();
         Some(values)
     }
 
     pub fn sync_changes(&mut self, puzzle: &Puzzle, changes: &mut PuzzleMarkupChanges) {
-
         // apply cell solutions and collect cell domain removals
         let mut new_cell_domain_removals: AHashMap<_, _> = AHashMap::new();
         for &(index, value) in &changes.cell_solutions {
@@ -62,7 +67,10 @@ impl PuzzleMarkup {
                 let cell_domain = cell_variable.unwrap_unsolved();
                 for i in cell_domain {
                     if i != value {
-                        new_cell_domain_removals.entry(index).or_insert_with(Vec::new).push(i);
+                        new_cell_domain_removals
+                            .entry(index)
+                            .or_insert_with(Vec::new)
+                            .push(i);
                     }
                 }
             }
@@ -82,7 +90,9 @@ impl PuzzleMarkup {
         }
 
         // add previously collected cell domain removals to changes
-        changes.cell_domain_value_removals.extend(new_cell_domain_removals);
+        changes
+            .cell_domain_value_removals
+            .extend(new_cell_domain_removals);
 
         self.cage_solutions_set.apply_changes(puzzle, changes);
         self.blank_cell_count -= changes.cell_solutions.len() as u32;

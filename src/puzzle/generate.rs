@@ -1,12 +1,12 @@
 use crate::collections::Square;
-use crate::puzzle::{Cage, Value, Solution, CellId};
 use crate::puzzle::Operator;
 use crate::puzzle::Puzzle;
-use rand::thread_rng;
-use std::mem;
-use std::collections::VecDeque;
+use crate::puzzle::{Cage, CellId, Solution, Value};
 use rand::seq::SliceRandom;
+use rand::thread_rng;
+use std::collections::VecDeque;
 use std::convert::TryInto;
+use std::mem;
 
 const MAX_CAGE_SIZE: usize = 4;
 const MAX_AVG_CAGE_SIZE: f32 = 2.2;
@@ -21,12 +21,15 @@ pub fn generate_untested_puzzle_with_solution(width: usize) -> (Puzzle, Solution
     let solution = random_latin_square(width);
     debug!("Solution:\n{}", &solution);
     let cage_cells = generate_cage_cells(width);
-    let cages = cage_cells.into_iter().map(|cells| {
-        let values = cells.iter().map(|&i| solution[i]).collect::<Vec<_>>();
-        let operator = random_operator(&values);
-        let target = find_cage_target(operator, &values);
-        Cage::new(target, operator, cells)
-    }).collect();
+    let cages = cage_cells
+        .into_iter()
+        .map(|cells| {
+            let values = cells.iter().map(|&i| solution[i]).collect::<Vec<_>>();
+            let operator = random_operator(&values);
+            let target = find_cage_target(operator, &values);
+            Cage::new(target, operator, cells)
+        })
+        .collect();
     let puzzle = Puzzle::new(width, cages);
     (puzzle, solution)
 }
@@ -70,8 +73,7 @@ fn cells_touching_border(square_width: usize, border_id: usize) -> (CellId, Cell
 
 fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<CellId>> {
     let num_cells = puzzle_width.pow(2);
-    let mut cage_map: Square<usize> = (0..num_cells).collect::<Vec<_>>()
-        .try_into().unwrap();
+    let mut cage_map: Square<usize> = (0..num_cells).collect::<Vec<_>>().try_into().unwrap();
     let mut cages: Vec<Vec<CellId>> = (0..num_cells).map(|i| vec![i.into()]).collect();
     let min_cage_count = (num_cells as f32 / MAX_AVG_CAGE_SIZE) as usize;
     let mut borders = VecDeque::from(shuffled_inner_borders(puzzle_width));
@@ -81,26 +83,34 @@ fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<CellId>> {
             let border_id = borders.pop_front().unwrap();
             let (cell1, cell2) = cells_touching_border(puzzle_width, border_id);
             let (mut cage_a, mut cage_b) = (cage_map[cell1], cage_map[cell2]);
-            if cage_a > cage_b { mem::swap(&mut cage_a, &mut cage_b) }
+            if cage_a > cage_b {
+                mem::swap(&mut cage_a, &mut cage_b)
+            }
             let cage_size = cages[cage_a].len() + cages[cage_b].len();
             if cage_size != target_cage_size {
                 if cage_size > target_cage_size {
                     borders.push_back(border_id);
                 }
-                continue
+                continue;
             }
             let a = cages.pop().unwrap();
             if cage_b == cages.len() {
-                for &i in &a { cage_map[i] = cage_a }
+                for &i in &a {
+                    cage_map[i] = cage_a
+                }
                 cages[cage_a].extend(a);
             } else {
-                for &i in &a { cage_map[i] = cage_b }
+                for &i in &a {
+                    cage_map[i] = cage_b
+                }
                 let b = mem::replace(&mut cages[cage_b], a);
-                for &i in &b { cage_map[i] = cage_a }
+                for &i in &b {
+                    cage_map[i] = cage_a
+                }
                 cages[cage_a].extend(b);
             }
             if cages.len() == min_cage_count {
-                break 'target_cage_sizes
+                break 'target_cage_sizes;
             }
         }
     }
@@ -108,14 +118,18 @@ fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<CellId>> {
 }
 
 fn random_operator(values: &[i32]) -> Operator {
-    if values.len() == 1 { return Operator::Nop }
+    if values.len() == 1 {
+        return Operator::Nop;
+    }
     let mut rng = thread_rng();
     let operators = possible_operators(values);
     *operators.choose(&mut rng).unwrap()
 }
 
 fn possible_operators(values: &[i32]) -> Vec<Operator> {
-    if values.len() < 2 { panic!("multiple values must be provided") }
+    if values.len() < 2 {
+        panic!("multiple values must be provided")
+    }
     let mut operators = vec![Operator::Add, Operator::Multiply];
     if values.len() == 2 {
         operators.push(Operator::Subtract);
@@ -133,23 +147,29 @@ fn find_cage_target(operator: Operator, values: &[Value]) -> Value {
         Operator::Subtract => {
             let (min, max) = min_max(values);
             max - min
-        },
+        }
         Operator::Multiply => values.iter().product(),
         Operator::Divide => {
             let (min, max) = min_max(values);
             max / min
-        },
+        }
         Operator::Nop => values[0],
     }
 }
 
-fn min_max<T>(slice: &[T]) -> (T, T) where T: Copy + PartialOrd {
+fn min_max<T>(slice: &[T]) -> (T, T)
+where
+    T: Copy + PartialOrd,
+{
     let mut min = slice[0];
     let mut max = slice[0];
     for &e in &slice[1..] {
-        if e < min { min = e }
-        if e > max { max = e }
+        if e < min {
+            min = e
+        }
+        if e > max {
+            max = e
+        }
     }
     (min, max)
 }
-

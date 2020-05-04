@@ -1,5 +1,5 @@
-use super::ValueSet;
 use self::CellVariable::{Solved, Unsolved};
+use super::ValueSet;
 use crate::puzzle::Value;
 
 #[derive(Clone)]
@@ -9,7 +9,6 @@ pub enum CellVariable {
 }
 
 impl CellVariable {
-
     pub fn unsolved_with_all(size: usize) -> CellVariable {
         Unsolved(ValueSet::with_all(size))
     }

@@ -1,21 +1,21 @@
+use crate::collections::square::{AsSquareIndex, Coord, Dimension, IsSquare, VectorId};
 use crate::collections::Square;
-use std::path::Path;
-use std::fs::File;
-use crate::puzzle::generate::generate_untested_puzzle;
-use crate::collections::square::{Coord, AsSquareIndex, VectorId, Dimension, IsSquare};
-use crate::puzzle::parse::parse_puzzle;
 use crate::puzzle::error::ParsePuzzleError;
-use std::io::Read;
-use std::fmt::Display;
-use std::fmt;
-use std::ops::Deref;
+use crate::puzzle::generate::generate_untested_puzzle;
+use crate::puzzle::parse::parse_puzzle;
 use failure::Fallible;
+use std::fmt;
+use std::fmt::Display;
+use std::fs::File;
+use std::io::Read;
+use std::ops::Deref;
+use std::path::Path;
 
 pub use self::cage::{Cage, Operator};
-use std::convert::TryInto;
-use crate::puzzle::{Solution, CellId, CageId};
-use std::borrow::Borrow;
 use crate::puzzle::solve::ValueSet;
+use crate::puzzle::{CageId, CellId, Solution};
+use std::borrow::Borrow;
+use std::convert::TryInto;
 
 mod cage;
 
@@ -39,7 +39,7 @@ impl Puzzle {
         }
     }
 
-    pub fn from_file(path: impl AsRef<Path>) -> Fallible<Self> {
+    pub fn from_file(path: &Path) -> Fallible<Self> {
         let mut file = File::open(path)?;
         let mut buf = String::new();
         file.read_to_string(&mut buf)?;
@@ -56,12 +56,14 @@ impl Puzzle {
     }
 
     pub fn cage(&self, id: CageId) -> CageRef<'_> {
-        CageRef { puzzle: self, id: id }
+        CageRef {
+            puzzle: self,
+            id: id,
+        }
     }
 
-    pub fn cages(&self) -> impl Iterator<Item=CageRef<'_>> {
-        (0..self.cages.len())
-            .map(move |i| self.cage(i))
+    pub fn cages(&self) -> impl Iterator<Item = CageRef<'_>> {
+        (0..self.cages.len()).map(move |i| self.cage(i))
     }
 
     pub fn cell(&self, index: impl AsSquareIndex) -> CellRef<'_> {
@@ -75,25 +77,34 @@ impl Puzzle {
         self.width.pow(2)
     }
 
-    pub fn cells(&self) -> impl Iterator<Item=CellRef<'_>> {
-        (0..self.width * self.width)
-            .map(move |i| self.cell(i))
+    pub fn cells(&self) -> impl Iterator<Item = CellRef<'_>> {
+        (0..self.width * self.width).map(move |i| self.cell(i))
     }
 
     pub fn cell_cage_indices(&self) -> &Square<usize> {
         &self.cage_map
     }
 
-    pub fn vector_cells(&self, vector_id: VectorId) -> impl Iterator<Item=CellRef<'_>> {
+    pub fn vector_cells(&self, vector_id: VectorId) -> impl Iterator<Item = CellRef<'_>> {
         let (start, end, step_by) = match vector_id.dimension() {
-            Dimension::Row => (self.width * vector_id.index(), (self.width + 1) * vector_id.index(), 1),
-            Dimension::Col => (vector_id.index(), vector_id.index() + self.cell_count(), self.width),
+            Dimension::Row => (
+                self.width * vector_id.index(),
+                (self.width + 1) * vector_id.index(),
+                1,
+            ),
+            Dimension::Col => (
+                vector_id.index(),
+                vector_id.index() + self.cell_count(),
+                self.width,
+            ),
         };
         (start..end).step_by(step_by).map(move |i| self.cell(i))
     }
 
     pub fn verify_solution(&self, solution: &Solution) -> bool {
-        solution.rows().all(|v| self.verify_vector(v.iter().copied()))
+        solution
+            .rows()
+            .all(|v| self.verify_vector(v.iter().copied()))
             && solution.cols().all(|v| self.verify_vector(v.copied()))
             && self.verify_cages(solution)
     }
@@ -103,7 +114,11 @@ impl Puzzle {
     }
 
     fn verify_cage(&self, cage: CageRef<'_>, solution: &Solution) -> bool {
-        let values = cage.cell_ids.iter().map(|&i| solution[i]).collect::<Vec<_>>();
+        let values = cage
+            .cell_ids
+            .iter()
+            .map(|&i| solution[i])
+            .collect::<Vec<_>>();
         match cage.operator() {
             Operator::Add => values.iter().sum::<i32>() == cage.target(),
             Operator::Subtract => {
@@ -125,7 +140,7 @@ impl Puzzle {
         }
     }
 
-    fn verify_vector(&self, mut vector: impl Iterator<Item=i32>) -> bool {
+    fn verify_vector(&self, mut vector: impl Iterator<Item = i32>) -> bool {
         let mut set = ValueSet::new(self.width());
         vector.all(|i| i >= 1 && i <= self.width() as i32 && set.insert(i))
     }
@@ -195,7 +210,7 @@ impl<'a> CageRef<'a> {
         &self.cage().cell_ids
     }
 
-    pub fn cells(self) -> impl Iterator<Item=CellRef<'a>> {
+    pub fn cells(self) -> impl Iterator<Item = CellRef<'a>> + 'a {
         self.cell_ids().iter().map(move |&i| self.puzzle.cell(i))
     }
 
@@ -213,7 +228,7 @@ impl<'a> CageRef<'a> {
     }
 }
 
-impl<'a> Deref for CageRef<'a> {
+impl Deref for CageRef<'_> {
     type Target = Cage;
 
     fn deref(&self) -> &Self::Target {

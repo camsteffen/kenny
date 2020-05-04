@@ -1,5 +1,5 @@
+use crate::puzzle::{CageId, CellId, Value};
 use ahash::AHashMap;
-use crate::puzzle::{CellId, Value, CageId};
 
 #[derive(Default)]
 pub struct PuzzleMarkupChanges {
@@ -22,7 +22,8 @@ impl PuzzleMarkupChanges {
     }
 
     pub fn remove_value_from_cell(&mut self, id: CellId, value: i32) {
-        self.cell_domain_value_removals.entry(id)
+        self.cell_domain_value_removals
+            .entry(id)
             .or_insert_with(Vec::new)
             .push(value);
     }
@@ -32,7 +33,8 @@ impl PuzzleMarkupChanges {
     }
 
     pub fn remove_cage_solution(&mut self, cage_id: CageId, solution_index: usize) {
-        self.cage_solution_removals.entry(cage_id)
+        self.cage_solution_removals
+            .entry(cage_id)
             .or_insert_with(Vec::new)
             .push(solution_index);
     }

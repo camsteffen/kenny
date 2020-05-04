@@ -1,5 +1,5 @@
-use std::{fs, io};
 use std::path::{Path, PathBuf};
+use std::{fs, io};
 
 use failure::{Fallible, ResultExt};
 use image::RgbImage;
@@ -42,13 +42,20 @@ impl PuzzleFolderBuilder {
 
     pub fn write_puzzle_image(&self, image: RgbImage) -> Fallible<()> {
         let path = self.temp_dir.path().join(format!("image.{}", IMG_EXT));
-        image.save(&path).with_context(|e| format!("Error saving puzzle image: {}", e))?;
+        image
+            .save(&path)
+            .with_context(|e| format!("Error saving puzzle image: {}", e))?;
         Ok(())
     }
 
     pub fn write_solved_puzzle_image(&self, image: RgbImage) -> Fallible<()> {
-        let path = self.temp_dir.path().join(format!("image_solved.{}", IMG_EXT));
-        image.save(&path).with_context(|e| format!("Error saving solved puzzle image: {}", e))?;
+        let path = self
+            .temp_dir
+            .path()
+            .join(format!("image_solved.{}", IMG_EXT));
+        image
+            .save(&path)
+            .with_context(|e| format!("Error saving solved puzzle image: {}", e))?;
         Ok(())
     }
 }

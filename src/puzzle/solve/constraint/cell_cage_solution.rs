@@ -1,13 +1,13 @@
-use crate::collections::{Square, LinkedAHashSet};
-use crate::puzzle::{Operator, CageId, CageRef};
-use crate::puzzle::Puzzle;
-use crate::puzzle::solve::ValueSet;
-use crate::puzzle::solve::CellVariable;
-use crate::puzzle::solve::markup::PuzzleMarkupChanges;
-use crate::puzzle::solve::PuzzleMarkup;
 use super::Constraint;
+use crate::collections::{LinkedAHashSet, Square};
 use crate::puzzle::solve::cage_solutions::CageSolutions;
 use crate::puzzle::solve::constraint::State;
+use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+use crate::puzzle::solve::CellVariable;
+use crate::puzzle::solve::PuzzleMarkup;
+use crate::puzzle::solve::ValueSet;
+use crate::puzzle::Puzzle;
+use crate::puzzle::{CageId, CageRef, Operator};
 
 /// A cell domain value must have at least one corresponding cage solution value
 #[derive(Clone)]
@@ -18,7 +18,8 @@ pub struct CellCageSolutionConstraint {
 impl CellCageSolutionConstraint {
     pub fn new(puzzle: &Puzzle) -> Self {
         Self {
-            dirty_cages: puzzle.cages()
+            dirty_cages: puzzle
+                .cages()
                 .filter(|cage| cage.operator() != Operator::Nop)
                 .map(CageRef::id)
                 .collect(),
@@ -29,7 +30,7 @@ impl CellCageSolutionConstraint {
         puzzle: &Puzzle,
         cell_variables: &Square<CellVariable>,
         cage_solutions: &CageSolutions,
-        changes: &mut PuzzleMarkupChanges
+        changes: &mut PuzzleMarkupChanges,
     ) -> u32 {
         // assemble domain for each unsolved cell from cell solutions
         let mut soln_domain = vec![ValueSet::new(puzzle.width()); cage_solutions.num_cells()];
@@ -44,13 +45,19 @@ impl CellCageSolutionConstraint {
         // remove values from cell domains that are not in a cage solution
         for (i, id) in cage_solutions.cell_ids.iter().copied().enumerate() {
             let domain = cell_variables[id].unwrap_unsolved();
-            let no_solutions = domain.iter()
-                    .filter(|&n| !soln_domain[i].contains(n))
-                    .collect::<Vec<_>>();
-            if no_solutions.is_empty() { continue }
+            let no_solutions = domain
+                .iter()
+                .filter(|&n| !soln_domain[i].contains(n))
+                .collect::<Vec<_>>();
+            if no_solutions.is_empty() {
+                continue;
+            }
             count += no_solutions.len() as u32;
-            debug!("values {:?} in cell {:?} are not part of a solution",
-                   no_solutions, puzzle.cell(id).coord());
+            debug!(
+                "values {:?} in cell {:?} are not part of a solution",
+                no_solutions,
+                puzzle.cell(id).coord()
+            );
             for n in no_solutions {
                 changes.remove_value_from_cell(id, n);
             }
@@ -69,11 +76,18 @@ impl Constraint for CellCageSolutionConstraint {
         }
     }
 
-    fn enforce_partial(&mut self, puzzle: &Puzzle, markup: &PuzzleMarkup, changes: &mut PuzzleMarkupChanges) -> bool {
+    fn enforce_partial(
+        &mut self,
+        puzzle: &Puzzle,
+        markup: &PuzzleMarkup,
+        changes: &mut PuzzleMarkupChanges,
+    ) -> bool {
         while let Some(cage_id) = self.dirty_cages.pop_front() {
             let cage_solutions = &markup.cage_solutions()[cage_id];
             let count = Self::enforce_cage(puzzle, &markup.cells(), cage_solutions, changes);
-            if count > 0 { return true }
+            if count > 0 {
+                return true;
+            }
         }
         false
     }

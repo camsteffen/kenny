@@ -1,11 +1,11 @@
 //! Save images of the puzzle in a series of solution steps
 
-use crate::puzzle::{Puzzle, CellId};
 use crate::puzzle::image::PuzzleImageBuilder;
 use crate::puzzle::solve::PuzzleMarkup;
+use crate::puzzle::{CellId, Puzzle};
+use failure::{Fallible, ResultExt};
 use std::path::Path;
 use std::path::PathBuf;
-use failure::{Fallible, ResultExt};
 
 pub struct StepWriter<'a> {
     puzzle: &'a Puzzle,
@@ -14,7 +14,7 @@ pub struct StepWriter<'a> {
     path: PathBuf,
 }
 
-impl<'a> StepWriter<'a> {
+impl StepWriter<'_> {
     pub fn write_next(&mut self, markup: &PuzzleMarkup, changed_cells: &[CellId]) -> Fallible<()> {
         let mut path = self.path.clone();
         path.push(format!("step_{}.jpeg", self.index));
@@ -46,7 +46,9 @@ impl<'a> StepWriter<'a> {
             builder.image_width(image_width);
         }
         let image = builder.build();
-        image.save(&path).with_context(|e| format!("Error saving step image to {}: {}", path.display(), e))?;
+        image
+            .save(&path)
+            .with_context(|e| format!("Error saving step image to {}: {}", path.display(), e))?;
         Ok(())
     }
 }
@@ -62,7 +64,7 @@ impl<'a> StepWriterBuilder<'a> {
         Self {
             puzzle,
             image_width: None,
-            path: path.to_path_buf()
+            path: path.to_path_buf(),
         }
     }
 
