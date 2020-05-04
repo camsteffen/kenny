@@ -69,7 +69,7 @@ impl Token {
 }
 
 impl fmt::Display for Token {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Token::Number(n) => write!(f, "{}", n),
             Token::Operator(o) => o.symbol().map_or(Ok(()), |symbol| write!(f, "{}", symbol)),
@@ -80,7 +80,7 @@ impl fmt::Display for Token {
 }
 
 
-fn read_cage_cells(s: &mut TokenIterator, size: usize) -> Result<BTreeMap<char, Vec<SquareIndex>>, ParsePuzzleError> {
+fn read_cage_cells(s: &mut TokenIterator<'_>, size: usize) -> Result<BTreeMap<char, Vec<SquareIndex>>, ParsePuzzleError> {
     let mut cages = BTreeMap::new();
     for cell in 0..(size * size) {
         let (idx, token) = s.next_skip_space()?.ok_or(ParsePuzzleError::from("unexpected EOF"))?;
@@ -93,7 +93,7 @@ fn read_cage_cells(s: &mut TokenIterator, size: usize) -> Result<BTreeMap<char, 
     Ok(cages)
 }
 
-fn read_cage_targets(s: &mut TokenIterator, num_cages: usize) -> Result<Vec<(u32, Option<Operator>)>, ParsePuzzleError> {
+fn read_cage_targets(s: &mut TokenIterator<'_>, num_cages: usize) -> Result<Vec<(u32, Option<Operator>)>, ParsePuzzleError> {
     (0..num_cages).map(|_| -> Result<_, ParsePuzzleError> {
         let (i, token) = s.next_skip_space()?.ok_or(ParsePuzzleError::from("unexpected EOF"))?;
         let target = token.number().ok_or_else(|| format_parse_error("invalid target", &token, i))?;

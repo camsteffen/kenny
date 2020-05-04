@@ -298,7 +298,7 @@ fn draw_rectangle(buffer: &mut RgbImage, x1: u32, y1: u32, x2: u32, y2: u32, col
     }
 }
 
-fn overlay_glyph(buffer: &mut RgbImage, glyph: &PositionedGlyph) {
+fn overlay_glyph(buffer: &mut RgbImage, glyph: &PositionedGlyph<'_>) {
     let bb = glyph.pixel_bounding_box().unwrap();
     glyph.draw(|x, y, v| {
         if v == 0.0 { return };

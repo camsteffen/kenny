@@ -23,7 +23,7 @@ impl VectorSolvedCellConstraint {
     pub fn enforce_solved_cell(
         puzzle: &Puzzle,
         cell_variables: &Square<CellVariable>,
-        cell: CellRef,
+        cell: CellRef<'_>,
         value: i32,
         changes: &mut PuzzleMarkupChanges
     ) -> u32 {

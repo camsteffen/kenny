@@ -55,16 +55,16 @@ impl Puzzle {
         parse_puzzle(str)
     }
 
-    pub fn cage(&self, id: CageId) -> CageRef {
+    pub fn cage(&self, id: CageId) -> CageRef<'_> {
         CageRef { puzzle: self, id: id }
     }
 
-    pub fn cages(&self) -> impl Iterator<Item=CageRef> {
+    pub fn cages(&self) -> impl Iterator<Item=CageRef<'_>> {
         (0..self.cages.len())
             .map(move |i| self.cage(i))
     }
 
-    pub fn cell(&self, index: impl AsSquareIndex) -> CellRef {
+    pub fn cell(&self, index: impl AsSquareIndex) -> CellRef<'_> {
         CellRef {
             puzzle: self,
             id: index.as_square_index(self.width),
@@ -75,7 +75,7 @@ impl Puzzle {
         self.width.pow(2)
     }
 
-    pub fn cells(&self) -> impl Iterator<Item=CellRef> {
+    pub fn cells(&self) -> impl Iterator<Item=CellRef<'_>> {
         (0..self.width * self.width)
             .map(move |i| self.cell(i))
     }
@@ -84,7 +84,7 @@ impl Puzzle {
         &self.cage_map
     }
 
-    pub fn vector_cells(&self, vector_id: VectorId) -> impl Iterator<Item=CellRef> {
+    pub fn vector_cells(&self, vector_id: VectorId) -> impl Iterator<Item=CellRef<'_>> {
         let (start, end, step_by) = match vector_id.dimension() {
             Dimension::Row => (self.width * vector_id.index(), (self.width + 1) * vector_id.index(), 1),
             Dimension::Col => (vector_id.index(), vector_id.index() + self.cell_count(), self.width),
@@ -102,7 +102,7 @@ impl Puzzle {
         self.cages().all(|cage| self.verify_cage(cage, solution))
     }
 
-    fn verify_cage(&self, cage: CageRef, solution: &Solution) -> bool {
+    fn verify_cage(&self, cage: CageRef<'_>, solution: &Solution) -> bool {
         let values = cage.cell_ids.iter().map(|&i| solution[i]).collect::<Vec<_>>();
         match cage.operator() {
             Operator::Add => values.iter().sum::<i32>() == cage.target(),
@@ -150,7 +150,7 @@ fn cage_map(width: usize, cages: &[Cage]) -> Square<usize> {
 }
 
 impl Display for Puzzle {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "{}", self.width)?;
         for i in 0..self.width {
             for j in 0..self.width {

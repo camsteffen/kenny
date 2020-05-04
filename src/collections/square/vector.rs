@@ -65,7 +65,7 @@ impl VectorId {
 }
 
 impl Debug for VectorId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let label = match self.dimension() {
             Row => "Row",
             Col => "Col",

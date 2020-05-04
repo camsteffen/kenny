@@ -216,7 +216,7 @@ impl<T, I: AsSquareIndex> IndexMut<I> for Square<T> {
 
 impl<T> fmt::Display for Square<T>
     where T: Display + Ord {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let len = self.elements.iter().max().unwrap()
             .to_string().len();
         for row in self.rows() {

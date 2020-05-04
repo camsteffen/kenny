@@ -116,7 +116,7 @@ impl CageVectorValueConstraint {
         values
     }
 
-    fn notify_change_cell_domain(&mut self, cell: CellRef) {
+    fn notify_change_cell_domain(&mut self, cell: CellRef<'_>) {
         for vector_id in &self.cell_cage_vectors[usize::from(cell.id())] {
             self.dirty_cage_vectors.insert((cell.cage_id(), *vector_id));
         }

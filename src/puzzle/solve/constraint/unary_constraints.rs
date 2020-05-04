@@ -29,7 +29,7 @@ fn reduce_domains_by_cage(puzzle: &Puzzle, change: &mut PuzzleMarkupChanges) {
     }
 }
 
-fn reduce_cage(puzzle: &Puzzle, cage: CageRef, change: &mut PuzzleMarkupChanges) {
+fn reduce_cage(puzzle: &Puzzle, cage: CageRef<'_>, change: &mut PuzzleMarkupChanges) {
     let puzzle_width = puzzle.width();
     match cage.operator() {
         Operator::Add => {
@@ -96,7 +96,7 @@ fn reduce_cage(puzzle: &Puzzle, cage: CageRef, change: &mut PuzzleMarkupChanges)
 }
 
 /// Calculates the largest possible value in an addition cage
-fn largest_value_add(cage: CageRef) -> i32 {
+fn largest_value_add(cage: CageRef<'_>) -> i32 {
     // simple case
     if cage.cell_count() == 2 {
         return cage.target() - 1;

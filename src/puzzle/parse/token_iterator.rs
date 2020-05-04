@@ -9,7 +9,7 @@ pub struct TokenIterator<'a> {
 }
 
 impl<'a> TokenIterator<'a> {
-    pub fn new(s: &str) -> TokenIterator {
+    pub fn new(s: &str) -> TokenIterator<'_> {
         TokenIterator { chars: s.char_indices().peekable() }
     }
 

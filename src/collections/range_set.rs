@@ -66,7 +66,7 @@ impl RangeSet {
         }
     }
 
-    pub fn iter(&self) -> Iter {
+    pub fn iter(&self) -> Iter<'_> {
         Iter {
             domain: &self.domain,
             index: 0,

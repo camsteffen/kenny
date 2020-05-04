@@ -122,7 +122,7 @@ impl CageSolutions {
         }
     }
 
-    pub fn init(&mut self, puzzle: &Puzzle, cage: CageRef, cell_variables: &[&CellVariable]) {
+    pub fn init(&mut self, puzzle: &Puzzle, cage: CageRef<'_>, cell_variables: &[&CellVariable]) {
         self.solutions = match cage.operator() {
             Operator::Add => Self::init_add(puzzle, cage, cell_variables),
             Operator::Multiply => Self::init_multiply(puzzle, cage, cell_variables),
@@ -205,7 +205,7 @@ impl CageSolutions {
         self.index_map = Self::build_index_map(&self.cell_ids);
     }
 
-    fn init_add(puzzle: &Puzzle, cage: CageRef, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
+    fn init_add(puzzle: &Puzzle, cage: CageRef<'_>, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
         let mut indices = Vec::new();
         let mut cell_domains = Vec::new();
         let mut solved_sum = 0_i32;
@@ -225,7 +225,7 @@ impl CageSolutions {
         solutions
     }
 
-    fn init_multiply(puzzle: &Puzzle, cage: CageRef, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
+    fn init_multiply(puzzle: &Puzzle, cage: CageRef<'_>, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
         let mut indices = Vec::new();
         let mut cell_domains = Vec::new();
         let mut solved_product = 1;
@@ -245,7 +245,7 @@ impl CageSolutions {
         solutions
     }
 
-    fn init_subtract(puzzle: &Puzzle, cage: CageRef, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
+    fn init_subtract(puzzle: &Puzzle, cage: CageRef<'_>, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
         debug_assert_eq!(2, cage.cell_count());
         let mut solutions = Vec::new();
         if let Some(solved_pos) = cell_variables.iter().position(|v| v.is_solved()) {
@@ -275,7 +275,7 @@ impl CageSolutions {
         solutions
     }
 
-    fn init_divide(puzzle: &Puzzle, cage: CageRef, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
+    fn init_divide(puzzle: &Puzzle, cage: CageRef<'_>, cell_variables: &[&CellVariable]) -> Vec<Vec<i32>> {
         debug_assert_eq!(2, cage.cell_count());
         let mut solutions = Vec::new();
         if let Some(solved_pos) = cell_variables.iter().position(|v| v.is_solved()) {

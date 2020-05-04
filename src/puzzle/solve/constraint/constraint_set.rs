@@ -33,7 +33,7 @@ impl<'a> ConstraintSet<'a> {
     pub fn propagate(
         &mut self,
         markup: &mut PuzzleMarkup,
-        step_writer: &mut Option<&mut StepWriter>
+        step_writer: &mut Option<&mut StepWriter<'_>>
     ) -> Fallible<PropagateResult> {
         let mut changes = PuzzleMarkupChanges::default();
         let mut loop_count = 0;

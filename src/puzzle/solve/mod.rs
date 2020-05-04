@@ -90,8 +90,8 @@ impl<'a> PuzzleSolver<'a> {
         Ok(SolveResult::Solved(solution))
     }
 
-    fn start_step_writer(&self, markup: &mut PuzzleMarkup) -> Fallible<Option<StepWriter>> {
-        self.steps.as_ref().map(|steps| -> Fallible<StepWriter> {
+    fn start_step_writer(&self, markup: &mut PuzzleMarkup) -> Fallible<Option<StepWriter<'_>>> {
+        self.steps.as_ref().map(|steps| -> Fallible<StepWriter<'_>> {
             let mut builder = StepWriterBuilder::new(self.puzzle, &steps.path);
             if let Some(image_width) = steps.image_width {
                 builder.image_width(image_width);

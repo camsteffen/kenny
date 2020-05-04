@@ -80,7 +80,7 @@ impl VectorValueIndexSet {
         VectorValueIndexSet(vec![vec![Some(RangeSet::with_all(width)); width]; 2 * width])
     }
 
-    pub fn remove_cell_value(&mut self, cell: CellRef, value: Value) {
+    pub fn remove_cell_value(&mut self, cell: CellRef<'_>, value: Value) {
         for &vector_id in &cell.vectors() {
             self.remove_vector_value(vector_id, value);
         }

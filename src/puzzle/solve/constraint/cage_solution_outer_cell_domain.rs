@@ -98,7 +98,7 @@ impl Constraint for CageSolutionOuterCellDomainConstraint {
 fn enforce_cage_vector(
     puzzle: &Puzzle,
     markup: &PuzzleMarkup,
-    cage: CageRef,
+    cage: CageRef<'_>,
     vector_id: VectorId,
     changes: &mut PuzzleMarkupChanges
 ) -> u32 {

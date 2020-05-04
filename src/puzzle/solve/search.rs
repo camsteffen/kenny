@@ -22,8 +22,8 @@ pub struct SingleSolution {
 pub fn search_solution(
     puzzle: &Puzzle,
     markup: &PuzzleMarkup,
-    constraints: &ConstraintSet,
-    step_writer: &mut Option<&mut StepWriter>,
+    constraints: &ConstraintSet<'_>,
+    step_writer: &mut Option<&mut StepWriter<'_>>,
 ) -> Fallible<SearchResult> {
     search_next(1, puzzle, markup, constraints, step_writer, false)
 }
@@ -32,8 +32,8 @@ fn search_next(
     depth: u32,
     puzzle: &Puzzle,
     markup: &PuzzleMarkup,
-    constraints: &ConstraintSet,
-    step_writer: &mut Option<&mut StepWriter>,
+    constraints: &ConstraintSet<'_>,
+    step_writer: &mut Option<&mut StepWriter<'_>>,
     mut solved_once: bool,
 ) -> Fallible<SearchResult> {
     debug!("Backtracking (depth={})", depth);
@@ -65,8 +65,8 @@ fn search_next(
 fn guess_cell(
     puzzle: &Puzzle,
     mut markup: PuzzleMarkup,
-    mut constraints: ConstraintSet,
-    step_writer: &mut Option<&mut StepWriter>,
+    mut constraints: ConstraintSet<'_>,
+    step_writer: &mut Option<&mut StepWriter<'_>>,
     guess: Guess,
     depth: u32,
     solved_once: bool,
@@ -96,7 +96,7 @@ fn guesses<'a>(markup: &'a PuzzleMarkup) -> impl Iterator<Item=Guess> + 'a {
     domain.iter().map(move |value| Guess { cell_id, value })
 }
 
-fn apply_guess(puzzle: &Puzzle, guess: Guess, markup: &mut PuzzleMarkup, constraints: &mut ConstraintSet) {
+fn apply_guess(puzzle: &Puzzle, guess: Guess, markup: &mut PuzzleMarkup, constraints: &mut ConstraintSet<'_>) {
     let mut changes = PuzzleMarkupChanges::default();
     changes.solve_cell(guess.cell_id, guess.value);
     markup.sync_changes(puzzle, &mut changes);
