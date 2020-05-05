@@ -9,12 +9,13 @@ pub trait IteratorExt: Iterator {
         Self: Iterator + Sized,
         T: IntoIterator<Item = Self::Item>,
     {
+        let left = self;
         let mut right = other.into_iter();
-        let r = right.next();
+        let r_next = right.next();
         LeftMerge {
-            left: self,
+            left,
             right,
-            r_next: r,
+            r_next,
         }
     }
 }

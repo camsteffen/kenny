@@ -14,21 +14,15 @@ impl CellVariable {
     }
 
     pub fn is_solved(&self) -> bool {
-        match *self {
-            Solved(_) => true,
-            _ => false,
-        }
+        matches!(*self, Solved(_))
     }
 
     pub fn is_unsolved(&self) -> bool {
-        match *self {
-            Unsolved(_) => true,
-            _ => false,
-        }
+        matches!(*self, Unsolved(_))
     }
 
     pub fn solve(&mut self) -> Option<i32> {
-        let solution = self.unwrap_unsolved().single_value();
+        let solution = self.unsolved().unwrap().single_value();
         if let Some(solution) = solution {
             *self = Solved(solution)
         }
@@ -49,35 +43,18 @@ impl CellVariable {
         }
     }
 
-    pub fn unwrap_solved(&self) -> i32 {
+    pub fn unsolved_mut(&mut self) -> Option<&mut ValueSet> {
         match self {
-            Solved(val) => *val,
-            _ => panic!("Not Solved"),
-        }
-    }
-
-    pub fn unwrap_unsolved(&self) -> &ValueSet {
-        match self {
-            Unsolved(d) => d,
-            _ => panic!("Not Unsolved"),
-        }
-    }
-
-    pub fn unwrap_unsolved_mut(&mut self) -> &mut ValueSet {
-        match self {
-            Unsolved(d) => d,
-            _ => panic!("Not Unsolved"),
+            Unsolved(domain) => Some(domain),
+            _ => None,
         }
     }
 
     pub fn remove_from_domain(&mut self, value: i32) -> bool {
-        self.unwrap_unsolved_mut().remove(value)
+        self.unsolved_mut().unwrap().remove(value)
     }
 
     pub fn unsolved_and_contains(&self, value: i32) -> bool {
-        match self {
-            Solved(_) => false,
-            Unsolved(ref domain) => domain.contains(value),
-        }
+        matches!(*self, Unsolved(ref domain) if domain.contains(value))
     }
 }

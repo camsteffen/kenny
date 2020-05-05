@@ -1,5 +1,4 @@
-/// The `Operator` enum represents each of the possible math operators
-/// that can be in a cage.
+/// The math operators found in each cage of a puzzle
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[allow(missing_docs)]
 pub enum Operator {

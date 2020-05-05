@@ -2,8 +2,7 @@ use failure::Fallible;
 
 use crate::puzzle::solve::constraint::PropagateResult;
 use crate::puzzle::solve::{PuzzleMarkup, PuzzleMarkupChanges};
-use crate::puzzle::{CellId, Solution, Value};
-use crate::Puzzle;
+use crate::puzzle::{CellId, Puzzle, Solution, Value};
 
 use super::constraint::ConstraintSet;
 use crate::puzzle::solve::step_writer::StepWriter;

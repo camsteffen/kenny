@@ -59,7 +59,7 @@ impl Constraint for VectorSolvedCellConstraint {
     ) -> bool {
         while let Some(index) = self.solved_cells.pop() {
             let cell = puzzle.cell(index);
-            let value = markup.cells()[index].unwrap_solved();
+            let value = markup.cells()[index].solved().unwrap();
             let count = Self::enforce_solved_cell(puzzle, &markup.cells(), cell, value, changes);
             if count > 0 {
                 return true;

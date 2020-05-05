@@ -5,7 +5,7 @@
 //! These constraints may be applied to the puzzle markup one time at the beginning of the solving process.
 //! They do not need to be re-checked as the solution progresses.
 
-use crate::collections::square::VectorId;
+use crate::collections::square::Vector;
 use crate::puzzle::solve::markup::PuzzleMarkupChanges;
 use crate::puzzle::solve::ValueSet;
 use crate::puzzle::Puzzle;
@@ -125,7 +125,7 @@ fn largest_value_add(cage: CageRef<'_>) -> i32 {
     #[derive(Default)]
     struct Group {
         cells: Vec<CellId>,
-        vectors: AHashSet<VectorId>,
+        vectors: AHashSet<Vector>,
     }
 
     let mut groups: Vec<Group> = Vec::with_capacity(cage.cell_count());

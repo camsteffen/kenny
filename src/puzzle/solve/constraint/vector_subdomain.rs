@@ -1,7 +1,7 @@
 use super::Constraint;
 use crate::collections::iterator_ext::IteratorExt;
 use crate::collections::square::Square;
-use crate::collections::square::{IsSquare, VectorId};
+use crate::collections::square::{IsSquare, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::markup::PuzzleMarkupChanges;
 use crate::puzzle::solve::CellVariable;
@@ -14,7 +14,7 @@ use itertools::Itertools;
 /// the number of cells, then all of the values in the unified domain must be in that set of cells.
 #[derive(Clone)]
 pub struct VectorSubdomainConstraint {
-    dirty_vecs: LinkedAHashSet<VectorId>,
+    dirty_vecs: LinkedAHashSet<Vector>,
 }
 
 impl VectorSubdomainConstraint {
@@ -26,11 +26,11 @@ impl VectorSubdomainConstraint {
 
     fn enforce_vector(
         cell_variables: &Square<CellVariable>,
-        vector_id: VectorId,
+        vector: Vector,
         change: &mut PuzzleMarkupChanges,
     ) -> u32 {
         let unsolved_count = cell_variables
-            .vector(vector_id)
+            .vector(vector)
             .filter(|v| v.is_unsolved())
             .count();
         if unsolved_count < 3 {
@@ -40,7 +40,7 @@ impl VectorSubdomainConstraint {
 
         // list lists of unsolved cell IDs, outer list sorted by domain size ascending
         let mut cells_by_domain_size = vec![Vec::new(); max_domain - 2];
-        for (index, variable) in cell_variables.vector_indexed(vector_id) {
+        for (index, variable) in cell_variables.vector_indexed(vector) {
             if let Some(domain) = variable.unsolved() {
                 if domain.len() < max_domain {
                     if domain.len().checked_sub(2).is_none() {
@@ -71,7 +71,7 @@ impl VectorSubdomainConstraint {
             for cells in cells.iter().copied().combinations(max_domain_size) {
                 if let Some(domain) = unify_domain(cell_variables, &cells, max_domain_size) {
                     count +=
-                        found_vector_subdomain(cell_variables, change, vector_id, &cells, &domain);
+                        found_vector_subdomain(cell_variables, change, vector, &cells, &domain);
                     break 'domain_sizes;
                 }
             }
@@ -83,8 +83,8 @@ impl VectorSubdomainConstraint {
 impl Constraint for VectorSubdomainConstraint {
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
         for &index in changes.cell_domain_value_removals.keys() {
-            for vector_id in puzzle.cell(index).vectors().iter().copied() {
-                self.dirty_vecs.insert(vector_id);
+            for vector in puzzle.cell(index).vectors().iter().copied() {
+                self.dirty_vecs.insert(vector);
             }
         }
     }
@@ -95,8 +95,8 @@ impl Constraint for VectorSubdomainConstraint {
         markup: &PuzzleMarkup,
         changes: &mut PuzzleMarkupChanges,
     ) -> bool {
-        while let Some(vector_id) = self.dirty_vecs.front().copied() {
-            let count = Self::enforce_vector(&markup.cells(), vector_id, changes);
+        while let Some(vector) = self.dirty_vecs.front().copied() {
+            let count = Self::enforce_vector(&markup.cells(), vector, changes);
             if count == 0 {
                 self.dirty_vecs.pop_front();
             } else {
@@ -127,7 +127,7 @@ fn unify_domain(
 fn found_vector_subdomain(
     cell_variables: &Square<CellVariable>,
     changes: &mut PuzzleMarkupChanges,
-    vector_id: VectorId,
+    vector: Vector,
     cells: &[CellId],
     domain: &ValueSet,
 ) -> u32 {
@@ -143,7 +143,7 @@ fn found_vector_subdomain(
     let mut count = 0;
 
     let other_cells: Vec<CellId> = cell_variables
-        .vector_indices(vector_id)
+        .vector_indices(vector)
         .left_merge(cells.iter().copied())
         .collect();
     for cell in other_cells {

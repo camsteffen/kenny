@@ -7,13 +7,13 @@ use std::ops::{Deref, Index, IndexMut, Range};
 
 pub use self::coord::Coord;
 pub use self::vector::Dimension;
-pub use self::vector::VectorId;
+pub use self::vector::Vector;
 
 mod coord;
 mod vector;
 
 type Vectors =
-    Chain<Map<Range<usize>, fn(usize) -> VectorId>, Map<Range<usize>, fn(usize) -> VectorId>>;
+    Chain<Map<Range<usize>, fn(usize) -> Vector>, Map<Range<usize>, fn(usize) -> Vector>>;
 type VectorIndices = StepBy<Range<SquareIndex>>;
 
 #[derive(Clone, Copy)]
@@ -56,34 +56,34 @@ pub trait IsSquare {
         Coord::new(self.col_at(index), self.row_at(index))
     }
 
-    fn index_is_in_vector(&self, index: usize, vector_id: VectorId) -> bool {
-        let vector_index = match vector_id.dimension() {
+    fn index_is_in_vector(&self, index: usize, vector: Vector) -> bool {
+        let vector_index = match vector.dimension() {
             Dimension::Row => self.row_at(index),
             Dimension::Col => self.col_at(index),
         };
-        vector_index == vector_id.index()
+        vector_index == vector.index()
     }
 
-    fn index_to_vector_point(&self, index: usize, vector_id: VectorId) -> usize {
-        assert!(vector_id.index() < self.width());
-        match vector_id.dimension() {
+    fn index_to_vector_point(&self, index: usize, vector: Vector) -> usize {
+        assert!(vector.index() < self.width());
+        match vector.dimension() {
             Dimension::Row => self.col_at(index),
             Dimension::Col => self.row_at(index),
         }
     }
 
-    fn shared_vector(&self, a: SquareIndex, b: SquareIndex) -> Option<VectorId> {
+    fn shared_vector(&self, a: SquareIndex, b: SquareIndex) -> Option<Vector> {
         let width = self.width();
         if a / width == b / width {
-            Some(VectorId::row(a / width))
+            Some(Vector::row(a / width))
         } else if a % width == b % width {
-            Some(VectorId::col(a % width))
+            Some(Vector::col(a % width))
         } else {
             None
         }
     }
 
-    fn vector_indices(&self, vector: VectorId) -> VectorIndices {
+    fn vector_indices(&self, vector: Vector) -> VectorIndices {
         let width = self.width();
         assert!(vector.index() < width);
         let (start, end, step) = match vector.dimension() {
@@ -94,19 +94,19 @@ pub trait IsSquare {
     }
 
     fn vectors(&self) -> Vectors {
-        let col: fn(usize) -> VectorId = VectorId::col;
-        let row: fn(usize) -> VectorId = VectorId::row;
-        let cols = (0..self.width()).map(col);
-        let rows = (0..self.width()).map(row);
+        let as_col: fn(usize) -> Vector = Vector::col;
+        let as_row: fn(usize) -> Vector = Vector::row;
+        let cols = (0..self.width()).map(as_col);
+        let rows = (0..self.width()).map(as_row);
         return cols.chain(rows);
     }
 
-    fn vector_point(&self, vector_id: VectorId, position: usize) -> SquareIndex {
-        assert!(vector_id.index() < self.width());
+    fn vector_point(&self, vector: Vector, position: usize) -> SquareIndex {
+        assert!(vector.index() < self.width());
         assert!(position < self.width());
-        let coord = match vector_id.dimension() {
-            Dimension::Row => Coord::new(position, vector_id.index()),
-            Dimension::Col => Coord::new(vector_id.index(), position),
+        let coord = match vector.dimension() {
+            Dimension::Row => Coord::new(position, vector.index()),
+            Dimension::Col => Coord::new(vector.index(), position),
         };
         coord.as_square_index(self.width())
     }
@@ -192,12 +192,12 @@ impl<T> Square<T> {
             .map(move |(i, e)| (self.coord_at(i), e))
     }
 
-    pub fn vector(&self, vector_id: VectorId) -> impl Iterator<Item = &T> {
-        self.vector_indices(vector_id).map(move |i| &self[i])
+    pub fn vector(&self, vector: Vector) -> impl Iterator<Item = &T> {
+        self.vector_indices(vector).map(move |i| &self[i])
     }
 
-    pub fn vector_indexed(&self, vector_id: VectorId) -> impl Iterator<Item = (usize, &T)> {
-        self.vector_indices(vector_id).map(move |i| (i, &self[i]))
+    pub fn vector_indexed(&self, vector: Vector) -> impl Iterator<Item = (usize, &T)> {
+        self.vector_indices(vector).map(move |i| (i, &self[i]))
     }
 }
 
@@ -305,27 +305,38 @@ mod tests {
     }
 
     mod is_square {
-        use crate::collections::square::{IsSquare, UnitSquare, VectorId};
+        use crate::collections::square::{IsSquare, UnitSquare, Vector};
 
         #[test]
         fn index_to_vector_point() {
             assert_eq!(
                 2,
-                UnitSquare::new(3).index_to_vector_point(7, VectorId::col(1))
+                UnitSquare::new(3).index_to_vector_point(7, Vector::col(1))
             );
         }
 
         #[test]
         fn vector_point() {
-            assert_eq!(8, UnitSquare::new(3).vector_point(VectorId::row(2), 2));
+            assert_eq!(8, UnitSquare::new(3).vector_point(Vector::row(2), 2));
         }
 
         #[test]
-        fn vector_indices() {
+        fn vector_indices_col() {
             assert_eq!(
                 vec![0, 3, 6],
                 UnitSquare::new(3)
-                    .vector_indices(VectorId::col(0))
+                    .vector_indices(Vector::col(0))
+                    .map(usize::from)
+                    .collect::<Vec<usize>>()
+            );
+        }
+
+        #[test]
+        fn vector_indices_row() {
+            assert_eq!(
+                vec![6, 7, 8],
+                UnitSquare::new(3)
+                    .vector_indices(Vector::row(2))
                     .map(usize::from)
                     .collect::<Vec<usize>>()
             );

@@ -1,11 +1,10 @@
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
+use camcam::puzzle::Puzzle;
 use failure::{Fallible, ResultExt};
 use image::RgbImage;
 use tempfile::TempDir;
-
-use camcam::Puzzle;
 
 const IMG_EXT: &str = "jpg";
 

@@ -1,5 +1,5 @@
 use super::Constraint;
-use crate::collections::square::{IsSquare, VectorId};
+use crate::collections::square::{IsSquare, Vector};
 use crate::collections::{LinkedAHashSet, RangeSet};
 use crate::puzzle::solve::markup::PuzzleMarkupChanges;
 use crate::puzzle::solve::PuzzleMarkup;
@@ -10,7 +10,7 @@ use std::ops::{Index, IndexMut};
 #[derive(Clone)]
 pub struct VectorValueDomainConstraint {
     data: VectorValueIndexSet,
-    dirty_vec_vals: LinkedAHashSet<(VectorId, i32)>,
+    dirty_vec_vals: LinkedAHashSet<(Vector, i32)>,
 }
 
 impl VectorValueDomainConstraint {
@@ -24,22 +24,22 @@ impl VectorValueDomainConstraint {
     fn enforce_vector_value(
         &mut self,
         puzzle: &Puzzle,
-        vector_id: VectorId,
+        vector: Vector,
         n: i32,
         change: &mut PuzzleMarkupChanges,
     ) -> bool {
-        let vec_val_pos = match self.data[vector_id][n as usize - 1]
+        let vec_val_pos = match self.data[vector][n as usize - 1]
             .as_ref()
             .and_then(RangeSet::single_value)
         {
             Some(v) => v,
             None => return false,
         };
-        let sq_pos = puzzle.vector_point(vector_id, vec_val_pos);
+        let sq_pos = puzzle.vector_point(vector, vec_val_pos);
         debug!(
             "the only possible position for {} in {:?} is {:?}",
             n,
-            vector_id,
+            vector,
             puzzle.coord_at(sq_pos)
         );
         change.solve_cell(sq_pos, n);
@@ -74,8 +74,8 @@ impl Constraint for VectorValueDomainConstraint {
         _: &PuzzleMarkup,
         changes: &mut PuzzleMarkupChanges,
     ) -> bool {
-        while let Some((vector_id, value)) = self.dirty_vec_vals.pop_front() {
-            let solved = self.enforce_vector_value(puzzle, vector_id, value, changes);
+        while let Some((vector, value)) = self.dirty_vec_vals.pop_front() {
+            let solved = self.enforce_vector_value(puzzle, vector, value, changes);
             if solved {
                 return true;
             }
@@ -84,7 +84,7 @@ impl Constraint for VectorValueDomainConstraint {
     }
 }
 
-/// VectorId -> value -> vector indices (where the value could be)
+/// Vector -> Value -> vector indices (where the value could be)
 #[derive(Clone)]
 struct VectorValueIndexSet(Vec<Vec<Option<RangeSet>>>);
 
@@ -98,26 +98,26 @@ impl VectorValueIndexSet {
     }
 
     pub fn remove_cell_value(&mut self, cell: CellRef<'_>, value: Value) {
-        for &vector_id in &cell.vectors() {
-            self.remove_vector_value(vector_id, value);
+        for &vector in &cell.vectors() {
+            self.remove_vector_value(vector, value);
         }
     }
 
-    pub fn remove_vector_value(&mut self, vector_id: VectorId, value: Value) {
-        self[vector_id][value as usize - 1] = None;
+    pub fn remove_vector_value(&mut self, vector: Vector, value: Value) {
+        self[vector][value as usize - 1] = None;
     }
 }
 
-impl Index<VectorId> for VectorValueIndexSet {
+impl Index<Vector> for VectorValueIndexSet {
     type Output = Vec<Option<RangeSet>>;
 
-    fn index(&self, vector_id: VectorId) -> &Self::Output {
-        &self.0[usize::from(vector_id)]
+    fn index(&self, vector: Vector) -> &Self::Output {
+        &self.0[usize::from(vector)]
     }
 }
 
-impl IndexMut<VectorId> for VectorValueIndexSet {
-    fn index_mut(&mut self, vector_id: VectorId) -> &mut Self::Output {
-        &mut self.0[usize::from(vector_id)]
+impl IndexMut<Vector> for VectorValueIndexSet {
+    fn index_mut(&mut self, vector: Vector) -> &mut Self::Output {
+        &mut self.0[usize::from(vector)]
     }
 }

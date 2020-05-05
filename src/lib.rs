@@ -5,11 +5,10 @@
 #![warn(trivial_casts)]
 #![warn(trivial_numeric_casts)]
 #![warn(unused_qualifications)]
+#![warn(clippy::pedantic)]
 
 #[macro_use]
 extern crate log;
-
-pub use self::puzzle::Puzzle;
 
 pub mod puzzle;
 

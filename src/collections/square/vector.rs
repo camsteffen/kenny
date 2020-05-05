@@ -13,17 +13,17 @@ pub enum Dimension {
 
 /// A row or column and its index
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct VectorId(usize);
+pub struct Vector(usize);
 
-impl VectorId {
-    /// Creates a column VectorId
-    pub fn col(index: usize) -> VectorId {
-        VectorId(index * 2 + 1)
+impl Vector {
+    /// Creates a column Vector
+    pub fn col(index: usize) -> Vector {
+        Vector(index * 2 + 1)
     }
 
-    /// Creates a row VectorId
-    pub fn row(index: usize) -> VectorId {
-        VectorId(index * 2)
+    /// Creates a row Vector
+    pub fn row(index: usize) -> Vector {
+        Vector(index * 2)
     }
 
     pub fn dimension(self) -> Dimension {
@@ -48,7 +48,7 @@ impl VectorId {
     }
 }
 
-impl Debug for VectorId {
+impl Debug for Vector {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let label = match self.dimension() {
             Row => "Row",
@@ -58,8 +58,8 @@ impl Debug for VectorId {
     }
 }
 
-impl From<VectorId> for usize {
-    fn from(vector_id: VectorId) -> Self {
-        vector_id.0
+impl From<Vector> for usize {
+    fn from(vector: Vector) -> Self {
+        vector.0
     }
 }

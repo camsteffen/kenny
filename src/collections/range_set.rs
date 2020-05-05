@@ -98,3 +98,48 @@ impl Extend<usize> for RangeSet {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::collections::RangeSet;
+
+    #[test]
+    #[should_panic]
+    fn insert_too_high() {
+        let mut set = RangeSet::new(4);
+        set.insert(4);
+    }
+
+    #[test]
+    fn insert_remove_result() {
+        let mut set = RangeSet::new(4);
+        assert!(set.insert(1));
+        assert!(!set.insert(1));
+        assert!(set.remove(1));
+        assert!(!set.remove(1));
+    }
+
+    #[test]
+    fn iter() {
+        let mut set = RangeSet::new(4);
+        set.insert(3);
+        set.insert(1);
+        let vec: Vec<_> = set.iter().collect();
+        assert_eq!(vec![1_usize, 3], vec);
+    }
+
+    #[test]
+    fn single_value() {
+        let mut set = RangeSet::new(4);
+        assert_eq!(None, set.single_value());
+        set.insert(1);
+        assert_eq!(Some(1), set.single_value());
+        assert_eq!(Some(1), set.single_value());
+        set.insert(2);
+        assert_eq!(None, set.single_value());
+        set.remove(1);
+        assert_eq!(Some(2), set.single_value());
+        set.remove(2);
+        assert_eq!(None, set.single_value());
+    }
+}

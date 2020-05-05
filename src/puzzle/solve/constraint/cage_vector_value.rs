@@ -2,7 +2,7 @@ use std::convert::TryInto;
 
 use ahash::{AHashMap, AHashSet};
 
-use crate::collections::square::VectorId;
+use crate::collections::square::Vector;
 use crate::collections::{LinkedAHashSet, Square};
 use crate::puzzle::solve::markup::PuzzleMarkupChanges;
 use crate::puzzle::solve::PuzzleMarkup;
@@ -16,12 +16,12 @@ use super::Constraint;
 pub struct CageVectorValueConstraint {
     /// A map of vectors per cell where there are multiple cells in the cage and vector.
     /// This is used to determine which cage-vector's to check after puzzle markup changes.
-    cell_cage_vectors: Square<Vec<VectorId>>,
+    cell_cage_vectors: Square<Vec<Vector>>,
     /// Cage-vectors to be checked due to puzzle markup changes
-    dirty_cage_vectors: LinkedAHashSet<(CageId, VectorId)>,
+    dirty_cage_vectors: LinkedAHashSet<(CageId, Vector)>,
     /// A record of values known to be in a certain cage, in a certain vector
     /// This is used to avoid duplicate work
-    known_vector_vals: AHashMap<VectorId, AHashSet<Value>>,
+    known_vector_vals: AHashMap<Vector, AHashSet<Value>>,
 }
 
 impl CageVectorValueConstraint {
@@ -39,9 +39,9 @@ impl CageVectorValueConstraint {
         markup: &PuzzleMarkup,
         change: &mut PuzzleMarkupChanges,
         cage_id: CageId,
-        vector_id: VectorId,
+        vector: Vector,
     ) -> u32 {
-        let values = self.find_cage_vector_values(puzzle, markup, cage_id, vector_id);
+        let values = self.find_cage_vector_values(puzzle, markup, cage_id, vector);
 
         if values.is_empty() {
             return 0;
@@ -51,18 +51,18 @@ impl CageVectorValueConstraint {
             "values {:?} exists in cage at {:?}, in {:?}",
             values,
             puzzle.cage(cage_id).cell(0).coord(),
-            vector_id
+            vector
         );
 
         // record known vector values
         self.known_vector_vals
-            .entry(vector_id)
+            .entry(vector)
             .or_insert_with(Default::default)
             .extend(&values);
 
         // cells that are in the vector but not in the cage
         let remove_from = puzzle
-            .vector_cells(vector_id)
+            .vector_cells(vector)
             .filter(|cell| cell.cage_id() != cage_id)
             .map(CellRef::id)
             .collect::<Vec<_>>();
@@ -87,7 +87,7 @@ impl CageVectorValueConstraint {
         puzzle: &Puzzle,
         markup: &PuzzleMarkup,
         cage_id: CageId,
-        vector_id: VectorId,
+        vector: Vector,
     ) -> AHashSet<i32> {
         // indices within each solution where the cell is in the vector
         let solution_indices: Vec<usize> = markup.cage_solutions()[cage_id]
@@ -95,7 +95,7 @@ impl CageVectorValueConstraint {
             .iter()
             .copied()
             .enumerate()
-            .filter(|&(_, cell_id)| puzzle.cell(cell_id).is_in_vector(vector_id))
+            .filter(|&(_, cell_id)| puzzle.cell(cell_id).is_in_vector(vector))
             .map(|(i, _)| i)
             .collect();
         if solution_indices.len() < 2 {
@@ -113,7 +113,7 @@ impl CageVectorValueConstraint {
         let mut values: AHashSet<i32> = solution
             .filter(|n| {
                 self.known_vector_vals
-                    .get(&vector_id)
+                    .get(&vector)
                     .map_or(true, |values| !values.contains(n))
             })
             .collect();
@@ -135,8 +135,8 @@ impl CageVectorValueConstraint {
     }
 
     fn notify_change_cell_domain(&mut self, cell: CellRef<'_>) {
-        for vector_id in &self.cell_cage_vectors[usize::from(cell.id())] {
-            self.dirty_cage_vectors.insert((cell.cage_id(), *vector_id));
+        for &vector in &self.cell_cage_vectors[usize::from(cell.id())] {
+            self.dirty_cage_vectors.insert((cell.cage_id(), vector));
         }
     }
 }
@@ -159,8 +159,8 @@ impl Constraint for CageVectorValueConstraint {
         markup: &PuzzleMarkup,
         changes: &mut PuzzleMarkupChanges,
     ) -> bool {
-        while let Some((cage_id, vector_id)) = self.dirty_cage_vectors.pop_front() {
-            let count = self.enforce_cage_vector(puzzle, markup, changes, cage_id, vector_id);
+        while let Some((cage_id, vector)) = self.dirty_cage_vectors.pop_front() {
+            let count = self.enforce_cage_vector(puzzle, markup, changes, cage_id, vector);
             if count > 0 {
                 return true;
             }
@@ -169,7 +169,7 @@ impl Constraint for CageVectorValueConstraint {
     }
 }
 
-fn create_cell_cage_vector_map(puzzle: &Puzzle) -> Square<Vec<VectorId>> {
+fn create_cell_cage_vector_map(puzzle: &Puzzle) -> Square<Vec<Vector>> {
     puzzle
         .cells()
         .map(|cell| {

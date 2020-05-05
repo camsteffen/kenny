@@ -8,7 +8,7 @@ const COLOR_CAGE_BORDER: Rgb<u8> = BLACK;
 const COLOR_BG: Rgb<u8> = WHITE;
 const COLOR_HIGHLIGHT_BG: Rgb<u8> = Rgb([255, 255, 150]);
 
-const BORDER_CELL_RATIO: u32 = 25;
+const CELL_BORDER_RATIO: u32 = 25;
 const DEFAULT_CELL_WIDTH: u32 = 60;
 
 const ROBOTO_FONT: &[u8] = include_bytes!("../../res/Roboto-Regular.ttf");
@@ -18,7 +18,7 @@ use crate::collections::square::{AsSquareIndex, Coord};
 use crate::collections::Square;
 use crate::puzzle::solve::CellVariable;
 use crate::puzzle::solve::ValueSet;
-use crate::puzzle::{Puzzle, Value};
+use crate::puzzle::{Puzzle, Solution, Value};
 use ahash::AHashSet;
 use image::Pixel;
 use image::{Rgb, RgbImage};
@@ -28,12 +28,13 @@ use rusttype::FontCollection;
 use rusttype::PositionedGlyph;
 use rusttype::Scale;
 
+/// Creates an image of a puzzle with optional markup
 pub struct PuzzleImageBuilder<'a> {
     puzzle: &'a Puzzle,
 
     cell_variables: Option<&'a Square<CellVariable>>,
     highlighted_cells: Option<&'a [SquareIndex]>,
-    solution: Option<&'a Square<Value>>,
+    solution: Option<&'a Solution>,
 
     image_width: u32,
     cell_width: u32,
@@ -63,6 +64,7 @@ impl<'a> PuzzleImageBuilder<'a> {
         }
     }
 
+    /// Sets the width of a cell in pixels
     pub fn cell_width(&mut self, cell_width: u32) -> &mut Self {
         self.cell_width = cell_width;
         self.border_width = Self::calc_border_width(cell_width);
@@ -71,11 +73,12 @@ impl<'a> PuzzleImageBuilder<'a> {
         self
     }
 
+    /// Sets the width of the image (approximate)
     pub fn image_width(&mut self, image_width: u32) -> &mut Self {
-        let a = BORDER_CELL_RATIO
+        let a = CELL_BORDER_RATIO
             .checked_mul(image_width)
             .expect("image width is too big");
-        let b = BORDER_CELL_RATIO * self.puzzle.width() as u32 + 1;
+        let b = CELL_BORDER_RATIO * self.puzzle.width() as u32 + 1;
         self.cell_width(a / b)
     }
 
@@ -92,7 +95,7 @@ impl<'a> PuzzleImageBuilder<'a> {
         self
     }
 
-    pub fn solution(&mut self, solution: Option<&'a Square<Value>>) -> &mut Self {
+    pub fn solution(&mut self, solution: Option<&'a Solution>) -> &mut Self {
         self.solution = solution;
         self
     }
@@ -118,7 +121,7 @@ impl<'a> PuzzleImageBuilder<'a> {
     }
 
     fn calc_border_width(cell_width: u32) -> u32 {
-        cell_width / BORDER_CELL_RATIO
+        cell_width / CELL_BORDER_RATIO
     }
 
     fn calc_image_width(cell_width: u32, puzzle_width: usize, border_width: u32) -> u32 {

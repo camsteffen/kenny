@@ -1,7 +1,7 @@
 //! If all possible solutions for a given value in a given vector are in a given cage, then the cage solution must
 //! contain the given value in the given vector
 
-use crate::collections::square::{IsSquare, VectorId};
+use crate::collections::square::{IsSquare, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::cage_solutions::CageSolutions;
 use crate::puzzle::solve::constraint::Constraint;
@@ -13,7 +13,7 @@ use itertools::Itertools;
 /// If a value is known to be in a cage-vector it must not be in other cells in the vector
 #[derive(Clone)]
 pub struct VectorValueCageConstraint {
-    dirty_vector_values: LinkedAHashSet<(VectorId, Value)>,
+    dirty_vector_values: LinkedAHashSet<(Vector, Value)>,
 }
 
 impl VectorValueCageConstraint {
@@ -32,17 +32,17 @@ impl Constraint for VectorValueCageConstraint {
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
         for (&i, values) in &changes.cell_domain_value_removals {
             let cell = puzzle.cell(i);
-            for vector_id in cell.vectors().iter().copied() {
+            for vector in cell.vectors().iter().copied() {
                 for &value in values {
-                    self.dirty_vector_values.insert((vector_id, value));
+                    self.dirty_vector_values.insert((vector, value));
                 }
             }
         }
 
         for &(sq_idx, value) in &changes.cell_solutions {
             let cell = puzzle.cell(sq_idx);
-            for vector_id in cell.vectors().iter().copied() {
-                self.dirty_vector_values.remove(&(vector_id, value));
+            for vector in cell.vectors().iter().copied() {
+                self.dirty_vector_values.remove(&(vector, value));
             }
         }
     }
@@ -64,7 +64,7 @@ impl Constraint for VectorValueCageConstraint {
 }
 
 fn enforce_vector_value(
-    vector: VectorId,
+    vector: Vector,
     value: Value,
     puzzle: &Puzzle,
     markup: &PuzzleMarkup,

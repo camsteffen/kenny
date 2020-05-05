@@ -1,5 +1,5 @@
 use super::Constraint;
-use crate::collections::square::VectorId;
+use crate::collections::square::Vector;
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::cage_solutions::CageSolutions;
 use crate::puzzle::solve::constraint::State;
@@ -21,8 +21,8 @@ use std::collections::hash_map::Entry;
 /// Unsatisfied action: Remove S from possible cage solutions
 #[derive(Clone)]
 pub struct CageSolutionOuterCellDomainConstraint {
-    cage_vector_cells: AHashMap<(CageId, VectorId), AHashSet<CellId>>,
-    dirty_cage_vectors: LinkedAHashSet<(CageId, VectorId)>,
+    cage_vector_cells: AHashMap<(CageId, Vector), AHashSet<CellId>>,
+    dirty_cage_vectors: LinkedAHashSet<(CageId, Vector)>,
 }
 
 impl CageSolutionOuterCellDomainConstraint {
@@ -84,9 +84,8 @@ impl Constraint for CageSolutionOuterCellDomainConstraint {
         markup: &PuzzleMarkup,
         changes: &mut PuzzleMarkupChanges,
     ) -> bool {
-        while let Some((cage_id, vector_id)) = self.dirty_cage_vectors.pop_front() {
-            let count =
-                enforce_cage_vector(puzzle, markup, puzzle.cage(cage_id), vector_id, changes);
+        while let Some((cage_id, vector)) = self.dirty_cage_vectors.pop_front() {
+            let count = enforce_cage_vector(puzzle, markup, puzzle.cage(cage_id), vector, changes);
             if count > 0 {
                 return true;
             }
@@ -108,7 +107,7 @@ fn enforce_cage_vector(
     puzzle: &Puzzle,
     markup: &PuzzleMarkup,
     cage: CageRef<'_>,
-    vector_id: VectorId,
+    vector: Vector,
     changes: &mut PuzzleMarkupChanges,
 ) -> u32 {
     let CageSolutions {
@@ -127,7 +126,7 @@ fn enforce_cage_vector(
         .iter()
         .copied()
         .enumerate()
-        .filter(|&(_, sq_idx)| puzzle.cell(sq_idx).is_in_vector(vector_id))
+        .filter(|&(_, sq_idx)| puzzle.cell(sq_idx).is_in_vector(vector))
         .map(|(i, _)| i)
         .collect::<Vec<_>>();
     if soln_indices.is_empty() {
@@ -136,7 +135,7 @@ fn enforce_cage_vector(
 
     // cell domains in the vector, outside the cage, where domain size <= solution size
     let outside_domains: Vec<(CellId, &ValueSet)> = puzzle
-        .vector_cells(vector_id)
+        .vector_cells(vector)
         .filter(|cell| cell.cage_id() != cage.id())
         .filter_map(|cell| {
             if let Some(domain) = markup.cells()[cell.id()].unsolved() {

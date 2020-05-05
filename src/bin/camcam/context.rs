@@ -1,19 +1,16 @@
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::ops::{Deref, DerefMut};
+use std::path::PathBuf;
 
+use camcam::puzzle::Puzzle;
 use failure::{Fallible, ResultExt};
 
 use crate::options::Options;
 use crate::puzzle_folder_builder::PuzzleFolderBuilder;
-use camcam::Puzzle;
-use std::ops::{Deref, DerefMut};
-use std::panic::RefUnwindSafe;
-
-type PathIter = dyn Iterator<Item = PathBuf> + RefUnwindSafe;
 
 pub struct Context {
     options: Options,
-    puzzle_path_iter: Option<Box<PathIter>>,
+    puzzle_path_iter: Option<PuzzlePathIter>,
 }
 
 impl Context {
@@ -26,10 +23,9 @@ impl Context {
             }
         }
 
-        let puzzle_path_iter = options.output_path().map(|path| {
-            let iter = puzzle_path_iterator(path);
-            let boxed_iter: Box<PathIter> = Box::new(iter);
-            boxed_iter
+        let puzzle_path_iter = options.output_path().map(|path| PuzzlePathIter {
+            root: path.into(),
+            n: 1,
         });
 
         Ok(Self {
@@ -95,16 +91,28 @@ impl DerefMut for PuzzleContext<'_> {
     }
 }
 
-/// Creates an infinite iterator of paths to save puzzle data, one path per puzzle.
+/// Infinite iterator of paths to save puzzle data, one path per puzzle.
 /// Paths are named puzzle_{n}.
 /// Existing paths are automatically skipped.
-fn puzzle_path_iterator(root: &Path) -> impl Iterator<Item = PathBuf> {
-    let root = PathBuf::from(root);
-    (1_usize..)
-        .map(move |i| {
-            let mut path = root.clone();
-            path.push(format!("puzzle_{}", i));
-            path
-        })
-        .filter(|path| !path.exists())
+struct PuzzlePathIter {
+    root: PathBuf,
+    n: usize,
+}
+
+impl Iterator for PuzzlePathIter {
+    type Item = PathBuf;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if self.n == usize::MAX {
+                break None;
+            }
+            let mut path = self.root.clone();
+            path.push(format!("puzzle_{}", self.n));
+            self.n += 1;
+            if !path.exists() {
+                break Some(path);
+            }
+        }
+    }
 }

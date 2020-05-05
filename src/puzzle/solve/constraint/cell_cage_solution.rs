@@ -44,7 +44,7 @@ impl CellCageSolutionConstraint {
 
         // remove values from cell domains that are not in a cage solution
         for (i, id) in cage_solutions.cell_ids.iter().copied().enumerate() {
-            let domain = cell_variables[id].unwrap_unsolved();
+            let domain = cell_variables[id].unsolved().unwrap();
             let no_solutions = domain
                 .iter()
                 .filter(|&n| !soln_domain[i].contains(n))

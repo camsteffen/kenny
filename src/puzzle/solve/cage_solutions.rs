@@ -340,8 +340,8 @@ impl CageSolutions {
         debug_assert_eq!(2, cage.cell_count());
         let mut solutions = Vec::new();
         if let Some(solved_pos) = cell_variables.iter().position(|v| v.is_solved()) {
-            let known_val = cell_variables[solved_pos].unwrap_solved();
-            let domain = cell_variables[(solved_pos + 1) % 2].unwrap_unsolved();
+            let known_val = cell_variables[solved_pos].solved().unwrap();
+            let domain = cell_variables[(solved_pos + 1) % 2].unsolved().unwrap();
             let n = known_val - cage.target();
             if n > 0 && domain.contains(n) {
                 solutions.push(vec![n; 1]);
@@ -353,7 +353,7 @@ impl CageSolutions {
         } else {
             let domains = cell_variables
                 .iter()
-                .map(|variable| variable.unwrap_unsolved())
+                .map(|variable| variable.unsolved().unwrap())
                 .collect::<Vec<_>>();
             for n in domains[0] {
                 let m = n - cage.target();
@@ -377,8 +377,8 @@ impl CageSolutions {
         debug_assert_eq!(2, cage.cell_count());
         let mut solutions = Vec::new();
         if let Some(solved_pos) = cell_variables.iter().position(|v| v.is_solved()) {
-            let known_val = cell_variables[solved_pos].unwrap_solved();
-            let domain = cell_variables[(solved_pos + 1) % 2].unwrap_unsolved();
+            let known_val = cell_variables[solved_pos].solved().unwrap();
+            let domain = cell_variables[(solved_pos + 1) % 2].unsolved().unwrap();
             let n = known_val / cage.target();
             if n > 0 && domain.contains(n) {
                 solutions.push(vec![n; 1]);
@@ -390,7 +390,7 @@ impl CageSolutions {
         } else {
             let domains = cell_variables
                 .iter()
-                .map(|variable| variable.unwrap_unsolved())
+                .map(|variable| variable.unsolved().unwrap())
                 .collect::<Vec<_>>();
             for n in domains[0] {
                 let m = n / cage.target();

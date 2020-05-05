@@ -1,4 +1,4 @@
-use crate::collections::square::VectorId;
+use crate::collections::square::Vector;
 use std::fmt;
 use std::fmt::Debug;
 
@@ -19,19 +19,15 @@ impl Coord {
         self.0[1]
     }
 
-    pub fn vectors(self) -> [VectorId; 2] {
-        [VectorId::row(self.row()), VectorId::col(self.col())]
+    pub fn vectors(self) -> [Vector; 2] {
+        let row = Vector::row(self.row());
+        let col = Vector::col(self.col());
+        [row, col]
     }
 }
 
 impl Debug for Coord {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "({}, {})", self.col(), self.row())
-    }
-}
-
-impl From<[usize; 2]> for Coord {
-    fn from(array: [usize; 2]) -> Self {
-        Self(array)
     }
 }

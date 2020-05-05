@@ -3,7 +3,7 @@ use crate::puzzle::Operator;
 use crate::puzzle::Puzzle;
 use crate::puzzle::{Cage, CellId, Solution, Value};
 use rand::seq::SliceRandom;
-use rand::thread_rng;
+use rand::{thread_rng, Rng};
 use std::collections::VecDeque;
 use std::convert::TryInto;
 use std::mem;
@@ -13,19 +13,21 @@ const MAX_AVG_CAGE_SIZE: f32 = 2.2;
 const CAGE_SIZE_DISTRIBUTION: f32 = 0.5;
 
 pub fn generate_untested_puzzle(width: usize) -> Puzzle {
-    let (puzzle, _) = generate_untested_puzzle_with_solution(width);
+    let (puzzle, _solution) = generate_untested_puzzle_with_solution(width);
     puzzle
 }
 
+// Note: The solution returned is not very important since the puzzle might have multiple solutions
 pub fn generate_untested_puzzle_with_solution(width: usize) -> (Puzzle, Solution) {
-    let solution = random_latin_square(width);
+    let mut rng = thread_rng();
+    let solution = random_latin_square(width, &mut rng);
     debug!("Solution:\n{}", &solution);
-    let cage_cells = generate_cage_cells(width);
+    let cage_cells = generate_cage_cells(width, &mut rng);
     let cages = cage_cells
         .into_iter()
         .map(|cells| {
             let values = cells.iter().map(|&i| solution[i]).collect::<Vec<_>>();
-            let operator = random_operator(&values);
+            let operator = random_operator(&values, &mut rng);
             let target = find_cage_target(operator, &values);
             Cage::new(target, operator, cells)
         })
@@ -34,11 +36,10 @@ pub fn generate_untested_puzzle_with_solution(width: usize) -> (Puzzle, Solution
     (puzzle, solution)
 }
 
-fn random_latin_square(width: usize) -> Square<Value> {
-    let mut rng = thread_rng();
+fn random_latin_square(width: usize, rng: &mut impl Rng) -> Square<Value> {
     let mut generate_seed = || {
         let mut seed = (0..width as i32).collect::<Vec<_>>();
-        seed.shuffle(&mut rng);
+        seed.shuffle(rng);
         seed
     };
     let seeds = [generate_seed(), generate_seed()];
@@ -51,11 +52,10 @@ fn random_latin_square(width: usize) -> Square<Value> {
     square
 }
 
-fn shuffled_inner_borders(square_width: usize) -> Vec<usize> {
-    let mut rng = thread_rng();
+fn shuffled_inner_borders(square_width: usize, rng: &mut impl Rng) -> Vec<usize> {
     let num_borders = square_width * (square_width - 1) * 2;
     let mut borders = (0..num_borders).collect::<Vec<_>>();
-    borders.shuffle(&mut rng);
+    borders.shuffle(rng);
     borders
 }
 
@@ -71,12 +71,12 @@ fn cells_touching_border(square_width: usize, border_id: usize) -> (CellId, Cell
     (a.into(), b.into())
 }
 
-fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<CellId>> {
+fn generate_cage_cells(puzzle_width: usize, rng: &mut impl Rng) -> Vec<Vec<CellId>> {
     let num_cells = puzzle_width.pow(2);
     let mut cage_map: Square<usize> = (0..num_cells).collect::<Vec<_>>().try_into().unwrap();
     let mut cages: Vec<Vec<CellId>> = (0..num_cells).map(|i| vec![i.into()]).collect();
     let min_cage_count = (num_cells as f32 / MAX_AVG_CAGE_SIZE) as usize;
-    let mut borders = VecDeque::from(shuffled_inner_borders(puzzle_width));
+    let mut borders = VecDeque::from(shuffled_inner_borders(puzzle_width, rng));
     'target_cage_sizes: for target_cage_size in 2..=MAX_CAGE_SIZE {
         let border_count = (borders.len() as f32 * CAGE_SIZE_DISTRIBUTION) as usize;
         for _ in 0..border_count {
@@ -117,13 +117,12 @@ fn generate_cage_cells(puzzle_width: usize) -> Vec<Vec<CellId>> {
     cages
 }
 
-fn random_operator(values: &[i32]) -> Operator {
+fn random_operator(values: &[i32], rng: &mut impl Rng) -> Operator {
     if values.len() == 1 {
         return Operator::Nop;
     }
-    let mut rng = thread_rng();
     let operators = possible_operators(values);
-    *operators.choose(&mut rng).unwrap()
+    *operators.choose(rng).unwrap()
 }
 
 fn possible_operators(values: &[i32]) -> Vec<Operator> {

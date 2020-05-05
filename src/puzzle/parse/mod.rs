@@ -115,14 +115,23 @@ fn read_cage_targets(
     num_cages: usize,
 ) -> Result<Vec<(u32, Option<Operator>)>, ParsePuzzleError> {
     (0..num_cages)
-        .map(|_| -> Result<_, ParsePuzzleError> {
+        .map(|cage_index| -> Result<_, ParsePuzzleError> {
             let (i, token) = s
                 .next_skip_space()?
                 .ok_or(ParsePuzzleError::from("unexpected EOF"))?;
             let target = token
                 .number()
                 .ok_or_else(|| format_parse_error("invalid target", &token, i))?;
-            let (i, token) = s.next()?.ok_or(ParsePuzzleError::from("unexpected EOF"))?;
+            let derp = s.next()?;
+            let (i, token) = match derp {
+                Some(n) => n,
+                None => {
+                    if cage_index == num_cages - 1 {
+                        return Ok((target, None));
+                    }
+                    return Err(ParsePuzzleError::from("unexpected EOF"));
+                }
+            };
             let operator = match token {
                 Token::Operator(o) => Some(o),
                 Token::Space => None,
@@ -135,4 +144,43 @@ fn read_cage_targets(
 
 fn format_parse_error<T: fmt::Display>(msg: &str, s: &T, i: usize) -> String {
     format!("{}: '{}' (position: {})", msg, s, i)
+}
+
+#[cfg(test)]
+mod test {
+    use crate::puzzle::parse::parse_puzzle;
+    use crate::puzzle::{Cage, Operator, Puzzle};
+
+    #[test]
+    fn empty() {
+        assert!(parse_puzzle("").is_err());
+    }
+
+    #[test]
+    fn test() {
+        let s = "\
+        4\n\
+        A ABB\
+        ACCC\
+        DEEF \
+        DGFF \
+        4+\
+        2* \
+        6*\
+        4/\
+        4-\
+        7+\
+        3";
+        let cages = vec![
+            Cage::new(4, Operator::Add, vec![0, 1, 4]),
+            Cage::new(2, Operator::Multiply, vec![2, 3]),
+            Cage::new(6, Operator::Multiply, vec![5, 6, 7]),
+            Cage::new(4, Operator::Divide, vec![8, 12]),
+            Cage::new(4, Operator::Subtract, vec![9, 10]),
+            Cage::new(7, Operator::Add, vec![11, 14, 15]),
+            Cage::new(3, Operator::Nop, vec![13]),
+        ];
+        let puzzle = Puzzle::new(4, cages);
+        assert_eq!(puzzle, parse_puzzle(s).unwrap());
+    }
 }
