@@ -13,14 +13,14 @@ use itertools::Itertools;
 /// If there is a set of cells within a vector where the size of the union of their domains is less than or equal to
 /// the number of cells, then all of the values in the unified domain must be in that set of cells.
 #[derive(Clone)]
-pub struct VectorSubdomainConstraint {
+pub struct VectorPreemptiveSetConstraint {
     dirty_vecs: LinkedAHashSet<Vector>,
 }
 
-impl VectorSubdomainConstraint {
+impl VectorPreemptiveSetConstraint {
     pub fn new() -> Self {
         Self {
-            dirty_vecs: Default::default(),
+            dirty_vecs: LinkedAHashSet::default(),
         }
     }
 
@@ -31,6 +31,7 @@ impl VectorSubdomainConstraint {
     ) -> u32 {
         let unsolved_count = cell_variables
             .vector(vector)
+            .iter()
             .filter(|v| v.is_unsolved())
             .count();
         if unsolved_count < 3 {
@@ -40,12 +41,9 @@ impl VectorSubdomainConstraint {
 
         // list lists of unsolved cell IDs, outer list sorted by domain size ascending
         let mut cells_by_domain_size = vec![Vec::new(); max_domain - 2];
-        for (index, variable) in cell_variables.vector_indexed(vector) {
+        for (index, variable) in cell_variables.vector(vector).indexed() {
             if let Some(domain) = variable.unsolved() {
                 if domain.len() < max_domain {
-                    if domain.len().checked_sub(2).is_none() {
-                        panic!("o no!") // todo
-                    }
                     // domain is at least 2, so offset accordingly
                     cells_by_domain_size[domain.len() - 2].push(index);
                 }
@@ -70,8 +68,7 @@ impl VectorSubdomainConstraint {
 
             for cells in cells.iter().copied().combinations(max_domain_size) {
                 if let Some(domain) = unify_domain(cell_variables, &cells, max_domain_size) {
-                    count +=
-                        found_vector_subdomain(cell_variables, change, vector, &cells, &domain);
+                    count += found_preemptive_set(cell_variables, change, vector, &cells, &domain);
                     break 'domain_sizes;
                 }
             }
@@ -80,10 +77,10 @@ impl VectorSubdomainConstraint {
     }
 }
 
-impl Constraint for VectorSubdomainConstraint {
+impl Constraint for VectorPreemptiveSetConstraint {
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
-        for &index in changes.cell_domain_value_removals.keys() {
-            for vector in puzzle.cell(index).vectors().iter().copied() {
+        for (id, _) in changes.cell_domain_removals() {
+            for vector in puzzle.cell(id).vectors().iter().copied() {
                 self.dirty_vecs.insert(vector);
             }
         }
@@ -124,16 +121,16 @@ fn unify_domain(
     Some(domain)
 }
 
-fn found_vector_subdomain(
+fn found_preemptive_set(
     cell_variables: &Square<CellVariable>,
     changes: &mut PuzzleMarkupChanges,
     vector: Vector,
     cells: &[CellId],
-    domain: &ValueSet,
+    values: &ValueSet,
 ) -> u32 {
     debug!(
         "values {:?} are among cells {:?}",
-        domain.iter().collect::<Vec<_>>(),
+        values.iter().collect::<Vec<_>>(),
         cells
             .iter()
             .map(|&i| cell_variables.coord_at(i))
@@ -143,11 +140,12 @@ fn found_vector_subdomain(
     let mut count = 0;
 
     let other_cells: Vec<CellId> = cell_variables
-        .vector_indices(vector)
+        .vector(vector)
+        .indices()
         .left_merge(cells.iter().copied())
         .collect();
     for cell in other_cells {
-        for value in domain {
+        for value in values {
             if cell_variables[cell].unsolved_and_contains(value) {
                 changes.remove_value_from_cell(cell, value);
                 count += 1;

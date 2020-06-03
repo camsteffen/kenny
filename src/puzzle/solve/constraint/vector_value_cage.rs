@@ -3,14 +3,12 @@
 
 use crate::collections::square::{IsSquare, Vector};
 use crate::collections::LinkedAHashSet;
-use crate::puzzle::solve::cage_solutions::CageSolutions;
 use crate::puzzle::solve::constraint::Constraint;
-use crate::puzzle::solve::markup::PuzzleMarkup;
-use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+use crate::puzzle::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::{Puzzle, Value};
 use itertools::Itertools;
 
-/// If a value is known to be in a cage-vector it must not be in other cells in the vector
+/// If a value is known to be in a cage-vector, cage solutions must include the value in the vector.
 #[derive(Clone)]
 pub struct VectorValueCageConstraint {
     dirty_vector_values: LinkedAHashSet<(Vector, Value)>,
@@ -30,19 +28,21 @@ impl VectorValueCageConstraint {
 
 impl Constraint for VectorValueCageConstraint {
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
-        for (&i, values) in &changes.cell_domain_value_removals {
-            let cell = puzzle.cell(i);
-            for vector in cell.vectors().iter().copied() {
-                for &value in values {
-                    self.dirty_vector_values.insert((vector, value));
+        for (&id, change) in changes.cells.iter() {
+            let cell = puzzle.cell(id);
+            match change {
+                CellChange::DomainRemovals(values) => {
+                    self.dirty_vector_values.extend(
+                        cell.vectors()
+                            .iter()
+                            .flat_map(|&vector| values.iter().map(move |&value| (vector, value))),
+                    );
                 }
-            }
-        }
-
-        for &(sq_idx, value) in &changes.cell_solutions {
-            let cell = puzzle.cell(sq_idx);
-            for vector in cell.vectors().iter().copied() {
-                self.dirty_vector_values.remove(&(vector, value));
+                &CellChange::Solution(value) => {
+                    for vector in cell.vectors().iter().copied() {
+                        self.dirty_vector_values.remove(&(vector, value));
+                    }
+                }
             }
         }
     }
@@ -70,16 +70,19 @@ fn enforce_vector_value(
     markup: &PuzzleMarkup,
     changes: &mut PuzzleMarkupChanges,
 ) -> u32 {
-    if puzzle
-        .vector_indices(vector)
-        .any(|i| markup.cells()[i].solved() == Some(value))
-    {
+    let solved = puzzle
+        .vector(vector)
+        .indices()
+        .any(|i| markup.cells()[i].solved() == Some(value));
+    if solved {
         return 0;
     }
 
+    // todo only consider cages with multiple vectors to avoid redundancy with preemptive sets? If yes, use `take_while`.
     // cage containing all unsolved cells in the vector with the value in its domain
     let cage = puzzle
-        .vector_indices(vector)
+        .vector(vector)
+        .indices()
         .filter(|&i| markup.cells()[i].unsolved_and_contains(value))
         .map(|i| puzzle.cell(i).cage_id())
         .dedup()
@@ -89,26 +92,13 @@ fn enforce_vector_value(
         Err(_) => return 0,
     };
 
-    let CageSolutions {
-        cell_ids,
-        solutions,
-        ..
-    } = &markup.cage_solutions()[cage];
-
-    // indices of cage solution cell_ids where the cell is in the vector
-    let indices_in_vector: Vec<_> = cell_ids
-        .iter()
-        .copied()
-        .enumerate()
-        .filter(|&(_, id)| puzzle.cell(id).is_in_vector(vector))
-        .map(|(i, _)| i)
-        .collect();
-    debug_assert!(!indices_in_vector.is_empty());
+    let view = markup.cage_solutions().unwrap()[cage].vector_view(puzzle.vector(vector));
+    debug_assert!(!view.is_empty());
 
     // find and remove solutions that do not include the value in the vector
     let mut count = 0;
-    for (soln_idx, solution) in solutions.iter().enumerate() {
-        if indices_in_vector.iter().all(|&i| solution[i] != value) {
+    for (soln_idx, solution) in view.solutions().enumerate() {
+        if solution.iter().all(|&v| v != value) {
             changes.remove_cage_solution(cage, soln_idx);
             count += 1;
         }

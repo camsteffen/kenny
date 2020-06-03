@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use anyhow::{anyhow, Result};
 use clap::ArgMatches;
-use failure::{err_msg, Fallible};
 
 const DEFAULT_PUZZLE_WIDTH: usize = 4;
 const DEFAULT_PATH: &str = "output";
@@ -16,11 +16,11 @@ pub struct Options {
 }
 
 impl Options {
-    pub fn from_args() -> Fallible<Self> {
+    pub fn from_args() -> Result<Self> {
         Self::from_arg_matches(&clap_app().get_matches())
     }
 
-    fn from_arg_matches(matches: &ArgMatches<'_>) -> Fallible<Self> {
+    fn from_arg_matches(matches: &ArgMatches<'_>) -> Result<Self> {
         let save_all = matches.is_present("save_all");
         let mut options = Self {
             image_width: matches
@@ -50,6 +50,7 @@ impl Options {
                         save_puzzle: matches.is_present("save_puzzle") || save_all,
                         include_solvable,
                         include_unsolvable,
+                        require_search: matches.is_present("solution_requires_search"),
                     })
                 }
             },
@@ -66,7 +67,7 @@ impl Options {
         if options.save_any() {
             options.output_path = Some(matches.value_of("output_path").unwrap().into())
         } else if matches.occurrences_of("output_path") != 0 {
-            return Err(err_msg("output path specified but nothing to save"));
+            anyhow!("output path specified but nothing to save");
         }
         Ok(options)
     }
@@ -135,6 +136,7 @@ pub struct Generate {
     pub save_puzzle: bool,
     pub include_solvable: bool,
     pub include_unsolvable: bool,
+    pub require_search: bool,
 }
 
 #[derive(Clone)]
@@ -148,7 +150,7 @@ fn clap_app() -> clap::App<'static, 'static> {
 
     App::new("CamCam")
         .author("Cameron Steffen <cam.steffen94@gmail.com>")
-        .help("Solve KenKen Puzzles")
+        .help_message("Solve KenKen Puzzles")
         .setting(AppSettings::ArgRequiredElseHelp)
         // can use in clap 3.0 when released
         // .replace("--save-all", &["--save-puzzle", "--save-image", "--save-solved-image", "--save-step-images"])
@@ -161,7 +163,8 @@ fn clap_app() -> clap::App<'static, 'static> {
             Arg::with_name("generate")
                 .short("g")
                 .long("generate")
-                .help("generate KenKen puzzle(s)"),
+                .help("generate KenKen puzzle(s)")
+                .display_order(1),
         )
         .arg(
             Arg::with_name("input")
@@ -169,7 +172,8 @@ fn clap_app() -> clap::App<'static, 'static> {
                 .long("input")
                 .takes_value(true)
                 .value_name("PATH")
-                .help("read a KenKen puzzle from a file"),
+                .help("read a KenKen puzzle from a file")
+                .display_order(1),
         )
         .arg(
             Arg::with_name("solve")
@@ -201,7 +205,12 @@ fn clap_app() -> clap::App<'static, 'static> {
                 .takes_value(true)
                 .help("the number of puzzles to generate (and solve)"),
         )
-        // todo no solutions and multiple solutions
+        .arg(
+            Arg::with_name("solution_requires_search")
+                .long("solution-requires-search")
+                .requires("generate")
+                .help("only include puzzles that require backtracking search to solve"),
+        )
         .arg(
             Arg::with_name("allow_unsolvable")
                 .long("allow-unsolvable")

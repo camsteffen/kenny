@@ -1,8 +1,7 @@
 use super::Constraint;
-use crate::collections::Square;
-use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+use crate::collections::square::Square;
+use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::CellVariable;
-use crate::puzzle::solve::PuzzleMarkup;
 use crate::puzzle::{CellId, CellRef, Puzzle};
 
 /// If a cell is solved in a vector, other cells in that vector must not have the same value.
@@ -18,36 +17,12 @@ impl VectorSolvedCellConstraint {
             solved_cells: Vec::new(),
         }
     }
-
-    pub fn enforce_solved_cell(
-        puzzle: &Puzzle,
-        cell_variables: &Square<CellVariable>,
-        cell: CellRef<'_>,
-        value: i32,
-        changes: &mut PuzzleMarkupChanges,
-    ) -> u32 {
-        let count = cell
-            .vectors()
-            .iter()
-            .copied()
-            .flat_map(|v| puzzle.vector_cells(v))
-            .filter(|cell| cell_variables[cell.id()].unsolved_and_contains(value))
-            .map(|cell| changes.remove_value_from_cell(cell.id(), value))
-            .count() as u32;
-        debug!(
-            "Removed {} instances of the value {} surrounding solved cell at {:?}",
-            count,
-            value,
-            cell.coord()
-        );
-        count
-    }
 }
 
 impl Constraint for VectorSolvedCellConstraint {
     fn notify_changes(&mut self, _: &Puzzle, changes: &PuzzleMarkupChanges) {
-        for &(index, _) in &changes.cell_solutions {
-            self.solved_cells.push(index);
+        for (id, _) in changes.cell_solutions() {
+            self.solved_cells.push(id);
         }
     }
 
@@ -60,11 +35,34 @@ impl Constraint for VectorSolvedCellConstraint {
         while let Some(index) = self.solved_cells.pop() {
             let cell = puzzle.cell(index);
             let value = markup.cells()[index].solved().unwrap();
-            let count = Self::enforce_solved_cell(puzzle, &markup.cells(), cell, value, changes);
+            let count = enforce_solved_cell(puzzle, &markup.cells(), cell, value, changes);
             if count > 0 {
                 return true;
             }
         }
         false
     }
+}
+
+fn enforce_solved_cell(
+    puzzle: &Puzzle,
+    cell_variables: &Square<CellVariable>,
+    cell: CellRef<'_>,
+    value: i32,
+    changes: &mut PuzzleMarkupChanges,
+) -> u32 {
+    let count = cell
+        .vectors()
+        .iter()
+        .flat_map(|&v| puzzle.vector_cells(v))
+        .filter(|cell| cell_variables[cell.id()].unsolved_and_contains(value))
+        .map(|cell| changes.remove_value_from_cell(cell.id(), value))
+        .count() as u32;
+    debug!(
+        "Removed {} instances of the value {} surrounding solved cell at {:?}",
+        count,
+        value,
+        cell.coord()
+    );
+    count
 }

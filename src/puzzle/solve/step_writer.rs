@@ -1,11 +1,13 @@
 //! Save images of the puzzle in a series of solution steps
 
-use crate::puzzle::image::PuzzleImageBuilder;
-use crate::puzzle::solve::PuzzleMarkup;
-use crate::puzzle::{CellId, Puzzle};
-use failure::{Fallible, ResultExt};
 use std::path::Path;
 use std::path::PathBuf;
+
+use anyhow::{Context, Result};
+
+use crate::puzzle::image::PuzzleImageBuilder;
+use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
+use crate::puzzle::Puzzle;
 
 pub struct StepWriter<'a> {
     puzzle: &'a Puzzle,
@@ -15,10 +17,14 @@ pub struct StepWriter<'a> {
 }
 
 impl StepWriter<'_> {
-    pub fn write_next(&mut self, markup: &PuzzleMarkup, changed_cells: &[CellId]) -> Fallible<()> {
+    pub fn write_step(
+        &mut self,
+        markup: &PuzzleMarkup,
+        markup_changes: &PuzzleMarkupChanges,
+    ) -> Result<()> {
         let mut path = self.path.clone();
         path.push(format!("step_{}.jpeg", self.index));
-        self.write(&path, markup, changed_cells)?;
+        self.write(&path, markup, markup_changes)?;
         self.index += 1;
         Ok(())
     }
@@ -26,29 +32,34 @@ impl StepWriter<'_> {
     pub fn write_backtrack(
         &mut self,
         markup: &PuzzleMarkup,
-        changed_cells: &[CellId],
+        markup_changes: &PuzzleMarkupChanges,
         backtrack_level: u32,
-    ) -> Fallible<()> {
+    ) -> Result<()> {
         let mut path = self.path.clone();
         path.push(format!("step_{}_bt_{}.jpeg", self.index, backtrack_level));
-        self.write(&path, markup, changed_cells)?;
+        self.write(&path, markup, markup_changes)?;
         self.index += 1;
         Ok(())
     }
 
-    fn write(&self, path: &Path, markup: &PuzzleMarkup, changed_cells: &[CellId]) -> Fallible<()> {
+    fn write(
+        &self,
+        path: &Path,
+        markup: &PuzzleMarkup,
+        markup_changes: &PuzzleMarkupChanges,
+    ) -> Result<()> {
         debug!("writing step image: {}", path.display());
         let mut builder = PuzzleImageBuilder::new(self.puzzle);
         builder
-            .highlighted_cells(Some(changed_cells))
-            .cell_variables(Some(&markup.cells()));
+            .cell_variables(Some(&markup.cells()))
+            .markup_changes(markup_changes);
         if let Some(image_width) = self.image_width {
             builder.image_width(image_width);
         }
         let image = builder.build();
         image
             .save(&path)
-            .with_context(|e| format!("Error saving step image to {}: {}", path.display(), e))?;
+            .with_context(|| format!("Error saving step image to {}", path.display()))?;
         Ok(())
     }
 }

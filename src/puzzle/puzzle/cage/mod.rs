@@ -1,34 +1,40 @@
-use crate::puzzle::CellId;
-
 pub use self::operator::Operator;
+
+use crate::puzzle::error::InvalidPuzzle;
+use crate::puzzle::CellId;
 
 mod operator;
 
-// TODO rename to CageData and CageRef to Cage
 /// A cage in a KenKen puzzle
 ///
 /// Every cell in a KenKen puzzle belongs to a cage.
 /// Every cage has an operator and a target number.
 #[derive(Debug, PartialEq)]
 pub struct Cage {
-    /// The target number that must be produced using the numbers in this cage
-    target: i32,
+    /// A list of the positions of the cells in this cage
+    cell_ids: Vec<CellId>,
 
     /// The math operator that must be used with the numbers in the cage
     /// to produce the target number
     operator: Operator,
 
-    /// A list of the positions of the cells in this cage
-    cell_ids: Vec<CellId>,
+    /// The target number that must be produced using the numbers in this cage
+    target: i32,
 }
 
 impl Cage {
-    pub fn new(target: i32, operator: Operator, cell_indices: Vec<CellId>) -> Self {
-        Self {
-            target,
+    pub fn new(
+        cell_ids: Vec<CellId>,
+        operator: Operator,
+        target: i32,
+    ) -> Result<Self, InvalidPuzzle> {
+        let cage = Self {
+            cell_ids,
             operator,
-            cell_ids: cell_indices,
-        }
+            target,
+        };
+        validate(&cage)?;
+        Ok(cage)
     }
 
     /// The number on the cage
@@ -45,4 +51,27 @@ impl Cage {
     pub fn cell_ids(&self) -> &[CellId] {
         &self.cell_ids
     }
+}
+
+fn validate(cage: &Cage) -> Result<(), InvalidPuzzle> {
+    match cage.cell_ids().len() {
+        0 => return Err(InvalidPuzzle::new("cage cell_ids must not be empty".into())),
+        1 => match cage.operator {
+            Operator::Nop => (),
+            operator => {
+                return Err(InvalidPuzzle::new(format!(
+                    "cage operator ({}) must have more than one cell",
+                    operator.symbol().unwrap()
+                )))
+            }
+        },
+        _ => {
+            if cage.operator == Operator::Nop {
+                return Err(InvalidPuzzle::new(
+                    "cage with multiple cells must have an operator".into(),
+                ));
+            }
+        }
+    }
+    Ok(())
 }

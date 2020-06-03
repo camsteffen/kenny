@@ -2,10 +2,9 @@ use std::convert::TryInto;
 
 use ahash::{AHashMap, AHashSet};
 
-use crate::collections::square::Vector;
-use crate::collections::{LinkedAHashSet, Square};
-use crate::puzzle::solve::markup::PuzzleMarkupChanges;
-use crate::puzzle::solve::PuzzleMarkup;
+use crate::collections::square::{Square, Vector};
+use crate::collections::LinkedAHashSet;
+use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::{CageId, CellRef, Puzzle, Value};
 
 use super::Constraint;
@@ -28,8 +27,44 @@ impl CageVectorValueConstraint {
     pub fn new(puzzle: &Puzzle) -> Self {
         Self {
             cell_cage_vectors: create_cell_cage_vector_map(puzzle),
-            dirty_cage_vectors: Default::default(),
-            known_vector_vals: Default::default(),
+            dirty_cage_vectors: LinkedAHashSet::default(),
+            known_vector_vals: AHashMap::default(),
+        }
+    }
+}
+
+impl Constraint for CageVectorValueConstraint {
+    fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
+        for (id, _) in changes.cell_domain_removals() {
+            self.notify_change_cell_domain(puzzle.cell(id));
+        }
+        for &cage_id in changes.cage_solution_removals.keys() {
+            for cell in puzzle.cage(cage_id).cells() {
+                self.notify_change_cell_domain(cell);
+            }
+        }
+    }
+
+    fn enforce_partial(
+        &mut self,
+        puzzle: &Puzzle,
+        markup: &PuzzleMarkup,
+        changes: &mut PuzzleMarkupChanges,
+    ) -> bool {
+        while let Some((cage_id, vector)) = self.dirty_cage_vectors.pop_front() {
+            let count = self.enforce_cage_vector(puzzle, markup, changes, cage_id, vector);
+            if count > 0 {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+impl CageVectorValueConstraint {
+    fn notify_change_cell_domain(&mut self, cell: CellRef<'_>) {
+        for &vector in &self.cell_cage_vectors[cell.id()] {
+            self.dirty_cage_vectors.insert((cell.cage_id(), vector));
         }
     }
 
@@ -57,7 +92,7 @@ impl CageVectorValueConstraint {
         // record known vector values
         self.known_vector_vals
             .entry(vector)
-            .or_insert_with(Default::default)
+            .or_default()
             .extend(&values);
 
         // cells that are in the vector but not in the cage
@@ -90,7 +125,7 @@ impl CageVectorValueConstraint {
         vector: Vector,
     ) -> AHashSet<i32> {
         // indices within each solution where the cell is in the vector
-        let solution_indices: Vec<usize> = markup.cage_solutions()[cage_id]
+        let solution_indices: Vec<usize> = markup.cage_solutions().unwrap()[cage_id]
             .cell_ids
             .iter()
             .copied()
@@ -103,11 +138,11 @@ impl CageVectorValueConstraint {
         }
 
         // iterator of solutions with only cells in the vector
-        let mut solutions_iter = markup.cage_solutions()[cage_id]
+        let mut solutions_iter = markup.cage_solutions().unwrap()[cage_id]
             .solutions
             .iter()
             .map(|solution| solution_indices.iter().map(move |&i| solution[i]));
-        let solution = solutions_iter.next().unwrap_or_else(|| todo!());
+        let solution = solutions_iter.next().unwrap();
 
         // values in the first solution that are not already a known vector value
         let mut values: AHashSet<i32> = solution
@@ -132,40 +167,6 @@ impl CageVectorValueConstraint {
         }
 
         values
-    }
-
-    fn notify_change_cell_domain(&mut self, cell: CellRef<'_>) {
-        for &vector in &self.cell_cage_vectors[usize::from(cell.id())] {
-            self.dirty_cage_vectors.insert((cell.cage_id(), vector));
-        }
-    }
-}
-
-impl Constraint for CageVectorValueConstraint {
-    fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
-        for &id in changes.cell_domain_value_removals.keys() {
-            self.notify_change_cell_domain(puzzle.cell(id));
-        }
-        for &cage_id in changes.cage_solution_removals.keys() {
-            for cell in puzzle.cage(cage_id).cells() {
-                self.notify_change_cell_domain(cell);
-            }
-        }
-    }
-
-    fn enforce_partial(
-        &mut self,
-        puzzle: &Puzzle,
-        markup: &PuzzleMarkup,
-        changes: &mut PuzzleMarkupChanges,
-    ) -> bool {
-        while let Some((cage_id, vector)) = self.dirty_cage_vectors.pop_front() {
-            let count = self.enforce_cage_vector(puzzle, markup, changes, cage_id, vector);
-            if count > 0 {
-                return true;
-            }
-        }
-        false
     }
 }
 

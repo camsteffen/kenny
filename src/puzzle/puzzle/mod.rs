@@ -1,21 +1,17 @@
-use crate::collections::square::{AsSquareIndex, Coord, Dimension, IsSquare, Vector};
-use crate::collections::Square;
-use crate::puzzle::error::ParsePuzzleError;
+pub use self::cage::{Cage, Operator};
+
+use crate::collections::square::{AsSquareIndex, Coord, IsSquare, Square, SquareVector, Vector};
+use crate::puzzle::error::{InvalidPuzzle, ParsePuzzleError, PuzzleFromFileError};
 use crate::puzzle::generate::generate_untested_puzzle;
 use crate::puzzle::parse::parse_puzzle;
-use failure::Fallible;
-use std::fmt;
-use std::fmt::Display;
-use std::fs::File;
-use std::io::Read;
-use std::ops::Deref;
-use std::path::Path;
-
-pub use self::cage::{Cage, Operator};
 use crate::puzzle::solve::ValueSet;
 use crate::puzzle::{CageId, CellId, Solution};
 use std::borrow::Borrow;
 use std::convert::TryInto;
+use std::fmt::Display;
+use std::ops::Deref;
+use std::path::Path;
+use std::{fmt, fs, mem};
 
 mod cage;
 
@@ -26,25 +22,24 @@ pub struct Puzzle {
     width: usize,
     /// contains all cages in the puzzle
     cages: Vec<Cage>,
-    cage_map: Square<usize>,
+    cage_id_map: Square<CageId>,
 }
 
 impl Puzzle {
     /// creates a puzzle with a specified width and set of cages
-    pub fn new(width: usize, cages: Vec<Cage>) -> Self {
-        let cage_map = cage_map(width, &cages);
-        Self {
+    pub fn new(width: usize, cages: Vec<Cage>) -> Result<Self, InvalidPuzzle> {
+        let cage_id_map = cage_id_map(width, &cages)?;
+        let puzzle = Self {
             width,
             cages,
-            cage_map,
-        }
+            cage_id_map,
+        };
+        Ok(puzzle)
     }
 
-    pub fn from_file(path: &Path) -> Fallible<Self> {
-        let mut file = File::open(path)?;
-        let mut buf = String::new();
-        file.read_to_string(&mut buf)?;
-        let puzzle = Self::parse(&buf)?;
+    pub fn from_file(path: &Path) -> Result<Self, PuzzleFromFileError> {
+        let str = fs::read_to_string(path)?;
+        let puzzle = Self::parse(&str)?;
         Ok(puzzle)
     }
 
@@ -57,14 +52,15 @@ impl Puzzle {
     }
 
     pub fn cage(&self, id: CageId) -> CageRef<'_> {
-        CageRef {
-            puzzle: self,
-            id: id,
-        }
+        CageRef { puzzle: self, id }
     }
 
     pub fn cages(&self) -> impl Iterator<Item = CageRef<'_>> {
         (0..self.cages.len()).map(move |i| self.cage(i))
+    }
+
+    pub fn cage_count(&self) -> usize {
+        self.cages.len()
     }
 
     pub fn cell(&self, index: impl AsSquareIndex) -> CellRef<'_> {
@@ -75,46 +71,30 @@ impl Puzzle {
     }
 
     pub fn cell_count(&self) -> usize {
-        self.width.pow(2)
+        self.len()
     }
 
     pub fn cells(&self) -> impl Iterator<Item = CellRef<'_>> {
-        (0..self.width * self.width).map(move |i| self.cell(i))
+        (0..self.len()).map(move |i| self.cell(i))
     }
 
     pub fn cell_cage_indices(&self) -> &Square<usize> {
-        &self.cage_map
+        &self.cage_id_map
     }
 
     pub fn vector_cells(&self, vector: Vector) -> impl Iterator<Item = CellRef<'_>> {
-        let (start, end, step_by) = match vector.dimension() {
-            Dimension::Row => (
-                self.width * vector.index(),
-                (self.width + 1) * vector.index(),
-                1,
-            ),
-            Dimension::Col => (
-                vector.index(),
-                vector.index() + self.cell_count(),
-                self.width,
-            ),
-        };
-        (start..end).step_by(step_by).map(move |i| self.cell(i))
+        self.vector(vector).indices().map(move |i| self.cell(i))
     }
 
     pub fn verify_solution(&self, solution: &Solution) -> bool {
-        solution
-            .rows()
-            .all(|v| self.verify_vector(v.iter().copied()))
-            && solution.cols().all(|v| self.verify_vector(v.copied()))
-            && self.verify_cages(solution)
+        solution.square_vectors().all(|v| self.verify_vector(v)) && self.verify_cages(solution)
     }
 
     fn verify_cages(&self, solution: &Solution) -> bool {
-        self.cages().all(|cage| self.verify_cage(cage, solution))
+        self.cages().all(|cage| Self::verify_cage(cage, solution))
     }
 
-    fn verify_cage(&self, cage: CageRef<'_>, solution: &Solution) -> bool {
+    fn verify_cage(cage: CageRef<'_>, solution: &Solution) -> bool {
         let values = cage
             .cell_ids()
             .iter()
@@ -141,9 +121,11 @@ impl Puzzle {
         }
     }
 
-    fn verify_vector(&self, mut vector: impl Iterator<Item = i32>) -> bool {
+    fn verify_vector<'a>(&'a self, vector: SquareVector<'a, Square<i32>>) -> bool {
         let mut set = ValueSet::new(self.width());
-        vector.all(|i| i >= 1 && i <= self.width() as i32 && set.insert(i))
+        vector
+            .iter()
+            .all(|&i| i >= 1 && i <= self.width() as i32 && set.insert(i))
     }
 
     pub fn width(&self) -> usize {
@@ -151,18 +133,27 @@ impl Puzzle {
     }
 }
 
-/**
- * Create a square of values where each value represents the index of the cage
- * containing that position
- */
-fn cage_map(width: usize, cages: &[Cage]) -> Square<usize> {
-    let mut cage_map = Square::with_width_and_value(width, 0);
+/// Create a square of values where each value represents the index of the cage
+/// containing that position
+fn cage_id_map(width: usize, cages: &[Cage]) -> Result<Square<usize>, InvalidPuzzle> {
+    let mut cage_map = Square::with_width_and_value(width, usize::MAX);
+    let mut count = 0;
     for (i, cage) in cages.iter().enumerate() {
         for &j in cage.cell_ids() {
-            cage_map[j] = i;
+            let old = mem::replace(&mut cage_map[j], i);
+            if old != usize::MAX {
+                return Err(InvalidPuzzle::new(format!(
+                    "multiple cages occupy cell {}",
+                    j
+                )));
+            }
+            count += 1;
         }
     }
-    cage_map
+    if count != cage_map.len() {
+        return Err(InvalidPuzzle::new("not all cells have a cage".into()));
+    }
+    Ok(cage_map)
 }
 
 impl Display for Puzzle {
@@ -170,7 +161,7 @@ impl Display for Puzzle {
         writeln!(f, "{}", self.width)?;
         for i in 0..self.width {
             for j in 0..self.width {
-                let byte = b'A' + self.cage_map[Coord::new(j, i)] as u8;
+                let byte = b'A' + self.cage_id_map[Coord::new(j, i)] as u8;
                 write!(f, "{}", byte as char)?;
             }
             writeln!(f)?;
@@ -232,7 +223,7 @@ impl<'a> CageRef<'a> {
 impl Deref for CageRef<'_> {
     type Target = Cage;
 
-    /// Note: the lifetime returned is shorter than [CageRef::cage]
+    /// Note: the lifetime returned is shorter than `CageRef::cage`
     fn deref(&self) -> &Self::Target {
         self.cage()
     }
@@ -251,7 +242,7 @@ impl<'a> CellRef<'a> {
     }
 
     pub fn cage_id(self) -> CageId {
-        self.puzzle.cage_map[self.id]
+        self.puzzle.cage_id_map[self.id]
     }
 
     pub fn coord(self) -> Coord {
@@ -263,7 +254,7 @@ impl<'a> CellRef<'a> {
     }
 
     pub fn is_in_vector(self, vector: Vector) -> bool {
-        self.puzzle.index_is_in_vector(self.id, vector)
+        self.puzzle.vector(vector).contains_square_index(self.id)
     }
 
     pub fn vectors(self) -> [Vector; 2] {

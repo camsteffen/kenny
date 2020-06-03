@@ -5,46 +5,57 @@ use super::Coord;
 use std::fmt;
 use std::fmt::Debug;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Dimension {
-    Row,
-    Col,
+    Col = 0,
+    Row = 1,
 }
 
-/// A row or column and its index
+/// A row or column
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Vector(usize);
 
 impl Vector {
+    pub fn new(dimension: Dimension, index: usize) -> Vector {
+        Vector(index * 2 + dimension as usize)
+    }
+
     /// Creates a column Vector
     pub fn col(index: usize) -> Vector {
-        Vector(index * 2 + 1)
+        Self::new(Col, index)
     }
 
     /// Creates a row Vector
     pub fn row(index: usize) -> Vector {
-        Vector(index * 2)
+        Self::new(Row, index)
     }
+}
 
-    pub fn dimension(self) -> Dimension {
-        if self.0 % 2 == 0 {
-            Row
-        } else {
+pub trait AsVector: Copy {
+    fn id(self) -> usize;
+
+    fn dimension(self) -> Dimension {
+        if self.id() % 2 == 0 {
             Col
+        } else {
+            Row
         }
     }
 
     /// Retrieves the index of the vector in its respective dimension
-    pub fn index(self) -> usize {
-        self.0 / 2
+    fn index(self) -> usize {
+        self.id() / 2
     }
 
-    pub fn intersects_coord(self, coord: Coord) -> bool {
-        self.index()
-            == match self.dimension() {
-                Row => coord.row(),
-                Col => coord.col(),
-            }
+    fn intersects_coord(self, coord: Coord) -> bool {
+        self.index() == coord.get(self.dimension())
+    }
+}
+
+impl AsVector for Vector {
+    #[inline]
+    fn id(self) -> usize {
+        self.0
     }
 }
 
@@ -58,8 +69,26 @@ impl Debug for Vector {
     }
 }
 
-impl From<Vector> for usize {
-    fn from(vector: Vector) -> Self {
-        vector.0
+#[cfg(test)]
+mod test {
+    use crate::collections::square::vector::Dimension::{Col, Row};
+    use crate::collections::square::{AsVector, Coord, Vector};
+
+    #[test]
+    fn col() {
+        let col = Vector::col(3);
+        assert_eq!(col.dimension(), Col);
+        assert_eq!(col.index(), 3);
+        assert!(col.intersects_coord(Coord::new(3, 1)));
+        assert!(!col.intersects_coord(Coord::new(1, 3)));
+    }
+
+    #[test]
+    fn row() {
+        let row = Vector::row(3);
+        assert_eq!(row.dimension(), Row);
+        assert_eq!(row.index(), 3);
+        assert!(!row.intersects_coord(Coord::new(3, 1)));
+        assert!(row.intersects_coord(Coord::new(1, 3)));
     }
 }

@@ -1,8 +1,8 @@
 use crate::collections::range_set;
-use crate::collections::RangeSet;
+use crate::collections::range_set::RangeSet;
 use std::iter::Map;
 
-/// A small abstraction over [RangeSet] for puzzle values
+/// A small abstraction over `RangeSet` for puzzle values
 #[derive(Clone)]
 pub struct ValueSet(RangeSet);
 
@@ -42,7 +42,8 @@ impl ValueSet {
     }
 
     pub fn single_value(&self) -> Option<i32> {
-        self.0.single_value().map(|n| n as i32)
+        let value = self.0.single_value()?;
+        Some(value as i32)
     }
 }
 

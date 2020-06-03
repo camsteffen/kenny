@@ -2,8 +2,8 @@ use std::fs;
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 
+use anyhow::{bail, Context as _, Result};
 use camcam::puzzle::Puzzle;
-use failure::{Fallible, ResultExt};
 
 use crate::options::Options;
 use crate::puzzle_folder_builder::PuzzleFolderBuilder;
@@ -14,12 +14,16 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new(options: Options) -> Fallible<Self> {
+    pub fn new(options: Options) -> Result<Self> {
         if let Some(path) = options.output_path() {
             if !path.exists() {
-                fs::create_dir(&path).with_context(|e| {
-                    format!("Error creating directory {}: {}", path.display(), e)
-                })?;
+                if let Some(parent) = path.parent() {
+                    if !parent.exists() {
+                        bail!("Path does not exist: {}", parent.display());
+                    }
+                }
+                fs::create_dir(&path)
+                    .with_context(|| format!("Error creating output path: {}", path.display()))?;
             }
         }
 
@@ -51,7 +55,7 @@ pub struct PuzzleContext<'a> {
 }
 
 impl<'a> PuzzleContext<'a> {
-    pub fn new(context: &'a mut Context, puzzle: &'a Puzzle) -> Fallible<Self> {
+    pub fn new(context: &'a mut Context, puzzle: &'a Puzzle) -> Result<Self> {
         let folder_builder = if context.options().save_any() {
             Some(PuzzleFolderBuilder::new()?)
         } else {

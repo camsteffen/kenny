@@ -1,16 +1,16 @@
-use failure::Fallible;
+use anyhow::Result;
 
+use crate::puzzle::solve::constraint::cage_solution_cell::CageSolutionCellConstraint;
 use crate::puzzle::solve::constraint::cage_solution_outer_cell_domain::CageSolutionOuterCellDomainConstraint;
 use crate::puzzle::solve::constraint::cage_vector_value::CageVectorValueConstraint;
 use crate::puzzle::solve::constraint::cell_cage_solution::CellCageSolutionConstraint;
+use crate::puzzle::solve::constraint::vector_preemptive_set::VectorPreemptiveSetConstraint;
 use crate::puzzle::solve::constraint::vector_solved_cell::VectorSolvedCellConstraint;
-use crate::puzzle::solve::constraint::vector_subdomain::VectorSubdomainConstraint;
 use crate::puzzle::solve::constraint::vector_value_cage::VectorValueCageConstraint;
 use crate::puzzle::solve::constraint::vector_value_domain::VectorValueDomainConstraint;
 use crate::puzzle::solve::constraint::Constraint;
-use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::step_writer::StepWriter;
-use crate::puzzle::solve::PuzzleMarkup;
 use crate::puzzle::{Puzzle, Solution};
 
 #[derive(Clone)]
@@ -37,7 +37,7 @@ impl<'a> ConstraintSet<'a> {
         &mut self,
         markup: &mut PuzzleMarkup,
         step_writer: &mut Option<&mut StepWriter<'_>>,
-    ) -> Fallible<PropagateResult> {
+    ) -> Result<PropagateResult> {
         let mut changes = PuzzleMarkupChanges::default();
         let mut loop_count = 0;
         loop {
@@ -51,13 +51,15 @@ impl<'a> ConstraintSet<'a> {
             if !has_changes {
                 break;
             }
-            markup.sync_changes(self.puzzle, &mut changes);
-            self.notify_changes(&changes);
             if let Some(step_writer) = step_writer.as_mut() {
-                let changed_cells: Vec<_> =
-                    changes.cell_domain_value_removals.keys().copied().collect();
-                step_writer.write_next(markup, &changed_cells)?;
+                if !changes.cells.is_empty() {
+                    step_writer.write_step(markup, &changes)?;
+                }
             }
+            if !markup.sync_changes(self.puzzle, &mut changes) {
+                return Ok(PropagateResult::Invalid);
+            }
+            self.notify_changes(&changes);
             changes.clear();
             loop_count += 1;
             if markup.is_completed() {
@@ -91,12 +93,24 @@ pub enum PropagateResult {
 
 fn init_constraints(puzzle: &Puzzle) -> Vec<Box<dyn Constraint>> {
     vec![
+        // when a cell is solved, remove the value from other cells in the same vector
         Box::new(VectorSolvedCellConstraint::new()),
+        // if a vector has only one cell with a given value, solve the cell
         Box::new(VectorValueDomainConstraint::new(puzzle.width())),
+        // If no cage solutions have a value in a cell's domain,
+        // remove the cell domain value
         Box::new(CellCageSolutionConstraint::new(puzzle)),
+        // When a cell's domain is reduced, remove cage solutions
+        Box::new(CageSolutionCellConstraint::new(puzzle)),
+        // If all cage solutions for a cage have a value in a vector,
+        // remove the value from other cells in the vector
         Box::new(CageVectorValueConstraint::new(puzzle)),
-        Box::new(VectorSubdomainConstraint::new()),
+        // Find a set of cells in a vector that must contain a set of values
+        Box::new(VectorPreemptiveSetConstraint::new()),
+        // If, within a vector, a value is known to be in a certain cage,
+        // remove cage solutions without the value in the vector
         Box::new(VectorValueCageConstraint::new(puzzle)),
+        // Remove cage solutions that conflict with a cell's entire domain outside of the cage
         Box::new(CageSolutionOuterCellDomainConstraint::new(puzzle)),
     ]
 }

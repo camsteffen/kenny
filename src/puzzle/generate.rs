@@ -1,4 +1,4 @@
-use crate::collections::Square;
+use crate::collections::square::Square;
 use crate::puzzle::Operator;
 use crate::puzzle::Puzzle;
 use crate::puzzle::{Cage, CellId, Solution, Value};
@@ -29,10 +29,10 @@ pub fn generate_untested_puzzle_with_solution(width: usize) -> (Puzzle, Solution
             let values = cells.iter().map(|&i| solution[i]).collect::<Vec<_>>();
             let operator = random_operator(&values, &mut rng);
             let target = find_cage_target(operator, &values);
-            Cage::new(target, operator, cells)
+            Cage::new(cells, operator, target).unwrap()
         })
         .collect();
-    let puzzle = Puzzle::new(width, cages);
+    let puzzle = Puzzle::new(width, cages).unwrap();
     (puzzle, solution)
 }
 
@@ -43,7 +43,7 @@ fn random_latin_square(width: usize, rng: &mut impl Rng) -> Square<Value> {
         seed
     };
     let seeds = [generate_seed(), generate_seed()];
-    let mut square: Square<i32> = Square::with_width_and_value(width, 0);
+    let mut square: Square<i32> = Square::with_width(width);
     for (i, row) in square.rows_mut().enumerate() {
         for (j, element) in row.iter_mut().enumerate() {
             *element = (seeds[0][i] + seeds[1][j]) % width as i32 + 1;
@@ -68,13 +68,13 @@ fn cells_touching_border(square_width: usize, border_id: usize) -> (CellId, Cell
         let c = a / b * square_width + a % b;
         (c, c + 1)
     };
-    (a.into(), b.into())
+    (a, b)
 }
 
 fn generate_cage_cells(puzzle_width: usize, rng: &mut impl Rng) -> Vec<Vec<CellId>> {
     let num_cells = puzzle_width.pow(2);
     let mut cage_map: Square<usize> = (0..num_cells).collect::<Vec<_>>().try_into().unwrap();
-    let mut cages: Vec<Vec<CellId>> = (0..num_cells).map(|i| vec![i.into()]).collect();
+    let mut cages: Vec<Vec<CellId>> = (0..num_cells).map(|i| vec![i]).collect();
     let min_cage_count = (num_cells as f32 / MAX_AVG_CAGE_SIZE) as usize;
     let mut borders = VecDeque::from(shuffled_inner_borders(puzzle_width, rng));
     'target_cage_sizes: for target_cage_size in 2..=MAX_CAGE_SIZE {
@@ -171,4 +171,19 @@ where
         }
     }
     (min, max)
+}
+
+#[cfg(test)]
+mod test {
+    use crate::puzzle::generate::generate_untested_puzzle;
+
+    #[test]
+    fn test() {
+        for size in 3..=10 {
+            for _ in 0..10 {
+                // just test that it does not panic (such as from an invalid puzzle)
+                let _ = generate_untested_puzzle(size);
+            }
+        }
+    }
 }

@@ -101,7 +101,7 @@ impl Extend<usize> for RangeSet {
 
 #[cfg(test)]
 mod test {
-    use crate::collections::RangeSet;
+    use crate::collections::range_set::RangeSet;
 
     #[test]
     #[should_panic]

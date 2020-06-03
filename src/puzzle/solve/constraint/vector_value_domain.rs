@@ -1,8 +1,8 @@
 use super::Constraint;
-use crate::collections::square::{IsSquare, Vector};
-use crate::collections::{LinkedAHashSet, RangeSet};
-use crate::puzzle::solve::markup::PuzzleMarkupChanges;
-use crate::puzzle::solve::PuzzleMarkup;
+use crate::collections::range_set::RangeSet;
+use crate::collections::square::{AsVector, IsSquare, Vector};
+use crate::collections::LinkedAHashSet;
+use crate::puzzle::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::{CellRef, Puzzle, Value};
 use std::ops::{Index, IndexMut};
 
@@ -17,7 +17,7 @@ impl VectorValueDomainConstraint {
     pub fn new(puzzle_width: usize) -> Self {
         Self {
             data: VectorValueIndexSet::new(puzzle_width),
-            dirty_vec_vals: Default::default(),
+            dirty_vec_vals: LinkedAHashSet::default(),
         }
     }
 
@@ -35,7 +35,7 @@ impl VectorValueDomainConstraint {
             Some(v) => v,
             None => return false,
         };
-        let sq_pos = puzzle.vector_point(vector, vec_val_pos);
+        let sq_pos = puzzle.vector(vector).square_index_at(vec_val_pos);
         debug!(
             "the only possible position for {} in {:?} is {:?}",
             n,
@@ -50,19 +50,24 @@ impl VectorValueDomainConstraint {
 
 impl Constraint for VectorValueDomainConstraint {
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
-        for &(index, value) in &changes.cell_solutions {
-            self.data.remove_cell_value(puzzle.cell(index), value);
-        }
-        for (&index, values) in &changes.cell_domain_value_removals {
-            for &vector in &puzzle.cell(index).vectors() {
-                let vector_data = &mut self.data[vector];
-                for &value in values {
-                    if let Some(dom) = vector_data[value as usize - 1].as_mut() {
-                        let vec_pos = puzzle.index_to_vector_point(index, vector);
-                        if dom.remove(vec_pos) {
-                            self.dirty_vec_vals.insert((vector, value));
+        for (&id, change) in changes.cells.iter() {
+            let cell = puzzle.cell(id);
+            match change {
+                CellChange::DomainRemovals(values) => {
+                    for &vector in &cell.vectors() {
+                        let vector_data = &mut self.data[vector];
+                        for &value in values {
+                            if let Some(dom) = vector_data[value as usize - 1].as_mut() {
+                                let vec_pos = puzzle.dimension_index_at(id, vector.dimension());
+                                if dom.remove(vec_pos) {
+                                    self.dirty_vec_vals.insert((vector, value));
+                                }
+                            };
                         }
-                    };
+                    }
+                }
+                &CellChange::Solution(value) => {
+                    self.data.remove_cell_value(cell, value);
                 }
             }
         }
@@ -112,12 +117,12 @@ impl Index<Vector> for VectorValueIndexSet {
     type Output = Vec<Option<RangeSet>>;
 
     fn index(&self, vector: Vector) -> &Self::Output {
-        &self.0[usize::from(vector)]
+        &self.0[vector.id()]
     }
 }
 
 impl IndexMut<Vector> for VectorValueIndexSet {
     fn index_mut(&mut self, vector: Vector) -> &mut Self::Output {
-        &mut self.0[usize::from(vector)]
+        &mut self.0[vector.id()]
     }
 }

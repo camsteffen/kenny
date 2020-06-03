@@ -1,6 +1,7 @@
 //! KenKen puzzles
 
 pub use self::image::PuzzleImageBuilder;
+pub use puzzle::*;
 
 pub mod solve;
 
@@ -10,8 +11,7 @@ mod image;
 mod parse;
 mod puzzle;
 
-use crate::collections::Square;
-pub use puzzle::*;
+use crate::collections::square::Square;
 
 pub type CageId = usize;
 pub type CellId = usize;

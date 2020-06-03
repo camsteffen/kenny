@@ -1,18 +1,19 @@
+pub use self::constraint_set::{ConstraintSet, PropagateResult};
+pub use self::unary_constraints::apply_unary_constraints;
+
+mod cage_solution_cell;
 mod cage_solution_outer_cell_domain;
 mod cage_vector_value;
 mod cell_cage_solution;
 mod constraint_set;
 mod unary_constraints;
+mod vector_preemptive_set;
 mod vector_solved_cell;
-mod vector_subdomain;
 mod vector_value_cage;
 mod vector_value_domain;
 
-pub use self::constraint_set::{ConstraintSet, PropagateResult};
-pub use self::unary_constraints::apply_unary_constraints;
-
 use super::markup::PuzzleMarkupChanges;
-use crate::puzzle::solve::PuzzleMarkup;
+use crate::puzzle::solve::markup::PuzzleMarkup;
 use crate::puzzle::Puzzle;
 
 pub trait Constraint: CloneConstraint {
@@ -20,8 +21,8 @@ pub trait Constraint: CloneConstraint {
     /// This should be a low-cost method where data is cached for later processing.
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges);
 
-    /// Partially enforces this constraint on the current puzzle. The constraint will be checked until one unit of
-    /// change is found and added to `changes`. Returns `false` if no changes are found.
+    /// Partially enforces this constraint on the current puzzle. The constraint will be checked until some
+    /// changes are found and added to `changes`. Returns `false` if no changes are found.
     fn enforce_partial(
         &mut self,
         puzzle: &Puzzle,
@@ -29,13 +30,13 @@ pub trait Constraint: CloneConstraint {
         changes: &mut PuzzleMarkupChanges,
     ) -> bool;
 
-    // TODO remove default implementation
-    // TODO use this
-    fn state(&self) -> State {
-        State::PENDING
-    }
+    // todo is this needed? default implementation?
+    // fn state(&self) -> State {
+    //     State::PENDING
+    // }
 }
 
+/*
 pub enum State {
     /// There is pending work to determine if this constraint is satisfied.
     PENDING,
@@ -46,6 +47,7 @@ pub enum State {
     SATISFIED,
     // todo unsatisfied?
 }
+ */
 
 pub trait CloneConstraint {
     fn clone_constraint(&self) -> Box<dyn Constraint>;

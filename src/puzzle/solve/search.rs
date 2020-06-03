@@ -1,11 +1,10 @@
-use failure::Fallible;
-
-use crate::puzzle::solve::constraint::PropagateResult;
-use crate::puzzle::solve::{PuzzleMarkup, PuzzleMarkupChanges};
-use crate::puzzle::{CellId, Puzzle, Solution, Value};
+use anyhow::Result;
 
 use super::constraint::ConstraintSet;
+use crate::puzzle::solve::constraint::PropagateResult;
+use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::step_writer::StepWriter;
+use crate::puzzle::{CellId, Puzzle, Solution, Value};
 
 pub enum SearchResult {
     NoSolutions,
@@ -23,7 +22,7 @@ pub fn search_solution(
     markup: &PuzzleMarkup,
     constraints: &ConstraintSet<'_>,
     step_writer: &mut Option<&mut StepWriter<'_>>,
-) -> Fallible<SearchResult> {
+) -> Result<SearchResult> {
     search_next(1, puzzle, markup, constraints, step_writer, false)
 }
 
@@ -34,7 +33,7 @@ fn search_next(
     constraints: &ConstraintSet<'_>,
     step_writer: &mut Option<&mut StepWriter<'_>>,
     mut solved_once: bool,
-) -> Fallible<SearchResult> {
+) -> Result<SearchResult> {
     debug!("Backtracking (depth={})", depth);
     let mut solution = None;
     for (i, guess) in guesses(markup).enumerate() {
@@ -79,11 +78,14 @@ fn guess_cell(
     guess: Guess,
     depth: u32,
     solved_once: bool,
-) -> Fallible<SearchResult> {
-    apply_guess(puzzle, guess, &mut markup, &mut constraints);
+) -> Result<SearchResult> {
     if let Some(ref mut step_writer) = step_writer {
-        step_writer.write_backtrack(&markup, &[guess.cell_id], depth)?;
+        // todo avoid new PuzzleMarkupChanges?
+        let mut changes = PuzzleMarkupChanges::new();
+        changes.solve_cell(guess.cell_id, guess.value);
+        step_writer.write_backtrack(&markup, &changes, depth)?;
     }
+    apply_guess(puzzle, guess, &mut markup, &mut constraints);
     match constraints.propagate(&mut markup, step_writer)? {
         PropagateResult::Solved(solution) => {
             return Ok(SearchResult::SingleSolution(SingleSolution {
@@ -100,8 +102,8 @@ fn guess_cell(
     search_next(
         depth + 1,
         puzzle,
-        &mut markup,
-        &mut constraints,
+        &markup,
+        &constraints,
         step_writer,
         solved_once,
     )

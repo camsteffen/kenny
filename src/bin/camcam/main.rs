@@ -1,5 +1,4 @@
 #![warn(rust_2018_idioms)]
-#![warn(single_use_lifetimes)]
 #![warn(trivial_casts)]
 #![warn(trivial_numeric_casts)]
 #![warn(unused_qualifications)]
@@ -10,7 +9,7 @@ extern crate log;
 use std::fs;
 use std::panic::{catch_unwind, resume_unwind};
 
-use failure::Fallible;
+use anyhow::Result;
 use itertools::Itertools;
 
 use camcam::puzzle::solve::{PuzzleSolver, SolveResult};
@@ -24,7 +23,7 @@ mod context;
 mod options;
 mod puzzle_folder_builder;
 
-fn main() -> Fallible<()> {
+fn main() -> Result<()> {
     env_logger::init();
     let options = Options::from_args()?;
     let mut context = Context::new(options)?;
@@ -33,7 +32,7 @@ fn main() -> Fallible<()> {
 }
 
 impl Context {
-    fn start(&mut self) -> Fallible<()> {
+    fn start(&mut self) -> Result<()> {
         match self.options().source() {
             options::Source::File(_) => {
                 self.start_file()?;
@@ -45,24 +44,38 @@ impl Context {
         Ok(())
     }
 
-    fn start_file(&mut self) -> Fallible<()> {
+    fn start_file(&mut self) -> Result<()> {
         let path = self.options().source().file().unwrap();
-        println!("reading puzzle from \"{}\"", path.display());
+        println!("Reading puzzle from \"{}\"", path.display());
         let puzzle = Puzzle::from_file(path)?;
         let mut context = PuzzleContext::new(self, &puzzle)?;
         context.on_puzzle_sourced()?;
         Ok(())
     }
 
-    fn start_generate(&mut self, count: u32, width: usize) -> Fallible<()> {
+    fn start_generate(&mut self, count: u32, width: usize) -> Result<()> {
         let mut included_count = 0;
+        let mut attempt = 1;
         while included_count < count {
-            println!("Generating puzzle {}/{}", included_count + 1, count);
+            println!(
+                "Generating puzzle {}/{}{attempt}",
+                included_count + 1,
+                count,
+                attempt = if attempt == 1 {
+                    String::new()
+                } else {
+                    format!(" (attempt {})", attempt)
+                }
+            );
             let puzzle = Puzzle::generate_untested(width);
             let mut context = PuzzleContext::new(self, &puzzle)?;
             let included = context.on_puzzle_sourced()?;
             if included {
                 included_count += 1;
+                attempt = 1;
+            } else {
+                println!("Puzzle discarded");
+                attempt += 1;
             }
         }
         Ok(())
@@ -70,42 +83,48 @@ impl Context {
 }
 
 impl PuzzleContext<'_> {
-    fn on_puzzle_sourced(&mut self) -> Fallible<bool> {
-        // let mut puzzle_context = PuzzleContext::new(context.options(), puzzle)?;
+    fn on_puzzle_sourced(&mut self) -> Result<bool> {
         log_puzzle(self.puzzle());
         self.save_puzzle()?;
-        let result = catch_unwind(|| self.on_solve_puzzle());
-        // in case of a panic or error, save the puzzle output
-        let should_save = result.as_ref().map_or(false, |included| {
-            included.as_ref().ok().copied().unwrap_or(false)
-        });
-        if should_save {
-            self.save_folder_if_present()
-                .unwrap_or_else(|e| error!("Error saving puzzle: {}", e));
+        let solve_options = match self.options().solve() {
+            None => return Ok(true),
+            Some(solve_options) => solve_options,
+        };
+
+        // catch a panic to save puzzle output
+        let result = catch_unwind(|| self.on_solve_puzzle(solve_options));
+        let include = match result {
+            Ok(Ok(ref result)) => self.should_include(result),
+            // if any errors occurred, save output anyways
+            _ => true,
+        };
+        if include {
+            match self.save_folder_if_present() {
+                // propagate the error only if there are no other errors
+                Err(e) if matches!(result, Ok(Ok(_))) => return Err(e),
+                _ => (),
+            }
         }
         match result {
-            Ok(included) => Ok(included?),
-            Err(cause) => resume_unwind(cause),
-        }
+            Err(e) => resume_unwind(e),
+            Ok(result) => result?,
+        };
+        Ok(include)
     }
 
-    fn on_solve_puzzle(&self) -> Fallible<bool> {
-        if let Some(solve) = self.options().solve() {
-            let solved = self.on_do_solve_puzzle(solve)?;
-            let include = self.options().source().generate().map_or(true, |generate| {
-                if solved {
-                    generate.include_solvable
-                } else {
-                    generate.include_unsolvable
-                }
-            });
-            Ok(include)
+    fn should_include(&self, result: &SolveResult) -> bool {
+        let context = match self.options().source() {
+            options::Source::Generate(context) => context,
+            _ => return true,
+        };
+        if let Some(solve) = result.solved() {
+            context.include_solvable && !context.require_search || solve.used_search
         } else {
-            Ok(true)
+            context.include_unsolvable
         }
     }
 
-    fn save_puzzle(&self) -> Fallible<()> {
+    fn save_puzzle(&self) -> Result<()> {
         if self
             .options()
             .source()
@@ -120,7 +139,7 @@ impl PuzzleContext<'_> {
         Ok(())
     }
 
-    fn save_image(&self) -> Fallible<()> {
+    fn save_image(&self) -> Result<()> {
         let mut builder = PuzzleImageBuilder::new(self.puzzle());
         if let Some(image_width) = self.options().image_width {
             builder.image_width(image_width);
@@ -130,43 +149,27 @@ impl PuzzleContext<'_> {
         Ok(())
     }
 
-    fn on_do_solve_puzzle(&self, solve_options: &options::Solve) -> Fallible<bool> {
-        println!("Solving puzzle");
+    fn on_solve_puzzle(&self, solve_options: &options::Solve) -> Result<SolveResult> {
         let solver = self.build_solver(solve_options)?;
-        let solution = match solver.solve()? {
-            SolveResult::Unsolvable => {
-                println!("Puzzle is not solvable");
-                None
-            }
-            SolveResult::Solved(solution) => {
-                println!("Puzzle solved");
-                Some(solution)
-            }
-            SolveResult::MultipleSolutions => {
-                println!("Puzzle has multiple solutions");
-                None
-            }
+        let result = solver.solve()?;
+        let msg = match result {
+            SolveResult::Unsolvable => "Puzzle is not solvable",
+            SolveResult::Solved(_) => "Puzzle solved",
+            SolveResult::MultipleSolutions => "Puzzle has multiple solutions",
         };
-
-        if let options::Source::Generate(context) = self.options().source() {
-            if !context.include_unsolvable && !solution.is_some() {
-                return Ok(false);
+        println!("{}", msg);
+        if self.should_include(&result) {
+            if let Some(result) = result.solved() {
+                self.save_solved_image(solve_options, &result.solution)?;
             }
         }
-
-        self.save_solved_image(solve_options, &solution)?;
-
-        Ok(solution.is_some())
+        Ok(result)
     }
 
-    fn save_solved_image(
-        &self,
-        solve_options: &options::Solve,
-        solution: &Option<Solution>,
-    ) -> Fallible<()> {
+    fn save_solved_image(&self, solve_options: &options::Solve, solution: &Solution) -> Result<()> {
         if solve_options.save_image {
             let mut builder = PuzzleImageBuilder::new(self.puzzle());
-            builder.solution(solution.as_ref());
+            builder.solution(solution);
             if let Some(image_width) = self.options().image_width {
                 builder.image_width(image_width);
             }
@@ -178,7 +181,7 @@ impl PuzzleContext<'_> {
         Ok(())
     }
 
-    fn build_solver(&self, solve_options: &options::Solve) -> Fallible<PuzzleSolver<'_>> {
+    fn build_solver(&self, solve_options: &options::Solve) -> Result<PuzzleSolver<'_>> {
         let mut solver = PuzzleSolver::new(self.puzzle());
         if solve_options.save_step_images {
             let path = self.folder_builder().unwrap().steps_path();
@@ -191,12 +194,14 @@ impl PuzzleContext<'_> {
         Ok(solver)
     }
 
-    pub fn save_folder_if_present(&mut self) -> Fallible<()> {
-        if let Some(folder_builder) = self.take_folder_builder() {
-            let path = self.next_puzzle_path();
-            folder_builder.save(&path)?;
-            println!("Saved puzzle to {}", path.display());
-        }
+    pub fn save_folder_if_present(&mut self) -> Result<()> {
+        let folder_builder = match self.take_folder_builder() {
+            None => return Ok(()),
+            Some(folder_builder) => folder_builder,
+        };
+        let path = self.next_puzzle_path();
+        folder_builder.save(&path)?;
+        println!("Saved puzzle to {}", path.display());
         Ok(())
     }
 }

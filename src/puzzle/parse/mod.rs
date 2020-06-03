@@ -1,149 +1,143 @@
 //! Parse puzzles from text
 
+pub use token::Token;
+
 use std::collections::BTreeMap;
-use std::fmt;
 use std::str;
 
 use crate::collections::square::SquareIndex;
-use crate::puzzle::error::ParsePuzzleError;
-use crate::puzzle::parse::token_iterator::TokenIterator;
+use crate::puzzle::error::{
+    ParseError, ParsePuzzleError, ParsePuzzleErrorType, ParsePuzzleErrorType::*, UNEXPECTED_END,
+};
+use crate::puzzle::parse::token_iterator::IndexedToken;
 use crate::puzzle::Cage;
 use crate::puzzle::Operator;
 use crate::puzzle::Puzzle;
+use std::fmt::Display;
+use token_iterator::TokenIterator;
 
+mod token;
 mod token_iterator;
+
+pub type Result<T, E = ParseError> = std::result::Result<T, E>;
+
+const MAX_PUZZLE_SIZE: usize = ((b'Z') - (b'A') + 1) as usize;
 
 /// parse a `Puzzle` from a string
 pub fn parse_puzzle(s: &str) -> Result<Puzzle, ParsePuzzleError> {
     let mut s = TokenIterator::new(s);
-    let (i, token) = s.next_skip_space()?.ok_or("unexpected EOF")?;
-    let size = token
-        .number()
-        .ok_or_else(|| format_parse_error("invalid size", &token, i))? as usize;
-    if size > usize::from((b'Z') - (b'A') + 1) {
-        return Err("size is too big".into());
+    let size = s
+        .next_skip_space()?
+        .expect_token()?
+        .map_or(InvalidSize, Token::number)?
+        .value() as usize;
+    if size > MAX_PUZZLE_SIZE {
+        return Err(ParseError::from_type(SizeTooBig).into());
     }
     let cage_cells = read_cage_cells(&mut s, size)?;
     let cage_targets = read_cage_targets(&mut s, cage_cells.len())?;
     debug_assert!(cage_cells.len() == cage_targets.len());
     if let Some((i, t)) = s.next_skip_space()? {
-        return Err(format_parse_error("unexpected token", &t, i).into());
+        return Err(ParseError::new(UnexpectedToken, t, i).into());
     }
-    let cages = cage_cells
+    let cages: Vec<Cage> = cage_cells
         .into_iter()
         .zip(cage_targets.into_iter())
-        .map(|((cage_id, cells), (target, operator))| {
-            match cells.len() {
-                1 => {
-                    if let Some(symbol) = operator.as_ref().map(|o| o.symbol().unwrap()) {
-                        return Err(format!(
-                            "cage {} has one cell and operator {}",
-                            cage_id, symbol
-                        ));
-                    }
-                }
-                _ => {
-                    if operator.is_none() {
-                        return Err(format!("cage {} is missing an operator", cage_id));
-                    }
-                }
-            }
-            let operator = operator.unwrap_or(Operator::Nop);
-            let cage = Cage::new(target as i32, operator, cells);
-            Ok(cage)
-        })
+        .map(|(cells, (target, operator))| Cage::new(cells, operator, target as i32))
         .collect::<Result<_, _>>()?;
-    Ok(Puzzle::new(size, cages))
+    let puzzle = Puzzle::new(size, cages)?;
+    Ok(puzzle)
 }
 
-pub enum Token {
-    Letter(char),
-    Number(u32),
-    Operator(Operator),
-    Space,
-}
-
-impl Token {
-    fn letter(&self) -> Option<char> {
-        match *self {
-            Token::Letter(l) => Some(l),
-            _ => None,
-        }
-    }
-
-    fn number(&self) -> Option<u32> {
-        match *self {
-            Token::Number(n) => Some(n),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for Token {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Token::Number(n) => write!(f, "{}", n),
-            Token::Operator(o) => o.symbol().map_or(Ok(()), |symbol| write!(f, "{}", symbol)),
-            Token::Letter(l) => write!(f, "{}", l),
-            Token::Space => write!(f, " "),
-        }
-    }
-}
-
-fn read_cage_cells(
-    s: &mut TokenIterator<'_>,
-    size: usize,
-) -> Result<BTreeMap<char, Vec<SquareIndex>>, ParsePuzzleError> {
-    let mut cages = BTreeMap::new();
+fn read_cage_cells(s: &mut TokenIterator<'_>, size: usize) -> Result<Vec<Vec<SquareIndex>>> {
+    let mut cage_map: BTreeMap<char, Vec<usize>> = BTreeMap::new();
     for cell in 0..(size * size) {
-        let (idx, token) = s
+        let letter = s
             .next_skip_space()?
-            .ok_or(ParsePuzzleError::from("unexpected EOF"))?;
-        let l = token
-            .letter()
-            .ok_or_else(|| format_parse_error("invalid cage id", &token, idx))?;
-        if !l.is_uppercase() {
-            return Err(format_parse_error("invalid cage id", &l, idx).into());
-        }
-        cages.entry(l).or_insert_with(Vec::new).push(cell.into());
+            .expect_token()?
+            .map_or(InvalidCageId, Token::letter)?
+            .filter_or(InvalidCageId, char::is_uppercase)?
+            .value();
+        cage_map.entry(letter).or_default().push(cell);
     }
+    let cages = cage_map.into_iter().map(|(_id, cages)| cages).collect();
     Ok(cages)
 }
 
-fn read_cage_targets(
-    s: &mut TokenIterator<'_>,
-    num_cages: usize,
-) -> Result<Vec<(u32, Option<Operator>)>, ParsePuzzleError> {
+fn read_cage_targets(s: &mut TokenIterator<'_>, num_cages: usize) -> Result<Vec<(u32, Operator)>> {
     (0..num_cages)
-        .map(|cage_index| -> Result<_, ParsePuzzleError> {
-            let (i, token) = s
+        .map(|_| -> Result<_> {
+            let target = s
                 .next_skip_space()?
-                .ok_or(ParsePuzzleError::from("unexpected EOF"))?;
-            let target = token
-                .number()
-                .ok_or_else(|| format_parse_error("invalid target", &token, i))?;
-            let derp = s.next()?;
-            let (i, token) = match derp {
-                Some(n) => n,
-                None => {
-                    if cage_index == num_cages - 1 {
-                        return Ok((target, None));
-                    }
-                    return Err(ParsePuzzleError::from("unexpected EOF"));
+                .expect_token()?
+                .map_or(InvalidCageTarget, Token::number)?
+                .value();
+            let operator = if let Some((i, token)) = s.next()? {
+                match token {
+                    Token::Operator(o) => o,
+                    Token::Space => Operator::Nop,
+                    _ => return Err(ParseError::new(InvalidOperator, token, i)),
                 }
-            };
-            let operator = match token {
-                Token::Operator(o) => Some(o),
-                Token::Space => None,
-                _ => return Err(format_parse_error("invalid operator", &token, i).into()),
+            } else {
+                Operator::Nop
             };
             Ok((target, operator))
         })
         .collect()
 }
 
-fn format_parse_error<T: fmt::Display>(msg: &str, s: &T, i: usize) -> String {
-    format!("{}: '{}' (position: {})", msg, s, i)
+trait TokenOption<T>: Sized {
+    fn expect_token(self) -> Result<T>;
+}
+
+impl TokenOption<(usize, Token)> for Option<(usize, Token)> {
+    fn expect_token(self) -> Result<IndexedToken> {
+        self.ok_or(UNEXPECTED_END)
+    }
+}
+
+trait IndexedTokenExt<T>: Sized + Into<(usize, T)>
+where
+    T: Copy + Display,
+{
+    fn filter_or(
+        self,
+        error_type: ParsePuzzleErrorType,
+        predicate: impl FnOnce(T) -> bool,
+    ) -> Result<(usize, T)> {
+        let (index, token) = self.into();
+        if !predicate(token) {
+            return Err(ParseError::new(error_type, token, index));
+        }
+        Ok((index, token))
+    }
+
+    fn map_or<U>(
+        self,
+        error_type: ParsePuzzleErrorType,
+        f: impl FnOnce(T) -> Option<U>,
+    ) -> Result<(usize, U)> {
+        let (index, token) = self.into();
+        let n = f(token).ok_or_else(|| ParseError::new(error_type, token, index))?;
+        Ok((index, n))
+    }
+
+    fn index(self) -> usize;
+
+    fn value(self) -> T;
+}
+
+impl<T> IndexedTokenExt<T> for (usize, T)
+where
+    T: Copy + Display,
+{
+    fn index(self) -> usize {
+        self.0
+    }
+
+    fn value(self) -> T {
+        self.1
+    }
 }
 
 #[cfg(test)]
@@ -158,29 +152,24 @@ mod test {
 
     #[test]
     fn test() {
-        let s = "\
+        let str = "\
         4\n\
         A ABB\
         ACCC\
         DEEF \
-        DGFF \
-        4+\
-        2* \
-        6*\
-        4/\
-        4-\
-        7+\
-        3";
+        DGHH \
+        4+ 2* 6* 4/ 4- 7 3 2-";
         let cages = vec![
-            Cage::new(4, Operator::Add, vec![0, 1, 4]),
-            Cage::new(2, Operator::Multiply, vec![2, 3]),
-            Cage::new(6, Operator::Multiply, vec![5, 6, 7]),
-            Cage::new(4, Operator::Divide, vec![8, 12]),
-            Cage::new(4, Operator::Subtract, vec![9, 10]),
-            Cage::new(7, Operator::Add, vec![11, 14, 15]),
-            Cage::new(3, Operator::Nop, vec![13]),
+            Cage::new(vec![0, 1, 4], Operator::Add, 4).unwrap(),
+            Cage::new(vec![2, 3], Operator::Multiply, 2).unwrap(),
+            Cage::new(vec![5, 6, 7], Operator::Multiply, 6).unwrap(),
+            Cage::new(vec![8, 12], Operator::Divide, 4).unwrap(),
+            Cage::new(vec![9, 10], Operator::Subtract, 4).unwrap(),
+            Cage::new(vec![11], Operator::Nop, 7).unwrap(),
+            Cage::new(vec![13], Operator::Nop, 3).unwrap(),
+            Cage::new(vec![14, 15], Operator::Subtract, 2).unwrap(),
         ];
-        let puzzle = Puzzle::new(4, cages);
-        assert_eq!(puzzle, parse_puzzle(s).unwrap());
+        let puzzle = Puzzle::new(4, cages).unwrap();
+        assert_eq!(puzzle, parse_puzzle(str).unwrap());
     }
 }
