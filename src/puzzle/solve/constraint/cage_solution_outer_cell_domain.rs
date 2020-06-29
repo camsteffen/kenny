@@ -20,7 +20,7 @@ use crate::puzzle::{CageId, CageRef, CellId, CellRef, Puzzle};
 ///
 /// Unsatisfied action: Remove S from possible cage solutions
 #[derive(Clone)]
-pub struct CageSolutionOuterCellDomainConstraint {
+pub(crate) struct CageSolutionOuterCellDomainConstraint {
     cage_vector_cells: AHashMap<(CageId, Vector), AHashSet<CellId>>,
     dirty_cage_vectors: LinkedAHashSet<(CageId, Vector)>,
 }

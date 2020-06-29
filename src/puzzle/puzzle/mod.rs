@@ -261,3 +261,9 @@ impl<'a> CellRef<'a> {
         self.coord().vectors()
     }
 }
+
+impl<'a> SquareVector<'a, Puzzle> {
+    pub fn iter(self) -> impl Iterator<Item = CellRef<'a>> + 'a {
+        self.indices().map(move |i| self.square.cell(i))
+    }
+}

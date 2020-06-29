@@ -6,7 +6,7 @@ use crate::puzzle::{CellId, CellRef, Puzzle};
 
 /// If a cell is solved in a vector, other cells in that vector must not have the same value.
 #[derive(Clone)]
-pub struct VectorSolvedCellConstraint {
+pub(crate) struct VectorSolvedCellConstraint {
     /// Solved cells that have not been checked
     solved_cells: Vec<CellId>,
 }
@@ -21,7 +21,7 @@ impl VectorSolvedCellConstraint {
 
 impl Constraint for VectorSolvedCellConstraint {
     fn notify_changes(&mut self, _: &Puzzle, changes: &PuzzleMarkupChanges) {
-        for (id, _) in changes.cell_solutions() {
+        for (id, _) in changes.cells.solutions() {
             self.solved_cells.push(id);
         }
     }
@@ -56,7 +56,7 @@ fn enforce_solved_cell(
         .iter()
         .flat_map(|&v| puzzle.vector_cells(v))
         .filter(|cell| cell_variables[cell.id()].unsolved_and_contains(value))
-        .map(|cell| changes.remove_value_from_cell(cell.id(), value))
+        .inspect(|cell| changes.cells.remove_domain_value(cell.id(), value))
         .count() as u32;
     debug!(
         "Removed {} instances of the value {} surrounding solved cell at {:?}",

@@ -16,7 +16,7 @@ use crate::puzzle::Puzzle;
 use crate::puzzle::{CageRef, CellId, Value};
 
 #[derive(Clone)]
-pub struct CageSolutionsSet {
+pub(crate) struct CageSolutionsSet {
     data: Vec<CageSolutions>,
 }
 
@@ -35,7 +35,6 @@ impl CageSolutionsSet {
         Self { data }
     }
 
-    // todo changes are added but not added to PuzzleMarkupChanges
     /// Returns true if the puzzle is solvable
     pub fn apply_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) -> bool {
         #[derive(Default)]
@@ -53,21 +52,19 @@ impl CageSolutionsSet {
                 .extend(values);
         }
 
-        for (id, _) in changes.cell_solutions() {
+        for (id, _) in changes.cells.solutions() {
             let cage_id = puzzle.cell(id).cage_id();
             let cage_data = data.entry(cage_id).or_default();
             cage_data.solved_cells.insert(id);
         }
 
-        for (cage_id, cage_data) in data {
-            let cage_solvable = self[cage_id]
-                .apply_changes(&cage_data.removed_solution_ids, &cage_data.solved_cells);
-            if !cage_solvable {
-                debug!("Cage at {:?} is not solvable", puzzle.cage(cage_id).coord());
-                return false;
-            }
-        }
-        true
+        data.into_iter().all(|(cage_id, cage_data)| {
+            self[cage_id].apply_changes(
+                &cage_data.removed_solution_ids,
+                &cage_data.solved_cells,
+                puzzle.cage(cage_id),
+            )
+        })
     }
 }
 
@@ -87,8 +84,7 @@ impl DerefMut for CageSolutionsSet {
 
 /// A set of possible solutions for one cage
 #[derive(Clone)]
-pub struct CageSolutions {
-    // todo change to AHashMap<CellId, Vec<Value>>
+pub(crate) struct CageSolutions {
     /// the indices of the unsolved cells in the cage (not every cell in the cage)
     pub cell_ids: Vec<CellId>,
     /// a list of all possible solutions for a cage. the numbers correspond to the cells represented in cell_ids
@@ -108,7 +104,6 @@ impl CageSolutions {
             .collect();
         let index_map = Self::build_index_map(&cell_ids);
 
-        // todo integrate cell_ids here?
         let solutions = match cage.operator() {
             Operator::Add => Self::init_add(puzzle, cage, cell_variables),
             Operator::Multiply => Self::init_multiply(puzzle, cage, cell_variables),
@@ -141,14 +136,21 @@ impl CageSolutions {
         &mut self,
         removed_solution_indices: &AHashSet<usize>,
         solved_cells: &AHashSet<CellId>,
+        cage: CageRef<'_>,
     ) -> bool {
-        if solved_cells.len() == self.cell_ids.len() {
+        let cell_ids_len = self.cell_ids.len() - solved_cells.len();
+        if cell_ids_len == 0 {
             // the cage is solved
             self.clear();
             return true;
         }
+        let solutions_len = self.solutions.len() - removed_solution_indices.len();
+        if solutions_len == 0 {
+            // all solutions removed, bail!
+            debug!("No solutions left for cage at {:?}", cage.coord());
+            return false;
+        }
 
-        let cell_ids_len = self.cell_ids.len() - solved_cells.len();
         let keep_indices: Vec<usize> = self
             .cell_ids
             .iter()
@@ -158,7 +160,6 @@ impl CageSolutions {
             .collect_into(Vec::with_capacity(cell_ids_len));
         self.cell_ids = keep_indices.iter().map(|&i| self.cell_ids[i]).collect();
         debug_assert_eq!(self.cell_ids.len(), cell_ids_len);
-        let solutions_len = self.solutions.len() - removed_solution_indices.len();
         self.solutions = mem::take(&mut self.solutions)
             .into_iter()
             .enumerate()
@@ -167,36 +168,7 @@ impl CageSolutions {
             .collect_into(Vec::with_capacity(solutions_len));
         debug_assert_eq!(self.solutions.len(), solutions_len);
         self.reset_index_map();
-        !self.solutions.is_empty()
-    }
-
-    // todo why doesn't compiler warn dead code here?
-    pub fn remove_indices(&mut self, indices: &[CellId]) {
-        let capacity = self.cell_ids.len() - indices.len();
-        if capacity == 0 {
-            self.clear();
-            return;
-        }
-        let indices_set = indices.iter().copied().collect::<AHashSet<_>>();
-        let solution_indices_set = indices
-            .iter()
-            .map(|&i| self.cell_ids.iter().position(|&j| j == i).unwrap())
-            .collect::<AHashSet<_>>();
-        self.cell_ids.retain(|i| !indices_set.contains(i));
-        for solution in &mut self.solutions {
-            *solution = solution
-                .iter_mut()
-                .enumerate()
-                .filter(|(i, _)| !solution_indices_set.contains(i))
-                .map(|(_, &mut j)| j)
-                .collect();
-        }
-        self.reset_index_map();
-    }
-
-    pub fn remove_cell_domain_value(&mut self, index: CellId, value: i32) {
-        let index = self.index_map[&index];
-        self.solutions.retain(|solution| solution[index] != value);
+        true
     }
 
     pub fn vector_view<T: IsSquare>(&self, vector: SquareVector<'_, T>) -> CageSolutionsView<'_> {
@@ -215,12 +187,7 @@ impl CageSolutions {
     }
 
     fn build_index_map(indices: &[CellId]) -> AHashMap<CellId, usize> {
-        indices
-            .iter()
-            .copied()
-            .enumerate()
-            .map(|(i, sq_i)| (sq_i, i))
-            .collect()
+        indices.iter().enumerate().map(|(i, &id)| (id, i)).collect()
     }
 
     fn reset_index_map(&mut self) {
@@ -471,7 +438,7 @@ impl CageSolutions {
     }
 }
 
-pub struct CageSolutionsView<'a> {
+pub(crate) struct CageSolutionsView<'a> {
     cage_solutions: &'a CageSolutions,
     indices: Vec<usize>,
 }

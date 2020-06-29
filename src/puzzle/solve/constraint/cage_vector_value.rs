@@ -12,7 +12,7 @@ use super::Constraint;
 /// If a value exists in every cage solution for a cage, in a given vector, that value must be in that cage-vector.
 /// It must not be in any other cell in the vector, not in that cage.
 #[derive(Clone)]
-pub struct CageVectorValueConstraint {
+pub(crate) struct CageVectorValueConstraint {
     /// A map of vectors per cell where there are multiple cells in the cage and vector.
     /// This is used to determine which cage-vector's to check after puzzle markup changes.
     cell_cage_vectors: Square<Vec<Vector>>,
@@ -35,7 +35,7 @@ impl CageVectorValueConstraint {
 
 impl Constraint for CageVectorValueConstraint {
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
-        for (id, _) in changes.cell_domain_removals() {
+        for (id, _) in changes.cells.domain_removals() {
             self.notify_change_cell_domain(puzzle.cell(id));
         }
         for &cage_id in changes.cage_solution_removals.keys() {
@@ -108,7 +108,7 @@ impl CageVectorValueConstraint {
         for n in values {
             for &pos in &remove_from {
                 if markup.cells()[pos].unsolved_and_contains(n) {
-                    change.remove_value_from_cell(pos, n);
+                    change.cells.remove_domain_value(pos, n);
                     count += 1;
                 }
             }

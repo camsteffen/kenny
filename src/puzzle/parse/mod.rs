@@ -1,6 +1,6 @@
 //! Parse puzzles from text
 
-pub use token::Token;
+pub(crate) use token::Token;
 
 use std::collections::BTreeMap;
 use std::str;

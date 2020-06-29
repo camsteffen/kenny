@@ -1,5 +1,5 @@
-pub use self::coord::Coord;
-pub use self::vector::{AsVector, Dimension, Vector};
+pub(crate) use self::coord::Coord;
+pub(crate) use self::vector::{AsVector, Dimension, Vector};
 
 use std::cmp::Ord;
 use std::convert::TryFrom;
@@ -15,7 +15,7 @@ type VectorsInner = Map<Range<usize>, fn(usize) -> Vector>;
 type Vectors = Chain<VectorsInner, VectorsInner>;
 type VectorIndices = StepBy<Range<SquareIndex>>;
 
-pub trait IsSquare {
+pub(crate) trait IsSquare {
     fn len(&self) -> usize {
         let width = self.width();
         width * width
@@ -81,13 +81,13 @@ pub trait IsSquare {
         let as_row: fn(usize) -> Vector = Vector::row;
         let cols = (0..self.width()).map(as_col);
         let rows = (0..self.width()).map(as_row);
-        return cols.chain(rows);
+        cols.chain(rows)
     }
 
     fn width(&self) -> usize;
 }
 
-pub struct SquareVectorsIter<'a, S> {
+pub(crate) struct SquareVectorsIter<'a, S> {
     square: &'a S,
     vectors: Vectors,
 }
@@ -143,8 +143,8 @@ impl AsSquareIndex for Coord {
     }
 }
 
-pub struct SquareVector<'a, T> {
-    square: &'a T,
+pub(crate) struct SquareVector<'a, T> {
+    pub(crate) square: &'a T,
     vector: Vector,
 }
 
@@ -309,7 +309,7 @@ where
 }
 
 #[derive(Clone, Copy)]
-pub struct EmptySquare {
+pub(crate) struct EmptySquare {
     width: usize,
 }
 

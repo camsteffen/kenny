@@ -9,7 +9,7 @@ use crate::puzzle::Operator;
 
 pub type IndexedToken = (usize, Token);
 
-pub struct TokenIterator<'a> {
+pub(crate) struct TokenIterator<'a> {
     chars: Peekable<CharIndices<'a>>,
 }
 
@@ -21,11 +21,9 @@ impl TokenIterator<'_> {
     }
 
     pub fn next_skip_space(&mut self) -> Result<Option<IndexedToken>> {
-        loop {
-            match self.next() {
-                Ok(Some((_, Token::Space))) => {}
-                next => return next,
-            }
+        match self.next() {
+            Ok(Some((_, Token::Space))) => self.next(),
+            next => next,
         }
     }
 

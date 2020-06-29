@@ -1,5 +1,5 @@
 #[derive(Clone)]
-pub struct RangeSet {
+pub(crate) struct RangeSet {
     size: usize,
     domain: Vec<bool>,
 }
@@ -72,7 +72,7 @@ impl RangeSet {
     }
 }
 
-pub struct Iter<'a> {
+pub(crate) struct Iter<'a> {
     domain: &'a [bool],
     index: usize,
 }

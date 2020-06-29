@@ -3,9 +3,8 @@ use crate::collections::iterator_ext::IteratorExt;
 use crate::collections::square::Square;
 use crate::collections::square::{IsSquare, Vector};
 use crate::collections::LinkedAHashSet;
-use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::CellVariable;
-use crate::puzzle::solve::PuzzleMarkup;
 use crate::puzzle::solve::ValueSet;
 use crate::puzzle::{CellId, Puzzle};
 use itertools::Itertools;
@@ -13,7 +12,7 @@ use itertools::Itertools;
 /// If there is a set of cells within a vector where the size of the union of their domains is less than or equal to
 /// the number of cells, then all of the values in the unified domain must be in that set of cells.
 #[derive(Clone)]
-pub struct VectorPreemptiveSetConstraint {
+pub(crate) struct VectorPreemptiveSetConstraint {
     dirty_vecs: LinkedAHashSet<Vector>,
 }
 
@@ -52,7 +51,7 @@ impl VectorPreemptiveSetConstraint {
 
         let mut count = 0;
 
-        // TODO optimize?
+        // TODO can this be optimized?
 
         // find a set of cells where the union of their domains is less than the number of cells
         let mut cells: Vec<CellId> = Vec::with_capacity(cell_variables.width() - 1);
@@ -79,7 +78,7 @@ impl VectorPreemptiveSetConstraint {
 
 impl Constraint for VectorPreemptiveSetConstraint {
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
-        for (id, _) in changes.cell_domain_removals() {
+        for (id, _) in changes.cells.domain_removals() {
             for vector in puzzle.cell(id).vectors().iter().copied() {
                 self.dirty_vecs.insert(vector);
             }
@@ -147,7 +146,7 @@ fn found_preemptive_set(
     for cell in other_cells {
         for value in values {
             if cell_variables[cell].unsolved_and_contains(value) {
-                changes.remove_value_from_cell(cell, value);
+                changes.cells.remove_domain_value(cell, value);
                 count += 1;
             }
         }

@@ -1,7 +1,7 @@
 use std::cmp;
 use std::iter::Peekable;
 
-pub trait IteratorExt: Iterator + Sized {
+pub(crate) trait IteratorExt: Iterator + Sized {
     fn add_to<E>(self, e: &mut E)
     where
         E: Extend<Self::Item>,
@@ -43,7 +43,7 @@ pub trait IteratorExt: Iterator + Sized {
     }
 }
 
-pub struct LeftMerge<L, R>
+pub(crate) struct LeftMerge<L, R>
 where
     L: Iterator,
     R: Iterator,

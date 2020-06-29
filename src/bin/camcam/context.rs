@@ -8,7 +8,7 @@ use camcam::puzzle::Puzzle;
 use crate::options::Options;
 use crate::puzzle_folder_builder::PuzzleFolderBuilder;
 
-pub struct Context {
+pub(crate) struct Context {
     options: Options,
     puzzle_path_iter: Option<PuzzlePathIter>,
 }
@@ -48,7 +48,7 @@ impl Context {
     }
 }
 
-pub struct PuzzleContext<'a> {
+pub(crate) struct PuzzleContext<'a> {
     context: &'a mut Context,
     puzzle: &'a Puzzle,
     folder_builder: Option<PuzzleFolderBuilder>,

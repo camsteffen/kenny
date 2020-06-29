@@ -3,7 +3,7 @@ use super::ValueSet;
 use crate::puzzle::Value;
 
 #[derive(Clone)]
-pub enum CellVariable {
+pub(crate) enum CellVariable {
     Solved(Value),
     Unsolved(ValueSet),
 }
@@ -48,10 +48,6 @@ impl CellVariable {
             Unsolved(domain) => Some(domain),
             _ => None,
         }
-    }
-
-    pub fn remove_from_domain(&mut self, value: i32) -> bool {
-        self.unsolved_mut().unwrap().remove(value)
     }
 
     pub fn unsolved_and_contains(&self, value: i32) -> bool {

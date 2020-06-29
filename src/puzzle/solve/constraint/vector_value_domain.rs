@@ -8,7 +8,7 @@ use std::ops::{Index, IndexMut};
 
 /// If only one cell in a vector has a given value in its domain, then the cell has that value.
 #[derive(Clone)]
-pub struct VectorValueDomainConstraint {
+pub(crate) struct VectorValueDomainConstraint {
     data: VectorValueIndexSet,
     dirty_vec_vals: LinkedAHashSet<(Vector, i32)>,
 }
@@ -42,7 +42,7 @@ impl VectorValueDomainConstraint {
             vector,
             puzzle.coord_at(sq_pos)
         );
-        change.solve_cell(sq_pos, n);
+        change.cells.solve(sq_pos, n);
         self.data.remove_cell_value(puzzle.cell(sq_pos), n);
         true
     }

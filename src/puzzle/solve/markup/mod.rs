@@ -1,6 +1,6 @@
 mod changes;
 
-pub use self::changes::{CellChange, PuzzleMarkupChanges};
+pub(crate) use self::changes::{CellChange, CellChanges, PuzzleMarkupChanges};
 
 use crate::collections::square::{IsSquare, Square};
 use crate::puzzle::solve::cage_solutions::CageSolutionsSet;
@@ -10,7 +10,7 @@ use std::convert::TryInto;
 
 /// Markup on a puzzle including possible cell values and cage solutions
 #[derive(Clone)]
-pub struct PuzzleMarkup {
+pub(crate) struct PuzzleMarkup {
     cell_variables: Square<CellVariable>,
     cage_solutions_set: Option<CageSolutionsSet>,
     blank_cell_count: u32,
@@ -69,7 +69,7 @@ impl PuzzleMarkup {
                 return false;
             }
         }
-        self.blank_cell_count -= changes.cell_solutions().count() as u32;
+        self.blank_cell_count -= changes.cells.solutions().count() as u32;
         true
     }
 

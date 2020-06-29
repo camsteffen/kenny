@@ -4,7 +4,7 @@ use std::iter::Map;
 
 /// A small abstraction over `RangeSet` for puzzle values
 #[derive(Clone)]
-pub struct ValueSet(RangeSet);
+pub(crate) struct ValueSet(RangeSet);
 
 impl ValueSet {
     pub fn new(max: usize) -> Self {

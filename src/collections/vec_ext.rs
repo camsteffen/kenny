@@ -1,4 +1,4 @@
-pub trait VecExt<T> {
+pub(crate) trait VecExt<T> {
     /// Appends a default element to the back of a collection
     /// and returns a mutable reference to the value.
     fn push_default_mut(&mut self) -> &mut T

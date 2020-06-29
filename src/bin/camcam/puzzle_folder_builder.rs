@@ -8,7 +8,7 @@ use tempfile::{tempdir, TempDir};
 
 const IMG_EXT: &str = "jpg";
 
-pub struct PuzzleFolderBuilder {
+pub(crate) struct PuzzleFolderBuilder {
     temp_dir: TempDir,
     saved: bool,
 }
@@ -39,13 +39,13 @@ impl PuzzleFolderBuilder {
         Ok(())
     }
 
-    pub fn write_puzzle_image(&self, image: RgbImage) -> Result<()> {
+    pub fn write_puzzle_image(&self, image: &RgbImage) -> Result<()> {
         let path = self.temp_dir.path().join(format!("image.{}", IMG_EXT));
         image.save(&path).context("error saving puzzle image")?;
         Ok(())
     }
 
-    pub fn write_solved_puzzle_image(&self, image: RgbImage) -> Result<()> {
+    pub fn write_solved_puzzle_image(&self, image: &RgbImage) -> Result<()> {
         let path = self
             .temp_dir
             .path()

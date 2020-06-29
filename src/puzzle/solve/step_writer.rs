@@ -6,10 +6,10 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 
 use crate::puzzle::image::PuzzleImageBuilder;
-use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
+use crate::puzzle::solve::markup::{CellChanges, PuzzleMarkup};
 use crate::puzzle::Puzzle;
 
-pub struct StepWriter<'a> {
+pub(crate) struct StepWriter<'a> {
     puzzle: &'a Puzzle,
     image_width: Option<u32>,
     index: u32,
@@ -17,14 +17,10 @@ pub struct StepWriter<'a> {
 }
 
 impl StepWriter<'_> {
-    pub fn write_step(
-        &mut self,
-        markup: &PuzzleMarkup,
-        markup_changes: &PuzzleMarkupChanges,
-    ) -> Result<()> {
+    pub fn write_step(&mut self, markup: &PuzzleMarkup, cell_changes: &CellChanges) -> Result<()> {
         let mut path = self.path.clone();
         path.push(format!("step_{}.jpeg", self.index));
-        self.write(&path, markup, markup_changes)?;
+        self.write(&path, markup, cell_changes)?;
         self.index += 1;
         Ok(())
     }
@@ -32,27 +28,22 @@ impl StepWriter<'_> {
     pub fn write_backtrack(
         &mut self,
         markup: &PuzzleMarkup,
-        markup_changes: &PuzzleMarkupChanges,
+        cell_changes: &CellChanges,
         backtrack_level: u32,
     ) -> Result<()> {
         let mut path = self.path.clone();
         path.push(format!("step_{}_bt_{}.jpeg", self.index, backtrack_level));
-        self.write(&path, markup, markup_changes)?;
+        self.write(&path, markup, cell_changes)?;
         self.index += 1;
         Ok(())
     }
 
-    fn write(
-        &self,
-        path: &Path,
-        markup: &PuzzleMarkup,
-        markup_changes: &PuzzleMarkupChanges,
-    ) -> Result<()> {
+    fn write(&self, path: &Path, markup: &PuzzleMarkup, cell_changes: &CellChanges) -> Result<()> {
         debug!("writing step image: {}", path.display());
         let mut builder = PuzzleImageBuilder::new(self.puzzle);
         builder
             .cell_variables(Some(&markup.cells()))
-            .markup_changes(markup_changes);
+            .cell_changes(cell_changes);
         if let Some(image_width) = self.image_width {
             builder.image_width(image_width);
         }
@@ -64,7 +55,7 @@ impl StepWriter<'_> {
     }
 }
 
-pub struct StepWriterBuilder<'a> {
+pub(crate) struct StepWriterBuilder<'a> {
     puzzle: &'a Puzzle,
     image_width: Option<u32>,
     path: PathBuf,

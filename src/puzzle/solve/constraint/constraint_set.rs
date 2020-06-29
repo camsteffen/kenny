@@ -14,7 +14,7 @@ use crate::puzzle::solve::step_writer::StepWriter;
 use crate::puzzle::{Puzzle, Solution};
 
 #[derive(Clone)]
-pub struct ConstraintSet<'a> {
+pub(crate) struct ConstraintSet<'a> {
     puzzle: &'a Puzzle,
     constraints: Vec<Box<dyn Constraint>>,
 }
@@ -53,7 +53,7 @@ impl<'a> ConstraintSet<'a> {
             }
             if let Some(step_writer) = step_writer.as_mut() {
                 if !changes.cells.is_empty() {
-                    step_writer.write_step(markup, &changes)?;
+                    step_writer.write_step(markup, &changes.cells)?;
                 }
             }
             if !markup.sync_changes(self.puzzle, &mut changes) {

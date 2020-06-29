@@ -84,7 +84,7 @@ impl<'a> PuzzleSolver<'a> {
         let mut markup = PuzzleMarkup::new(self.puzzle);
         let mut step_writer = self.start_step_writer();
         if let Some(ref mut step_writer) = step_writer {
-            step_writer.write_step(&markup, &changes)?;
+            step_writer.write_step(&markup, &changes.cells)?;
         }
         let solvable = markup.sync_changes(self.puzzle, &mut changes);
         debug_assert!(solvable);

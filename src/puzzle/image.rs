@@ -1,7 +1,7 @@
 //! Generate images for unsolved or solved puzzles
 
 use crate::collections::square::{Coord, IsSquare, Square};
-use crate::puzzle::solve::markup::{CellChange, PuzzleMarkupChanges};
+use crate::puzzle::solve::markup::{CellChange, CellChanges};
 use crate::puzzle::solve::CellVariable;
 use crate::puzzle::solve::ValueSet;
 use crate::puzzle::{Puzzle, Solution, Value};
@@ -37,8 +37,6 @@ static FONT: Lazy<Font<'static>> = Lazy::new(|| {
     font_collection.font_at(0).expect("load font")
 });
 
-// todo show domain with solved cell
-// todo show removed domain values crossed through
 // todo svg format? compose with svg and render with resvg
 /// Creates an image of a puzzle with optional markup
 pub struct PuzzleImageBuilder<'a> {
@@ -46,7 +44,7 @@ pub struct PuzzleImageBuilder<'a> {
 
     cell_variables: Option<&'a Square<CellVariable>>,
     solution: Option<&'a Solution>,
-    markup_changes: Option<&'a PuzzleMarkupChanges>,
+    cell_changes: Option<&'a CellChanges>,
 
     image_width: u32,
     cell_width: u32,
@@ -66,7 +64,7 @@ impl<'a> PuzzleImageBuilder<'a> {
             cell_width,
             cell_variables: None,
             solution: None,
-            markup_changes: None,
+            cell_changes: None,
         }
     }
 
@@ -88,7 +86,7 @@ impl<'a> PuzzleImageBuilder<'a> {
         self.cell_width(a / b)
     }
 
-    pub fn cell_variables(
+    pub(crate) fn cell_variables(
         &mut self,
         cell_variables: Option<&'a Square<CellVariable>>,
     ) -> &mut Self {
@@ -96,8 +94,8 @@ impl<'a> PuzzleImageBuilder<'a> {
         self
     }
 
-    pub fn markup_changes(&mut self, markup_changes: &'a PuzzleMarkupChanges) -> &mut Self {
-        self.markup_changes = Some(markup_changes);
+    pub(crate) fn cell_changes(&mut self, cell_changes: &'a CellChanges) -> &mut Self {
+        self.cell_changes = Some(cell_changes);
         self
     }
 
@@ -275,11 +273,11 @@ impl BuildContext<'_> {
     }
 
     fn highlight_cells(&mut self) {
-        let markup_changes = match self.markup_changes {
+        let cell_changes = match self.cell_changes {
             None => return,
-            Some(markup_changes) => markup_changes,
+            Some(cell_changes) => cell_changes,
         };
-        for (&id, _) in &markup_changes.cells {
+        for (&id, _) in cell_changes {
             let coord = self.puzzle.coord_at(id);
             self.draw_rectangle(
                 coord.col() as u32 * self.cell_width + self.border_width,
@@ -294,8 +292,8 @@ impl BuildContext<'_> {
     fn draw_markup(&mut self, cell_variables: &Square<CellVariable>) {
         for (id, cell) in cell_variables.iter().enumerate() {
             let cell_change = self
-                .markup_changes
-                .and_then(|markup_changes| markup_changes.cells.get(&id));
+                .cell_changes
+                .and_then(|cell_changes| cell_changes.get(id));
             let domain_removals: Option<(&ValueSet, AHashSet<i32>)> = match cell {
                 CellVariable::Unsolved(domain) => {
                     let removals = match cell_change {
@@ -303,13 +301,13 @@ impl BuildContext<'_> {
                             values.iter().copied().collect()
                         }
                         Some(CellChange::Solution(_)) => domain.iter().collect(),
-                        _ => Default::default(),
+                        _ => AHashSet::default(),
                     };
-                    Some((domain.into(), removals))
+                    Some((domain, removals))
                 }
                 _ => None,
             };
-            let solution = if let &CellVariable::Solved(value) = cell {
+            let solution = if let CellVariable::Solved(value) = *cell {
                 Some(value)
             } else if let Some(&CellChange::Solution(value)) = cell_change {
                 Some(value)

@@ -17,7 +17,7 @@ use crate::puzzle::{CageRef, CellId, Operator};
 use crate::puzzle::{Puzzle, Value};
 
 /// Applies all unary constraints to cell domains. Returns a list of all affected cells by index.
-pub fn apply_unary_constraints(puzzle: &Puzzle, changes: &mut PuzzleMarkupChanges) {
+pub(crate) fn apply_unary_constraints(puzzle: &Puzzle, changes: &mut PuzzleMarkupChanges) {
     debug!("Reducing cell domains by cage-specific info");
 
     for cage in puzzle.cages() {
@@ -35,7 +35,7 @@ fn reduce_cage(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut PuzzleMarkupCha
             debug_assert_eq!(1, cage.cell_count());
             let cell = cage.cell(0);
             debug!("solving single cell cage at {:?}", cage.cell(0).coord());
-            changes.solve_cell(cell.id(), cage.target());
+            changes.cells.solve(cell.id(), cage.target());
         }
     }
 }
@@ -46,7 +46,7 @@ fn reduce_cage_add(puzzle: &Puzzle, cage: CageRef<'_>, change: &mut PuzzleMarkup
     if cage.cell_count() == 2 && cage.target().is_even() {
         let half = cage.target() / 2;
         for &cell in cage.cell_ids() {
-            change.remove_value_from_cell(cell, half);
+            change.cells.remove_domain_value(cell, half);
         }
     }
 
@@ -68,7 +68,7 @@ fn reduce_cage_add(puzzle: &Puzzle, cage: CageRef<'_>, change: &mut PuzzleMarkup
             remove.extend((max + 1)..=puzzle.width() as i32);
         }
         for value in remove {
-            change.remove_value_from_cell(cell, value);
+            change.cells.remove_domain_value(cell, value);
         }
     }
 }
@@ -88,7 +88,7 @@ fn reduce_cage_multiply(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut Puzzle
     );
     for cell in cage.cells() {
         for &n in &non_factors {
-            changes.remove_value_from_cell(cell.id(), n);
+            changes.cells.remove_domain_value(cell.id(), n);
         }
     }
 }
@@ -106,7 +106,7 @@ fn reduce_cage_subtract(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut Puzzle
     );
     for cell in cage.cells() {
         for n in start..=cage.target() {
-            changes.remove_value_from_cell(cell.id(), n);
+            changes.cells.remove_domain_value(cell.id(), n);
         }
     }
 }
@@ -130,7 +130,7 @@ fn reduce_cage_divide(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut PuzzleMa
     );
     for cell in cage.cells() {
         for n in &non_domain {
-            changes.remove_value_from_cell(cell.id(), n);
+            changes.cells.remove_domain_value(cell.id(), n);
         }
     }
 }
@@ -188,7 +188,7 @@ fn group_sequence_min_max(group_sequence: &[usize], puzzle_width: usize) -> (i32
 #[cfg(test)]
 mod test {
     use crate::puzzle::solve::constraint::apply_unary_constraints;
-    use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+    use crate::puzzle::solve::markup::{CellChange, PuzzleMarkupChanges};
     use crate::puzzle::Puzzle;
 
     #[test]
@@ -204,26 +204,24 @@ mod test {
         .unwrap();
         let mut changes = PuzzleMarkupChanges::new();
         apply_unary_constraints(&puzzle, &mut changes);
-        // todo fix
-        /*
-        changes.cell_solutions.sort_unstable();
         let expected = PuzzleMarkupChanges {
-            cell_domain_value_removals: vec![
-                (0, vec![3]),
-                (1, vec![3]),
-                (2, vec![2, 4]),
-                (3, vec![2, 4]),
-                (4, vec![3]),
-                (5, vec![1]),
-                (6, vec![1]),
-                (7, vec![1]),
+            cells: vec![
+                (0, CellChange::DomainRemovals(vec![3])),
+                (1, CellChange::DomainRemovals(vec![3])),
+                (2, CellChange::DomainRemovals(vec![2, 4])),
+                (3, CellChange::DomainRemovals(vec![2, 4])),
+                (4, CellChange::DomainRemovals(vec![3])),
+                (5, CellChange::DomainRemovals(vec![1])),
+                (6, CellChange::DomainRemovals(vec![1])),
+                (7, CellChange::DomainRemovals(vec![1])),
+                (10, CellChange::Solution(2)),
+                (11, CellChange::Solution(4)),
+                (15, CellChange::Solution(1)),
             ]
             .into_iter()
             .collect(),
-            cell_solutions: vec![(10, 2), (11, 4), (15, 1)],
             ..Default::default()
         };
         assert_eq!(expected, changes);
-         */
     }
 }

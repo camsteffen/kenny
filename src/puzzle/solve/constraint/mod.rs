@@ -1,5 +1,5 @@
-pub use self::constraint_set::{ConstraintSet, PropagateResult};
-pub use self::unary_constraints::apply_unary_constraints;
+pub(crate) use self::constraint_set::{ConstraintSet, PropagateResult};
+pub(crate) use self::unary_constraints::apply_unary_constraints;
 
 mod cage_solution_cell;
 mod cage_solution_outer_cell_domain;
@@ -16,7 +16,7 @@ use super::markup::PuzzleMarkupChanges;
 use crate::puzzle::solve::markup::PuzzleMarkup;
 use crate::puzzle::Puzzle;
 
-pub trait Constraint: CloneConstraint {
+pub(crate) trait Constraint: CloneConstraint {
     /// Notifies this constraint of changes made to the puzzle markup.
     /// This should be a low-cost method where data is cached for later processing.
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges);
@@ -49,7 +49,7 @@ pub enum State {
 }
  */
 
-pub trait CloneConstraint {
+pub(crate) trait CloneConstraint {
     fn clone_constraint(&self) -> Box<dyn Constraint>;
 }
 

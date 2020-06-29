@@ -10,7 +10,7 @@ use crate::puzzle::{CageId, CageRef, Operator};
 
 /// A cell domain value must have at least one corresponding cage solution value
 #[derive(Clone)]
-pub struct CellCageSolutionConstraint {
+pub(crate) struct CellCageSolutionConstraint {
     dirty_cages: LinkedAHashSet<CageId>,
 }
 
@@ -28,7 +28,7 @@ impl CellCageSolutionConstraint {
 
 impl Constraint for CellCageSolutionConstraint {
     fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
-        for (id, _) in changes.cell_domain_removals() {
+        for (id, _) in changes.cells.domain_removals() {
             self.dirty_cages.insert(puzzle.cell(id).cage_id());
         }
         for &cage_id in changes.cage_solution_removals.keys() {
@@ -86,7 +86,7 @@ fn enforce_cage(
             puzzle.cell(id).coord()
         );
         for n in no_solutions {
-            changes.remove_value_from_cell(id, n);
+            changes.cells.remove_domain_value(id, n);
         }
     }
     count

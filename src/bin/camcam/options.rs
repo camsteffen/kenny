@@ -7,7 +7,7 @@ const DEFAULT_PUZZLE_WIDTH: usize = 4;
 const DEFAULT_PATH: &str = "output";
 
 #[derive(Clone)]
-pub struct Options {
+pub(crate) struct Options {
     pub image_width: Option<u32>,
     output_path: Option<PathBuf>,
     source: Source,
@@ -27,32 +27,29 @@ impl Options {
                 .value_of("image_width")
                 .map(|s| s.parse().expect("invalid image width")),
             output_path: None,
-            source: match matches.value_of("input") {
-                Some(path) => Source::File(path.into()),
-                None => {
-                    let (include_solvable, include_unsolvable) =
-                        if matches.is_present("allow_unsolvable") {
-                            (true, true)
-                        } else if matches.is_present("unsolvable_only") {
-                            (false, true)
-                        } else {
-                            (true, false)
-                        };
-                    Source::Generate(Generate {
-                        count: matches
-                            .value_of("count")
-                            .map(|s| s.parse::<u32>().expect("invalid count"))
-                            .unwrap_or(1),
-                        width: matches
-                            .value_of("width")
-                            .map(|s| s.parse::<usize>().expect("invalid width"))
-                            .unwrap_or(DEFAULT_PUZZLE_WIDTH),
-                        save_puzzle: matches.is_present("save_puzzle") || save_all,
-                        include_solvable,
-                        include_unsolvable,
-                        require_search: matches.is_present("solution_requires_search"),
-                    })
-                }
+            source: if let Some(path) = matches.value_of("input") {
+                Source::File(path.into())
+            } else {
+                let (include_solvable, include_unsolvable) =
+                    if matches.is_present("allow_unsolvable") {
+                        (true, true)
+                    } else if matches.is_present("unsolvable_only") {
+                        (false, true)
+                    } else {
+                        (true, false)
+                    };
+                Source::Generate(Generate {
+                    count: matches
+                        .value_of("count")
+                        .map_or(1, |s| s.parse::<u32>().expect("invalid count")),
+                    width: matches.value_of("width").map_or(DEFAULT_PUZZLE_WIDTH, |s| {
+                        s.parse::<usize>().expect("invalid width")
+                    }),
+                    save_puzzle: matches.is_present("save_puzzle") || save_all,
+                    include_solvable,
+                    include_unsolvable,
+                    require_search: matches.is_present("solution_requires_search"),
+                })
             },
             solve: if matches.is_present("solve") {
                 Some(Solve {
@@ -108,7 +105,7 @@ impl Options {
 }
 
 #[derive(Clone)]
-pub enum Source {
+pub(crate) enum Source {
     File(PathBuf),
     Generate(Generate),
 }
@@ -130,7 +127,7 @@ impl Source {
 }
 
 #[derive(Clone)]
-pub struct Generate {
+pub(crate) struct Generate {
     pub count: u32,
     pub width: usize,
     pub save_puzzle: bool,
@@ -140,7 +137,7 @@ pub struct Generate {
 }
 
 #[derive(Clone)]
-pub struct Solve {
+pub(crate) struct Solve {
     pub save_image: bool,
     pub save_step_images: bool,
 }

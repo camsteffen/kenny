@@ -31,7 +31,7 @@ impl Vector {
     }
 }
 
-pub trait AsVector: Copy {
+pub(crate) trait AsVector: Copy {
     fn id(self) -> usize;
 
     fn dimension(self) -> Dimension {

@@ -7,7 +7,7 @@ use vec_map::VecMap;
 
 // Every cage solution must have corresponding values in cell domains
 #[derive(Clone)]
-pub struct CageSolutionCellConstraint {
+pub(crate) struct CageSolutionCellConstraint {
     // cage ID -> cell ID -> cell change
     cage_cell_changes: VecMap<AHashMap<CellId, CellChange>>,
 }

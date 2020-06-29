@@ -2,22 +2,22 @@ use anyhow::Result;
 
 use super::constraint::ConstraintSet;
 use crate::puzzle::solve::constraint::PropagateResult;
-use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
+use crate::puzzle::solve::markup::{CellChanges, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::step_writer::StepWriter;
 use crate::puzzle::{CellId, Puzzle, Solution, Value};
 
-pub enum SearchResult {
+pub(crate) enum SearchResult {
     NoSolutions,
     SingleSolution(SingleSolution),
     MultipleSolutions,
 }
 
-pub struct SingleSolution {
+pub(crate) struct SingleSolution {
     pub solution: Solution,
     pub depth: u32,
 }
 
-pub fn search_solution(
+pub(crate) fn search_solution(
     puzzle: &Puzzle,
     markup: &PuzzleMarkup,
     constraints: &ConstraintSet<'_>,
@@ -80,9 +80,8 @@ fn guess_cell(
     solved_once: bool,
 ) -> Result<SearchResult> {
     if let Some(ref mut step_writer) = step_writer {
-        // todo avoid new PuzzleMarkupChanges?
-        let mut changes = PuzzleMarkupChanges::new();
-        changes.solve_cell(guess.cell_id, guess.value);
+        let mut changes = CellChanges::new();
+        changes.solve(guess.cell_id, guess.value);
         step_writer.write_backtrack(&markup, &changes, depth)?;
     }
     apply_guess(puzzle, guess, &mut markup, &mut constraints);
@@ -129,7 +128,7 @@ fn apply_guess(
     constraints: &mut ConstraintSet<'_>,
 ) {
     let mut changes = PuzzleMarkupChanges::default();
-    changes.solve_cell(guess.cell_id, guess.value);
+    changes.cells.solve(guess.cell_id, guess.value);
     markup.sync_changes(puzzle, &mut changes);
     constraints.notify_changes(&changes)
 }

@@ -5,12 +5,12 @@ use crate::collections::square::{IsSquare, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::constraint::Constraint;
 use crate::puzzle::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
-use crate::puzzle::{Puzzle, Value};
+use crate::puzzle::{CellRef, Puzzle, Value};
 use itertools::Itertools;
 
 /// If a value is known to be in a cage-vector, cage solutions must include the value in the vector.
 #[derive(Clone)]
-pub struct VectorValueCageConstraint {
+pub(crate) struct VectorValueCageConstraint {
     dirty_vector_values: LinkedAHashSet<(Vector, Value)>,
 }
 
@@ -78,13 +78,12 @@ fn enforce_vector_value(
         return 0;
     }
 
-    // todo only consider cages with multiple vectors to avoid redundancy with preemptive sets? If yes, use `take_while`.
     // cage containing all unsolved cells in the vector with the value in its domain
     let cage = puzzle
         .vector(vector)
-        .indices()
-        .filter(|&i| markup.cells()[i].unsolved_and_contains(value))
-        .map(|i| puzzle.cell(i).cage_id())
+        .iter()
+        .filter(|&cell| markup.cells()[cell.id()].unsolved_and_contains(value))
+        .map(CellRef::cage_id)
         .dedup()
         .exactly_one();
     let cage = match cage {
