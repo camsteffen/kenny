@@ -28,8 +28,6 @@ pub mod puzzle;
 
 // todo unit tests
 // todo documentation
-// todo license
-// todo investigate KenKen license
 // todo identify constraints that "require" other constraints to be applied first
 // todo consider making cage solutions "lazy" or somehow prevent recording too many cage solutions, maybe start with smaller cages or those with fewer unsolved cells or fewer vectors
 // todo prioritize and re_order constraint set by usage data
