@@ -41,11 +41,9 @@ impl<'a> ConstraintSet<'a> {
         let mut changes = PuzzleMarkupChanges::default();
         let mut loop_count = 0;
         loop {
-            let ConstraintSet {
-                puzzle,
-                constraints,
-            } = self;
-            let has_changes = constraints
+            let puzzle = self.puzzle;
+            let has_changes = self
+                .constraints
                 .iter_mut()
                 .any(|constraint| constraint.enforce_partial(puzzle, markup, &mut changes));
             if !has_changes {
