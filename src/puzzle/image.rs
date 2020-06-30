@@ -15,6 +15,10 @@ use rusttype::PositionedGlyph;
 use rusttype::Scale;
 use std::cmp::{max, min};
 use std::ops::Deref;
+use std::path::Path;
+use svg::node::element::path::Data;
+use svg::node::element::Rectangle;
+use svg::node::Text;
 
 type Rgb = image::Rgb<u8>;
 
@@ -102,11 +106,12 @@ impl<'a> PuzzleImageBuilder<'a> {
         self
     }
 
-    pub fn build(self) -> RgbImage {
-        let buffer = RgbImage::from_pixel(self.image_width, self.image_width, COLOR_BG);
+    pub fn build(self) -> svg::Document {
+        let document = svg::Document::new();
         let context = BuildContext {
             builder: self,
-            buffer,
+            document,
+            // todo need this?
             font: &FONT,
         };
         context.build()
@@ -131,12 +136,12 @@ impl<'a> Deref for BuildContext<'a> {
 
 struct BuildContext<'a> {
     builder: PuzzleImageBuilder<'a>,
-    buffer: RgbImage,
+    document: svg::Document,
     font: &'static Font<'static>,
 }
 
 impl BuildContext<'_> {
-    fn build(mut self) -> RgbImage {
+    fn build(mut self) -> svg::Document {
         self.draw_grid();
         self.highlight_cells();
         self.draw_cage_glyphs();
@@ -145,7 +150,7 @@ impl BuildContext<'_> {
         } else if let Some(solution) = self.solution {
             self.draw_solution(solution);
         }
-        self.buffer
+        self.document
     }
 
     fn draw_grid(&mut self) {
@@ -397,14 +402,18 @@ impl BuildContext<'_> {
     }
 
     fn draw_rectangle(&mut self, x1: u32, y1: u32, x2: u32, y2: u32, color: Rgb) {
-        for x in x1..x2 {
-            for y in y1..y2 {
-                self.buffer.put_pixel(x, y, color);
-            }
-        }
+        let rect = Rectangle::new()
+            .set("x", x1)
+            .set("y", y1)
+            // todo change params
+            .set("width", x2 - x1)
+            .set("height", y2 - y1);
+        self.document.add(rect);
     }
 
+    // todo rename?
     fn overlay_glyph(&mut self, glyph: &PositionedGlyph<'_>) {
+        let text = Text::new(glyph.);
         let bb = glyph.pixel_bounding_box().unwrap();
         glyph.draw(|x, y, v| {
             if v == 0.0 {
