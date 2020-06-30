@@ -1,22 +1,25 @@
 use super::Constraint;
 use crate::collections::range_set::RangeSet;
-use crate::collections::square::{AsVector, IsSquare, Vector};
+
+use crate::collections::square::{AsVector, EmptySquare, IsSquare, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
-use crate::puzzle::{CellRef, Puzzle, Value};
+use crate::puzzle::{CellId, Puzzle, Value};
 use std::ops::{Index, IndexMut};
 
 /// If only one cell in a vector has a given value in its domain, then the cell has that value.
 #[derive(Clone)]
-pub(crate) struct VectorValueDomainConstraint {
+pub(crate) struct VectorValueDomainConstraint<'a> {
+    puzzle: &'a Puzzle,
     data: VectorValueIndexSet,
     dirty_vec_vals: LinkedAHashSet<(Vector, i32)>,
 }
 
-impl VectorValueDomainConstraint {
-    pub fn new(puzzle_width: usize) -> Self {
+impl<'a> VectorValueDomainConstraint<'a> {
+    pub fn new(puzzle: &'a Puzzle) -> Self {
         Self {
-            data: VectorValueIndexSet::new(puzzle_width),
+            puzzle,
+            data: VectorValueIndexSet::new(puzzle.width()),
             dirty_vec_vals: LinkedAHashSet::default(),
         }
     }
@@ -35,30 +38,30 @@ impl VectorValueDomainConstraint {
             Some(v) => v,
             None => return false,
         };
-        let sq_pos = puzzle.vector(vector).square_index_at(vec_val_pos);
+        let cell_id = puzzle.vector(vector).square_index_at(vec_val_pos);
         debug!(
             "the only possible position for {} in {:?} is {:?}",
             n,
             vector,
-            puzzle.coord_at(sq_pos)
+            puzzle.cell(cell_id).coord()
         );
-        change.cells.solve(sq_pos, n);
-        self.data.remove_cell_value(puzzle.cell(sq_pos), n);
+        change.cells.solve(cell_id, n);
+        self.data.remove_cell_value(cell_id, n);
         true
     }
 }
 
-impl Constraint for VectorValueDomainConstraint {
-    fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
-        for (&id, change) in changes.cells.iter() {
-            let cell = puzzle.cell(id);
+impl<'a> Constraint<'a> for VectorValueDomainConstraint<'a> {
+    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
+        for (&id, change) in &changes.cells {
+            let cell = self.puzzle.cell(id);
             match change {
                 CellChange::DomainRemovals(values) => {
                     for &vector in &cell.vectors() {
                         let vector_data = &mut self.data[vector];
                         for &value in values {
                             if let Some(dom) = vector_data[value as usize - 1].as_mut() {
-                                let vec_pos = puzzle.dimension_index_at(id, vector.dimension());
+                                let vec_pos = cell.dimension_index(vector.dimension());
                                 if dom.remove(vec_pos) {
                                     self.dirty_vec_vals.insert((vector, value));
                                 }
@@ -67,20 +70,15 @@ impl Constraint for VectorValueDomainConstraint {
                     }
                 }
                 &CellChange::Solution(value) => {
-                    self.data.remove_cell_value(cell, value);
+                    self.data.remove_cell_value(id, value);
                 }
             }
         }
     }
 
-    fn enforce_partial(
-        &mut self,
-        puzzle: &Puzzle,
-        _: &PuzzleMarkup,
-        changes: &mut PuzzleMarkupChanges,
-    ) -> bool {
+    fn enforce_partial(&mut self, _: &PuzzleMarkup<'_>, changes: &mut PuzzleMarkupChanges) -> bool {
         while let Some((vector, value)) = self.dirty_vec_vals.pop_front() {
-            let solved = self.enforce_vector_value(puzzle, vector, value, changes);
+            let solved = self.enforce_vector_value(self.puzzle, vector, value, changes);
             if solved {
                 return true;
             }
@@ -102,14 +100,18 @@ impl VectorValueIndexSet {
         ])
     }
 
-    pub fn remove_cell_value(&mut self, cell: CellRef<'_>, value: Value) {
-        for &vector in &cell.vectors() {
+    pub fn remove_cell_value(&mut self, cell_id: CellId, value: Value) {
+        for &vector in &self.square().cell(cell_id).vectors() {
             self.remove_vector_value(vector, value);
         }
     }
 
     pub fn remove_vector_value(&mut self, vector: Vector, value: Value) {
         self[vector][value as usize - 1] = None;
+    }
+
+    fn square(&self) -> EmptySquare {
+        EmptySquare::new(self.0.len() / 2)
     }
 }
 

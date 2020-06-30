@@ -11,13 +11,14 @@ use num::Integer;
 
 use crate::collections::iterator_ext::IteratorExt;
 use crate::collections::square::IsSquare;
-use crate::puzzle::solve::markup::PuzzleMarkupChanges;
+
+use crate::puzzle::solve::markup::CellChanges;
 use crate::puzzle::solve::ValueSet;
 use crate::puzzle::{CageRef, CellId, Operator};
 use crate::puzzle::{Puzzle, Value};
 
 /// Applies all unary constraints to cell domains. Returns a list of all affected cells by index.
-pub(crate) fn apply_unary_constraints(puzzle: &Puzzle, changes: &mut PuzzleMarkupChanges) {
+pub(crate) fn apply_unary_constraints(puzzle: &Puzzle, changes: &mut CellChanges) {
     debug!("Reducing cell domains by cage-specific info");
 
     for cage in puzzle.cages() {
@@ -25,7 +26,7 @@ pub(crate) fn apply_unary_constraints(puzzle: &Puzzle, changes: &mut PuzzleMarku
     }
 }
 
-fn reduce_cage(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut PuzzleMarkupChanges) {
+fn reduce_cage(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut CellChanges) {
     match cage.operator() {
         Operator::Add => reduce_cage_add(puzzle, cage, changes),
         Operator::Multiply => reduce_cage_multiply(puzzle, cage, changes),
@@ -35,18 +36,18 @@ fn reduce_cage(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut PuzzleMarkupCha
             debug_assert_eq!(1, cage.cell_count());
             let cell = cage.cell(0);
             debug!("solving single cell cage at {:?}", cage.cell(0).coord());
-            changes.cells.solve(cell.id(), cage.target());
+            changes.solve(cell.id(), cage.target());
         }
     }
 }
 
-fn reduce_cage_add(puzzle: &Puzzle, cage: CageRef<'_>, change: &mut PuzzleMarkupChanges) {
+fn reduce_cage_add(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut CellChanges) {
     // if the cage has 2 cells and an even target,
     // the values cannot be half of the target
     if cage.cell_count() == 2 && cage.target().is_even() {
         let half = cage.target() / 2;
         for &cell in cage.cell_ids() {
-            change.cells.remove_domain_value(cell, half);
+            changes.remove_domain_value(cell, half);
         }
     }
 
@@ -68,12 +69,12 @@ fn reduce_cage_add(puzzle: &Puzzle, cage: CageRef<'_>, change: &mut PuzzleMarkup
             remove.extend((max + 1)..=puzzle.width() as i32);
         }
         for value in remove {
-            change.cells.remove_domain_value(cell, value);
+            changes.remove_domain_value(cell, value);
         }
     }
 }
 
-fn reduce_cage_multiply(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut PuzzleMarkupChanges) {
+fn reduce_cage_multiply(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut CellChanges) {
     let target = cage.target();
     let non_factors: Vec<i32> = (2..=puzzle.width() as i32)
         .filter(|n| !target.is_multiple_of(n))
@@ -88,12 +89,12 @@ fn reduce_cage_multiply(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut Puzzle
     );
     for cell in cage.cells() {
         for &n in &non_factors {
-            changes.cells.remove_domain_value(cell.id(), n);
+            changes.remove_domain_value(cell.id(), n);
         }
     }
 }
 
-fn reduce_cage_subtract(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut PuzzleMarkupChanges) {
+fn reduce_cage_subtract(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut CellChanges) {
     if cage.target() <= puzzle.width() as i32 / 2 {
         return;
     }
@@ -106,12 +107,12 @@ fn reduce_cage_subtract(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut Puzzle
     );
     for cell in cage.cells() {
         for n in start..=cage.target() {
-            changes.cells.remove_domain_value(cell.id(), n);
+            changes.remove_domain_value(cell.id(), n);
         }
     }
 }
 
-fn reduce_cage_divide(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut PuzzleMarkupChanges) {
+fn reduce_cage_divide(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut CellChanges) {
     let non_domain = {
         let mut non_domain = ValueSet::with_all(puzzle.width());
         for n in 1..=puzzle.width() as i32 / cage.target() {
@@ -130,7 +131,7 @@ fn reduce_cage_divide(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut PuzzleMa
     );
     for cell in cage.cells() {
         for n in &non_domain {
-            changes.cells.remove_domain_value(cell.id(), n);
+            changes.remove_domain_value(cell.id(), n);
         }
     }
 }
@@ -188,7 +189,7 @@ fn group_sequence_min_max(group_sequence: &[usize], puzzle_width: usize) -> (i32
 #[cfg(test)]
 mod test {
     use crate::puzzle::solve::constraint::apply_unary_constraints;
-    use crate::puzzle::solve::markup::{CellChange, PuzzleMarkupChanges};
+    use crate::puzzle::solve::markup::{CellChanges, PuzzleMarkupChanges};
     use crate::puzzle::Puzzle;
 
     #[test]
@@ -202,26 +203,22 @@ mod test {
             8* 5+ 4+ 1 8+ 9+ 4 2",
         )
         .unwrap();
-        let mut changes = PuzzleMarkupChanges::new();
+        let mut changes = CellChanges::new();
         apply_unary_constraints(&puzzle, &mut changes);
-        let expected = PuzzleMarkupChanges {
-            cells: vec![
-                (0, CellChange::DomainRemovals(vec![3])),
-                (1, CellChange::DomainRemovals(vec![3])),
-                (2, CellChange::DomainRemovals(vec![2, 4])),
-                (3, CellChange::DomainRemovals(vec![2, 4])),
-                (4, CellChange::DomainRemovals(vec![3])),
-                (5, CellChange::DomainRemovals(vec![1])),
-                (6, CellChange::DomainRemovals(vec![1])),
-                (7, CellChange::DomainRemovals(vec![1])),
-                (10, CellChange::Solution(2)),
-                (11, CellChange::Solution(4)),
-                (15, CellChange::Solution(1)),
-            ]
-            .into_iter()
-            .collect(),
-            ..Default::default()
-        };
-        assert_eq!(expected, changes);
+        let mut expected = CellChanges::new();
+        expected.remove_domain_value(0, 3);
+        expected.remove_domain_value(1, 3);
+        expected.remove_domain_value(2, 2);
+        expected.remove_domain_value(2, 4);
+        expected.remove_domain_value(3, 2);
+        expected.remove_domain_value(3, 4);
+        expected.remove_domain_value(4, 3);
+        expected.remove_domain_value(5, 1);
+        expected.remove_domain_value(6, 1);
+        expected.remove_domain_value(7, 1);
+        expected.solve(10, 2);
+        expected.solve(11, 4);
+        expected.solve(15, 1);
+        assert_eq!(changes, expected);
     }
 }

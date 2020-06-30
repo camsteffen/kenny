@@ -1,6 +1,8 @@
 pub use self::cage::{Cage, Operator};
 
-use crate::collections::square::{AsSquareIndex, Coord, IsSquare, Square, SquareVector, Vector};
+use crate::collections::square::{
+    Coord, IsSquare, Square, SquareCellRef, SquareVector, Vector,
+};
 use crate::puzzle::error::{InvalidPuzzle, ParsePuzzleError, PuzzleFromFileError};
 use crate::puzzle::generate::generate_untested_puzzle;
 use crate::puzzle::parse::parse_puzzle;
@@ -14,6 +16,8 @@ use std::path::Path;
 use std::{fmt, fs, mem};
 
 mod cage;
+
+pub(crate) type CellRef<'a> = SquareCellRef<'a, Puzzle>;
 
 /// An unsolved KenKen puzzle
 #[derive(Debug, PartialEq)]
@@ -63,18 +67,11 @@ impl Puzzle {
         self.cages.len()
     }
 
-    pub fn cell(&self, index: impl AsSquareIndex) -> CellRef<'_> {
-        CellRef {
-            puzzle: self,
-            id: index.as_square_index(self.width),
-        }
-    }
-
     pub fn cell_count(&self) -> usize {
         self.len()
     }
 
-    pub fn cells(&self) -> impl Iterator<Item = CellRef<'_>> {
+    pub(crate) fn cells(&self) -> impl Iterator<Item = CellRef<'_>> {
         (0..self.len()).map(move |i| self.cell(i))
     }
 
@@ -82,7 +79,7 @@ impl Puzzle {
         &self.cage_id_map
     }
 
-    pub fn vector_cells(&self, vector: Vector) -> impl Iterator<Item = CellRef<'_>> {
+    pub(crate) fn vector_cells(&self, vector: Vector) -> impl Iterator<Item = CellRef<'_>> {
         self.vector(vector).indices().map(move |i| self.cell(i))
     }
 
@@ -195,11 +192,11 @@ impl<'a> CageRef<'a> {
         self.id
     }
 
-    pub fn cell(self, index: usize) -> CellRef<'a> {
+    pub(crate) fn cell(self, index: usize) -> CellRef<'a> {
         self.puzzle.cell(self.cell_ids()[index])
     }
 
-    pub fn cells(self) -> impl Iterator<Item = CellRef<'a>> + 'a {
+    pub(crate) fn cells(self) -> impl Iterator<Item = CellRef<'a>> + 'a {
         self.cage()
             .cell_ids()
             .iter()
@@ -229,36 +226,21 @@ impl Deref for CageRef<'_> {
     }
 }
 
-/// A reference to a cell in a Puzzle
-#[derive(Clone, Copy)]
-pub struct CellRef<'a> {
-    puzzle: &'a Puzzle,
-    id: CellId,
-}
-
 impl<'a> CellRef<'a> {
     pub fn cage(self) -> CageRef<'a> {
-        self.puzzle.cage(self.cage_id())
+        self.puzzle().cage(self.cage_id())
     }
 
     pub fn cage_id(self) -> CageId {
-        self.puzzle.cage_id_map[self.id]
-    }
-
-    pub fn coord(self) -> Coord {
-        self.puzzle.coord_at(self.id)
+        self.puzzle().cage_id_map[self.id()]
     }
 
     pub fn id(self) -> CellId {
-        self.id
+        self.index()
     }
 
-    pub fn is_in_vector(self, vector: Vector) -> bool {
-        self.puzzle.vector(vector).contains_square_index(self.id)
-    }
-
-    pub fn vectors(self) -> [Vector; 2] {
-        self.coord().vectors()
+    pub fn puzzle(self) -> &'a Puzzle {
+        self.square()
     }
 }
 

@@ -1,6 +1,7 @@
 //! If all possible solutions for a given value in a given vector are in a given cage, then the cage solution must
 //! contain the given value in the given vector
 
+
 use crate::collections::square::{IsSquare, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::constraint::Constraint;
@@ -10,26 +11,28 @@ use itertools::Itertools;
 
 /// If a value is known to be in a cage-vector, cage solutions must include the value in the vector.
 #[derive(Clone)]
-pub(crate) struct VectorValueCageConstraint {
+pub(crate) struct VectorValueCageConstraint<'a> {
+    puzzle: &'a Puzzle,
     dirty_vector_values: LinkedAHashSet<(Vector, Value)>,
 }
 
-impl VectorValueCageConstraint {
-    pub fn new(puzzle: &Puzzle) -> Self {
+impl<'a> VectorValueCageConstraint<'a> {
+    pub fn new(puzzle: &'a Puzzle) -> Self {
         let dirty_vector_values = puzzle
             .vectors()
             .flat_map(|v| (1..=puzzle.width() as i32).map(move |i| (v, i)))
             .collect();
         Self {
+            puzzle,
             dirty_vector_values,
         }
     }
 }
 
-impl Constraint for VectorValueCageConstraint {
-    fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
-        for (&id, change) in changes.cells.iter() {
-            let cell = puzzle.cell(id);
+impl<'a> Constraint<'a> for VectorValueCageConstraint<'a> {
+    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
+        for (&id, change) in &changes.cells {
+            let cell = self.puzzle.cell(id);
             match change {
                 CellChange::DomainRemovals(values) => {
                     self.dirty_vector_values.extend(
@@ -49,12 +52,11 @@ impl Constraint for VectorValueCageConstraint {
 
     fn enforce_partial(
         &mut self,
-        puzzle: &Puzzle,
-        markup: &PuzzleMarkup,
+        markup: &PuzzleMarkup<'_>,
         changes: &mut PuzzleMarkupChanges,
     ) -> bool {
         while let Some((vector, value)) = self.dirty_vector_values.pop_front() {
-            let count = enforce_vector_value(vector, value, puzzle, markup, changes);
+            let count = self.enforce_vector_value(vector, value, markup, changes);
             if count > 0 {
                 return true;
             }
@@ -63,48 +65,52 @@ impl Constraint for VectorValueCageConstraint {
     }
 }
 
-fn enforce_vector_value(
-    vector: Vector,
-    value: Value,
-    puzzle: &Puzzle,
-    markup: &PuzzleMarkup,
-    changes: &mut PuzzleMarkupChanges,
-) -> u32 {
-    let solved = puzzle
-        .vector(vector)
-        .indices()
-        .any(|i| markup.cells()[i].solved() == Some(value));
-    if solved {
-        return 0;
-    }
-
-    // cage containing all unsolved cells in the vector with the value in its domain
-    let cage = puzzle
-        .vector(vector)
-        .iter()
-        .filter(|&cell| markup.cells()[cell.id()].unsolved_and_contains(value))
-        .map(CellRef::cage_id)
-        .dedup()
-        .exactly_one();
-    let cage = match cage {
-        Ok(cage) => cage,
-        Err(_) => return 0,
-    };
-
-    let view = markup.cage_solutions().unwrap()[cage].vector_view(puzzle.vector(vector));
-    debug_assert!(!view.is_empty());
-
-    // find and remove solutions that do not include the value in the vector
-    let mut count = 0;
-    for (soln_idx, solution) in view.solutions().enumerate() {
-        if solution.iter().all(|&v| v != value) {
-            changes.remove_cage_solution(cage, soln_idx);
-            count += 1;
+impl VectorValueCageConstraint<'_> {
+    fn enforce_vector_value(
+        &self,
+        vector: Vector,
+        value: Value,
+        markup: &PuzzleMarkup<'_>,
+        changes: &mut PuzzleMarkupChanges,
+    ) -> u32 {
+        let solved = self
+            .puzzle
+            .vector(vector)
+            .indices()
+            .any(|i| markup.cells()[i].solved() == Some(value));
+        if solved {
+            return 0;
         }
+
+        // cage containing all unsolved cells in the vector with the value in its domain
+        let cage = self
+            .puzzle
+            .vector(vector)
+            .iter()
+            .filter(|&cell| markup.cells()[cell.id()].unsolved_and_contains(value))
+            .map(CellRef::cage_id)
+            .dedup()
+            .exactly_one();
+        let cage = match cage {
+            Ok(cage) => cage,
+            Err(_) => return 0,
+        };
+
+        let view = markup.cage_solutions().unwrap()[cage].vector_view(self.puzzle.vector(vector));
+        debug_assert!(!view.is_empty());
+
+        // find and remove solutions that do not include the value in the vector
+        let mut count = 0;
+        for (soln_idx, solution) in view.solutions().enumerate() {
+            if solution.iter().all(|&v| v != value) {
+                changes.remove_cage_solution(cage, soln_idx);
+                count += 1;
+            }
+        }
+        if count > 0 {
+            debug!("Removed {} cage solutions for cage at {:?} where cage does not have {} in the vector {:?}",
+                   count, self.puzzle.cage(cage).coord(), value, vector)
+        }
+        count
     }
-    if count > 0 {
-        debug!("Removed {} cage solutions for cage at {:?} where cage does not have {} in the vector {:?}",
-               count, puzzle.cage(cage).coord(), value, vector)
-    }
-    count
 }

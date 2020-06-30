@@ -10,15 +10,17 @@ use std::convert::TryInto;
 
 /// Markup on a puzzle including possible cell values and cage solutions
 #[derive(Clone)]
-pub(crate) struct PuzzleMarkup {
+pub(crate) struct PuzzleMarkup<'a> {
+    puzzle: &'a Puzzle,
     cell_variables: Square<CellVariable>,
     cage_solutions_set: Option<CageSolutionsSet>,
     blank_cell_count: u32,
 }
 
-impl PuzzleMarkup {
-    pub fn new(puzzle: &Puzzle) -> Self {
+impl<'a> PuzzleMarkup<'a> {
+    pub fn new(puzzle: &'a Puzzle) -> Self {
         Self {
+            puzzle,
             cell_variables: Square::with_width_and_value(
                 puzzle.width(),
                 CellVariable::unsolved_with_all(puzzle.width()),
@@ -60,12 +62,12 @@ impl PuzzleMarkup {
     }
 
     /// Returns true if the puzzle is solved or solvable
-    pub fn sync_changes(&mut self, puzzle: &Puzzle, changes: &mut PuzzleMarkupChanges) -> bool {
+    pub fn sync_changes(&mut self, changes: &mut PuzzleMarkupChanges) -> bool {
         if !self.sync_cells(changes) {
             return false;
         }
         if let Some(ref mut cage_solutions_set) = self.cage_solutions_set {
-            if !cage_solutions_set.apply_changes(puzzle, changes) {
+            if !cage_solutions_set.apply_changes(self.puzzle, changes) {
                 return false;
             }
         }
@@ -74,7 +76,7 @@ impl PuzzleMarkup {
     }
 
     fn sync_cells(&mut self, changes: &mut PuzzleMarkupChanges) -> bool {
-        for (&id, change) in changes.cells.iter_mut() {
+        for (&id, change) in &mut changes.cells {
             let cell_variable = &mut self.cell_variables[id];
             match change {
                 CellChange::DomainRemovals(values) => {
@@ -85,7 +87,7 @@ impl PuzzleMarkup {
                     if domain.is_empty() {
                         debug!(
                             "Cell domain at {:?} is empty",
-                            self.cell_variables.coord_at(id)
+                            self.cell_variables.cell(id).coord()
                         );
                         return false;
                     } else if let Some(solution) = cell_variable.solve() {

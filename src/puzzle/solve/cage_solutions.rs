@@ -11,8 +11,8 @@ use crate::collections::iterator_ext::IteratorExt;
 use crate::collections::square::{IsSquare, Square, SquareVector};
 use crate::puzzle::solve::CellVariable::{Solved, Unsolved};
 use crate::puzzle::solve::ValueSet;
-use crate::puzzle::Operator;
 use crate::puzzle::Puzzle;
+use crate::puzzle::{CageId, Operator};
 use crate::puzzle::{CageRef, CellId, Value};
 
 #[derive(Clone)]
@@ -29,7 +29,7 @@ impl CageSolutionsSet {
                     .cells()
                     .map(|cell| &cell_variables[cell.id()])
                     .collect();
-                CageSolutions::init(puzzle, cage, &cell_variables)
+                CageSolutions::init(puzzle, cage.id(), &cell_variables)
             })
             .collect();
         Self { data }
@@ -94,7 +94,8 @@ pub(crate) struct CageSolutions {
 }
 
 impl CageSolutions {
-    pub fn init(puzzle: &Puzzle, cage: CageRef<'_>, cell_variables: &[&CellVariable]) -> Self {
+    pub fn init(puzzle: &Puzzle, cage_id: CageId, cell_variables: &[&CellVariable]) -> Self {
+        let cage = puzzle.cage(cage_id);
         let cell_ids: Vec<_> = cage
             .cell_ids()
             .iter()
@@ -105,10 +106,10 @@ impl CageSolutions {
         let index_map = Self::build_index_map(&cell_ids);
 
         let solutions = match cage.operator() {
-            Operator::Add => Self::init_add(puzzle, cage, cell_variables),
-            Operator::Multiply => Self::init_multiply(puzzle, cage, cell_variables),
-            Operator::Subtract => Self::init_subtract(puzzle, cage, cell_variables),
-            Operator::Divide => Self::init_divide(puzzle, cage, cell_variables),
+            Operator::Add => Self::init_add(puzzle, cage_id, cell_variables),
+            Operator::Multiply => Self::init_multiply(puzzle, cage_id, cell_variables),
+            Operator::Subtract => Self::init_subtract(puzzle, cage_id, cell_variables),
+            Operator::Divide => Self::init_divide(puzzle, cage_id, cell_variables),
             Operator::Nop => Vec::new(),
         };
 
@@ -196,9 +197,10 @@ impl CageSolutions {
 
     fn init_add(
         puzzle: &Puzzle,
-        cage: CageRef<'_>,
+        cage_id: CageId,
         cell_variables: &[&CellVariable],
     ) -> Vec<Vec<i32>> {
+        let cage = puzzle.cage(cage_id);
         let mut indices = Vec::new();
         let mut cell_domains = Vec::new();
         let mut solved_sum = 0_i32;
@@ -228,9 +230,10 @@ impl CageSolutions {
 
     fn init_multiply(
         puzzle: &Puzzle,
-        cage: CageRef<'_>,
+        cage_id: CageId,
         cell_variables: &[&CellVariable],
     ) -> Vec<Vec<i32>> {
+        let cage = puzzle.cage(cage_id);
         let mut indices = Vec::new();
         let mut cell_domains = Vec::new();
         let mut solved_product = 1;
@@ -260,10 +263,11 @@ impl CageSolutions {
 
     fn init_subtract(
         puzzle: &Puzzle,
-        cage: CageRef<'_>,
+        cage_id: CageId,
         cell_variables: &[&CellVariable],
     ) -> Vec<Vec<i32>> {
-        debug_assert_eq!(2, cage.cell_count());
+        let cage = puzzle.cage(cage_id);
+        debug_assert_eq!(cage.cell_count(), 2);
         let mut solutions = Vec::new();
         if let Some(solved_pos) = cell_variables.iter().position(|v| v.is_solved()) {
             let known_val = cell_variables[solved_pos].solved().unwrap();
@@ -297,10 +301,11 @@ impl CageSolutions {
 
     fn init_divide(
         puzzle: &Puzzle,
-        cage: CageRef<'_>,
+        cage_id: CageId,
         cell_variables: &[&CellVariable],
     ) -> Vec<Vec<i32>> {
-        debug_assert_eq!(2, cage.cell_count());
+        let cage = puzzle.cage(cage_id);
+        debug_assert_eq!(cage.cell_count(), 2);
         let mut solutions = Vec::new();
         if let Some(solved_pos) = cell_variables.iter().position(|v| v.is_solved()) {
             let known_val = cell_variables[solved_pos].solved().unwrap();

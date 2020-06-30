@@ -80,13 +80,13 @@ impl<'a> PuzzleSolver<'a> {
 
     pub fn solve(&self) -> Result<SolveResult> {
         let mut changes = PuzzleMarkupChanges::default();
-        apply_unary_constraints(self.puzzle, &mut changes);
+        apply_unary_constraints(self.puzzle, &mut changes.cells);
         let mut markup = PuzzleMarkup::new(self.puzzle);
         let mut step_writer = self.start_step_writer();
         if let Some(ref mut step_writer) = step_writer {
             step_writer.write_step(&markup, &changes.cells)?;
         }
-        let solvable = markup.sync_changes(self.puzzle, &mut changes);
+        let solvable = markup.sync_changes(&mut changes);
         debug_assert!(solvable);
         markup.init_cage_solutions(self.puzzle);
         let mut constraints = ConstraintSet::new(self.puzzle);

@@ -278,7 +278,7 @@ impl BuildContext<'_> {
             Some(cell_changes) => cell_changes,
         };
         for (&id, _) in cell_changes {
-            let coord = self.puzzle.coord_at(id);
+            let coord = self.puzzle.cell(id).coord();
             self.draw_rectangle(
                 coord.col() as u32 * self.cell_width + self.border_width,
                 coord.row() as u32 * self.cell_width + self.border_width,
@@ -320,7 +320,7 @@ impl BuildContext<'_> {
                     _ => None,
                 }
             };
-            let pos = cell_variables.coord_at(id);
+            let pos = cell_variables.cell(id).coord();
             if let Some(value) = solution {
                 self.draw_cell_solution(pos, value);
             }

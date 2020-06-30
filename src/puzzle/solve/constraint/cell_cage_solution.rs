@@ -1,5 +1,6 @@
 use super::Constraint;
-use crate::collections::square::Square;
+
+use crate::collections::square::{IsSquare, Square};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::cage_solutions::CageSolutions;
 use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
@@ -10,13 +11,15 @@ use crate::puzzle::{CageId, CageRef, Operator};
 
 /// A cell domain value must have at least one corresponding cage solution value
 #[derive(Clone)]
-pub(crate) struct CellCageSolutionConstraint {
+pub(crate) struct CellCageSolutionConstraint<'a> {
+    puzzle: &'a Puzzle,
     dirty_cages: LinkedAHashSet<CageId>,
 }
 
-impl CellCageSolutionConstraint {
-    pub fn new(puzzle: &Puzzle) -> Self {
+impl<'a> CellCageSolutionConstraint<'a> {
+    pub fn new(puzzle: &'a Puzzle) -> Self {
         Self {
+            puzzle,
             dirty_cages: puzzle
                 .cages()
                 .filter(|cage| cage.operator() != Operator::Nop)
@@ -26,10 +29,10 @@ impl CellCageSolutionConstraint {
     }
 }
 
-impl Constraint for CellCageSolutionConstraint {
-    fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
+impl<'a> Constraint<'a> for CellCageSolutionConstraint<'a> {
+    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
         for (id, _) in changes.cells.domain_removals() {
-            self.dirty_cages.insert(puzzle.cell(id).cage_id());
+            self.dirty_cages.insert(self.puzzle.cell(id).cage_id());
         }
         for &cage_id in changes.cage_solution_removals.keys() {
             self.dirty_cages.insert(cage_id);
@@ -38,13 +41,12 @@ impl Constraint for CellCageSolutionConstraint {
 
     fn enforce_partial(
         &mut self,
-        puzzle: &Puzzle,
-        markup: &PuzzleMarkup,
+        markup: &PuzzleMarkup<'_>,
         changes: &mut PuzzleMarkupChanges,
     ) -> bool {
         while let Some(cage_id) = self.dirty_cages.pop_front() {
             let cage_solutions = &markup.cage_solutions().unwrap()[cage_id];
-            let count = enforce_cage(puzzle, &markup.cells(), cage_solutions, changes);
+            let count = enforce_cage(self.puzzle, &markup.cells(), cage_solutions, changes);
             if count > 0 {
                 return true;
             }

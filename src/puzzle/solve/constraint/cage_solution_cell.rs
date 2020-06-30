@@ -1,3 +1,4 @@
+use crate::collections::square::IsSquare;
 use crate::puzzle::solve::constraint::Constraint;
 use crate::puzzle::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::{CellId, Puzzle};
@@ -7,25 +8,27 @@ use vec_map::VecMap;
 
 // Every cage solution must have corresponding values in cell domains
 #[derive(Clone)]
-pub(crate) struct CageSolutionCellConstraint {
+pub(crate) struct CageSolutionCellConstraint<'a> {
+    puzzle: &'a Puzzle,
     // cage ID -> cell ID -> cell change
     cage_cell_changes: VecMap<AHashMap<CellId, CellChange>>,
 }
 
-impl CageSolutionCellConstraint {
-    pub fn new(puzzle: &Puzzle) -> Self {
+impl<'a> CageSolutionCellConstraint<'a> {
+    pub fn new(puzzle: &'a Puzzle) -> Self {
         Self {
+            puzzle,
             cage_cell_changes: VecMap::with_capacity(puzzle.cage_count()),
         }
     }
 }
 
-impl Constraint for CageSolutionCellConstraint {
-    fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
-        for (&id, change) in changes.cells.iter() {
+impl<'a> Constraint<'a> for CageSolutionCellConstraint<'a> {
+    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
+        for (&id, change) in &changes.cells {
             let cell_map = self
                 .cage_cell_changes
-                .entry(puzzle.cell(id).cage_id())
+                .entry(self.puzzle.cell(id).cage_id())
                 .or_default();
             match change {
                 CellChange::DomainRemovals(values) => match cell_map.entry(id) {
@@ -47,17 +50,16 @@ impl Constraint for CageSolutionCellConstraint {
 
     fn enforce_partial(
         &mut self,
-        puzzle: &Puzzle,
-        markup: &PuzzleMarkup,
+        markup: &PuzzleMarkup<'_>,
         changes: &mut PuzzleMarkupChanges,
     ) -> bool {
         let mut changed = false;
         let mut processed_cages = Vec::new();
-        for (cage_id, cell_map) in self.cage_cell_changes.iter() {
+        for (cage_id, cell_map) in &self.cage_cell_changes {
             let mut removed_count = 0;
             let cage_solutions = &markup.cage_solutions().unwrap()[cage_id];
             for (i, values) in cage_solutions.solutions.iter().enumerate() {
-                for (cell_id, change) in cell_map.iter() {
+                for (cell_id, change) in cell_map {
                     let idx = match cage_solutions.index_map.get(&cell_id) {
                         Some(&idx) => idx,
                         None => continue,
@@ -71,7 +73,7 @@ impl Constraint for CageSolutionCellConstraint {
                         debug!(
                             "Removing cage solution {:?} for cage at {:?} because of {:?} at {}",
                             &values,
-                            puzzle.cage(cage_id).coord(),
+                            self.puzzle.cage(cage_id).coord(),
                             change,
                             cell_id
                         );
@@ -86,7 +88,7 @@ impl Constraint for CageSolutionCellConstraint {
                 debug!(
                     "Removed {} cage solutions from cage at {:?}",
                     removed_count,
-                    puzzle.cage(cage_id).coord()
+                    self.puzzle.cage(cage_id).coord()
                 );
             }
         }

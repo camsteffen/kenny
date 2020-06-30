@@ -49,14 +49,6 @@ impl CellChanges {
         self.0.get(&cell_id)
     }
 
-    pub fn iter(&self) -> hash_map::Iter<'_, CellId, CellChange> {
-        self.0.iter()
-    }
-
-    pub fn iter_mut(&mut self) -> hash_map::IterMut<'_, CellId, CellChange> {
-        self.0.iter_mut()
-    }
-
     pub fn domain_removals(&self) -> impl Iterator<Item = (CellId, &[Value])> {
         self.0.iter().filter_map(|(&id, e)| match e {
             CellChange::DomainRemovals(values) => Some((id, values.as_slice())),

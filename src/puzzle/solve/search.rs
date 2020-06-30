@@ -1,6 +1,7 @@
 use anyhow::Result;
 
 use super::constraint::ConstraintSet;
+use crate::collections::square::IsSquare;
 use crate::puzzle::solve::constraint::PropagateResult;
 use crate::puzzle::solve::markup::{CellChanges, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::step_writer::StepWriter;
@@ -19,7 +20,7 @@ pub(crate) struct SingleSolution {
 
 pub(crate) fn search_solution(
     puzzle: &Puzzle,
-    markup: &PuzzleMarkup,
+    markup: &PuzzleMarkup<'_>,
     constraints: &ConstraintSet<'_>,
     step_writer: &mut Option<&mut StepWriter<'_>>,
 ) -> Result<SearchResult> {
@@ -29,7 +30,7 @@ pub(crate) fn search_solution(
 fn search_next(
     depth: u32,
     puzzle: &Puzzle,
-    markup: &PuzzleMarkup,
+    markup: &PuzzleMarkup<'_>,
     constraints: &ConstraintSet<'_>,
     step_writer: &mut Option<&mut StepWriter<'_>>,
     mut solved_once: bool,
@@ -72,7 +73,7 @@ fn search_next(
 
 fn guess_cell(
     puzzle: &Puzzle,
-    mut markup: PuzzleMarkup,
+    mut markup: PuzzleMarkup<'_>,
     mut constraints: ConstraintSet<'_>,
     step_writer: &mut Option<&mut StepWriter<'_>>,
     guess: Guess,
@@ -84,7 +85,7 @@ fn guess_cell(
         changes.solve(guess.cell_id, guess.value);
         step_writer.write_backtrack(&markup, &changes, depth)?;
     }
-    apply_guess(puzzle, guess, &mut markup, &mut constraints);
+    apply_guess(guess, &mut markup, &mut constraints);
     match constraints.propagate(&mut markup, step_writer)? {
         PropagateResult::Solved(solution) => {
             return Ok(SearchResult::SingleSolution(SingleSolution {
@@ -108,7 +109,7 @@ fn guess_cell(
     )
 }
 
-fn guesses(markup: &PuzzleMarkup) -> impl Iterator<Item = Guess> + '_ {
+fn guesses<'a, 'b: 'a>(markup: &'b PuzzleMarkup<'a>) -> impl Iterator<Item = Guess> + 'a {
     // find one of the cells with the smallest domain
     let (cell_id, domain) = markup
         .cells()
@@ -121,15 +122,10 @@ fn guesses(markup: &PuzzleMarkup) -> impl Iterator<Item = Guess> + '_ {
     domain.iter().map(move |value| Guess { cell_id, value })
 }
 
-fn apply_guess(
-    puzzle: &Puzzle,
-    guess: Guess,
-    markup: &mut PuzzleMarkup,
-    constraints: &mut ConstraintSet<'_>,
-) {
+fn apply_guess(guess: Guess, markup: &mut PuzzleMarkup<'_>, constraints: &mut ConstraintSet<'_>) {
     let mut changes = PuzzleMarkupChanges::default();
     changes.cells.solve(guess.cell_id, guess.value);
-    markup.sync_changes(puzzle, &mut changes);
+    markup.sync_changes(&mut changes);
     constraints.notify_changes(&changes)
 }
 

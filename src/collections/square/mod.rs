@@ -21,25 +21,16 @@ pub(crate) trait IsSquare {
         width * width
     }
 
-    fn col_at(&self, index: usize) -> usize {
+    fn cell(&self, index: impl AsSquareIndex) -> SquareCellRef<'_, Self>
+    where
+        Self: Sized,
+    {
+        let index = index.as_square_index(self.width());
         self.assert_index(index);
-        index % self.width()
-    }
-
-    fn row_at(&self, index: usize) -> usize {
-        self.assert_index(index);
-        index / self.width()
-    }
-
-    fn dimension_index_at(&self, index: usize, dimension: Dimension) -> usize {
-        match dimension {
-            Dimension::Col => self.col_at(index),
-            Dimension::Row => self.row_at(index),
+        SquareCellRef {
+            square: self,
+            index,
         }
-    }
-
-    fn coord_at(&self, index: usize) -> Coord {
-        Coord::new(self.col_at(index), self.row_at(index))
     }
 
     fn shared_vector(&self, a: SquareIndex, b: SquareIndex) -> Option<Vector> {
@@ -85,6 +76,60 @@ pub(crate) trait IsSquare {
     }
 
     fn width(&self) -> usize;
+}
+
+pub(crate) struct SquareCellRef<'a, S: IsSquare> {
+    square: &'a S,
+    index: usize,
+}
+
+// Clone and Copy cannot be derived - see https://github.com/rust-lang/rust/issues/26925
+impl<S: IsSquare> Clone for SquareCellRef<'_, S> {
+    fn clone(&self) -> Self {
+        Self {
+            square: self.square,
+            index: self.index,
+        }
+    }
+}
+
+impl<S: IsSquare> Copy for SquareCellRef<'_, S> {}
+
+impl<'a, S: IsSquare> SquareCellRef<'a, S> {
+    pub fn square(self) -> &'a S {
+        self.square
+    }
+
+    pub fn index(self) -> usize {
+        self.index
+    }
+
+    pub fn col(self) -> usize {
+        self.index % self.square.width()
+    }
+
+    pub fn row(self) -> usize {
+        self.index / self.square.width()
+    }
+
+    pub fn coord(self) -> Coord {
+        Coord::new(self.col(), self.row())
+    }
+
+    pub fn dimension_index(self, dimension: Dimension) -> usize {
+        match dimension {
+            Dimension::Col => self.col(),
+            Dimension::Row => self.row(),
+        }
+    }
+
+    pub fn is_in_vector(self, vector: Vector) -> bool {
+        self.square.vector(vector).contains_square_index(self.index)
+    }
+
+    pub fn vectors(self) -> [Vector; 2] {
+        self.coord().vectors()
+    }
 }
 
 pub(crate) struct SquareVectorsIter<'a, S> {
@@ -168,7 +213,8 @@ where
         self.vector.index()
             == self
                 .square
-                .dimension_index_at(index, self.vector.dimension())
+                .cell(index)
+                .dimension_index(self.vector.dimension())
     }
 
     pub fn indices(self) -> VectorIndices {
@@ -256,7 +302,7 @@ impl<T> Square<T> {
         self.elements
             .iter()
             .enumerate()
-            .map(move |(i, e)| (self.coord_at(i), e))
+            .map(move |(i, e)| (self.cell(i).coord(), e))
     }
 }
 
@@ -314,7 +360,6 @@ pub(crate) struct EmptySquare {
 }
 
 impl EmptySquare {
-    #[cfg(test)]
     pub fn new(width: usize) -> Self {
         Self { width }
     }
@@ -369,28 +414,28 @@ mod tests {
         use itertools::assert_equal;
 
         #[test]
-        fn col_at() {
-            assert_eq!(EmptySquare::new(4).col_at(0), 0);
-            assert_eq!(EmptySquare::new(4).col_at(1), 1);
-            assert_eq!(EmptySquare::new(4).col_at(3), 3);
-            assert_eq!(EmptySquare::new(4).col_at(4), 0);
-            assert_eq!(EmptySquare::new(4).col_at(5), 1);
+        fn col() {
+            assert_eq!(EmptySquare::new(4).cell(0).col(), 0);
+            assert_eq!(EmptySquare::new(4).cell(1).col(), 1);
+            assert_eq!(EmptySquare::new(4).cell(3).col(), 3);
+            assert_eq!(EmptySquare::new(4).cell(4).col(), 0);
+            assert_eq!(EmptySquare::new(4).cell(5).col(), 1);
         }
 
         #[test]
-        fn row_at() {
-            assert_eq!(EmptySquare::new(4).row_at(0), 0);
-            assert_eq!(EmptySquare::new(4).row_at(1), 0);
-            assert_eq!(EmptySquare::new(4).row_at(3), 0);
-            assert_eq!(EmptySquare::new(4).row_at(4), 1);
+        fn row() {
+            assert_eq!(EmptySquare::new(4).cell(0).row(), 0);
+            assert_eq!(EmptySquare::new(4).cell(1).row(), 0);
+            assert_eq!(EmptySquare::new(4).cell(3).row(), 0);
+            assert_eq!(EmptySquare::new(4).cell(4).row(), 1);
         }
 
         #[test]
-        fn coord_at() {
-            assert_eq!(EmptySquare::new(4).coord_at(0), Coord::new(0, 0));
-            assert_eq!(EmptySquare::new(4).coord_at(1), Coord::new(1, 0));
-            assert_eq!(EmptySquare::new(4).coord_at(3), Coord::new(3, 0));
-            assert_eq!(EmptySquare::new(4).coord_at(4), Coord::new(0, 1));
+        fn coord() {
+            assert_eq!(EmptySquare::new(4).cell(0).coord(), Coord::new(0, 0));
+            assert_eq!(EmptySquare::new(4).cell(1).coord(), Coord::new(1, 0));
+            assert_eq!(EmptySquare::new(4).cell(3).coord(), Coord::new(3, 0));
+            assert_eq!(EmptySquare::new(4).cell(4).coord(), Coord::new(0, 1));
         }
 
         #[test]

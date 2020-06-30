@@ -14,19 +14,17 @@ mod vector_value_domain;
 
 use super::markup::PuzzleMarkupChanges;
 use crate::puzzle::solve::markup::PuzzleMarkup;
-use crate::puzzle::Puzzle;
 
-pub(crate) trait Constraint: CloneConstraint {
+pub(crate) trait Constraint<'a>: CloneConstraint<'a> {
     /// Notifies this constraint of changes made to the puzzle markup.
     /// This should be a low-cost method where data is cached for later processing.
-    fn notify_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges);
+    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges);
 
     /// Partially enforces this constraint on the current puzzle. The constraint will be checked until some
     /// changes are found and added to `changes`. Returns `false` if no changes are found.
     fn enforce_partial(
         &mut self,
-        puzzle: &Puzzle,
-        markup: &PuzzleMarkup,
+        markup: &PuzzleMarkup<'_>,
         changes: &mut PuzzleMarkupChanges,
     ) -> bool;
 
@@ -49,20 +47,20 @@ pub enum State {
 }
  */
 
-pub(crate) trait CloneConstraint {
-    fn clone_constraint(&self) -> Box<dyn Constraint>;
+pub(crate) trait CloneConstraint<'a>: 'a {
+    fn clone_constraint(&self) -> Box<dyn Constraint<'a>>;
 }
 
-impl<T> CloneConstraint for T
+impl<'a, T> CloneConstraint<'a> for T
 where
-    T: 'static + Constraint + Clone,
+    T: Constraint<'a> + Clone,
 {
-    fn clone_constraint(&self) -> Box<dyn Constraint> {
+    fn clone_constraint(&self) -> Box<dyn Constraint<'a>> {
         Box::new(self.clone())
     }
 }
 
-impl Clone for Box<dyn Constraint> {
+impl<'a> Clone for Box<dyn Constraint<'a>> {
     fn clone(&self) -> Self {
         self.clone_constraint()
     }
