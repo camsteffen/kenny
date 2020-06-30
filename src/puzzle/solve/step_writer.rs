@@ -17,7 +17,11 @@ pub(crate) struct StepWriter<'a> {
 }
 
 impl StepWriter<'_> {
-    pub fn write_step(&mut self, markup: &PuzzleMarkup<'_>, cell_changes: &CellChanges) -> Result<()> {
+    pub fn write_step(
+        &mut self,
+        markup: &PuzzleMarkup<'_>,
+        cell_changes: &CellChanges,
+    ) -> Result<()> {
         let mut path = self.path.clone();
         path.push(format!("step_{}.jpeg", self.index));
         self.write(&path, markup, cell_changes)?;
@@ -38,7 +42,12 @@ impl StepWriter<'_> {
         Ok(())
     }
 
-    fn write(&self, path: &Path, markup: &PuzzleMarkup<'_>, cell_changes: &CellChanges) -> Result<()> {
+    fn write(
+        &self,
+        path: &Path,
+        markup: &PuzzleMarkup<'_>,
+        cell_changes: &CellChanges,
+    ) -> Result<()> {
         debug!("writing step image: {}", path.display());
         let mut builder = PuzzleImageBuilder::new(self.puzzle);
         builder

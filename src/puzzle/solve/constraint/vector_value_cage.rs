@@ -1,7 +1,6 @@
 //! If all possible solutions for a given value in a given vector are in a given cage, then the cage solution must
 //! contain the given value in the given vector
 
-
 use crate::collections::square::{IsSquare, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::constraint::Constraint;

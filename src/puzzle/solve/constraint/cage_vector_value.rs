@@ -2,7 +2,7 @@ use std::convert::TryInto;
 
 use ahash::{AHashMap, AHashSet};
 
-use crate::collections::square::{IsSquare};
+use crate::collections::square::IsSquare;
 use crate::collections::square::{Square, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};

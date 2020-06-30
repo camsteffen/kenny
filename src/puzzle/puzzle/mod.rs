@@ -1,8 +1,6 @@
 pub use self::cage::{Cage, Operator};
 
-use crate::collections::square::{
-    Coord, IsSquare, Square, SquareCellRef, SquareVector, Vector,
-};
+use crate::collections::square::{Coord, IsSquare, Square, SquareCellRef, SquareVector, Vector};
 use crate::puzzle::error::{InvalidPuzzle, ParsePuzzleError, PuzzleFromFileError};
 use crate::puzzle::generate::generate_untested_puzzle;
 use crate::puzzle::parse::parse_puzzle;
