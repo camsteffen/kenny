@@ -11,7 +11,6 @@ use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rusttype::point;
 use rusttype::Font;
-use rusttype::FontCollection;
 use rusttype::PositionedGlyph;
 use rusttype::Scale;
 use std::cmp::{max, min};
@@ -33,8 +32,7 @@ const DEFAULT_CELL_WIDTH: u32 = 60;
 
 static FONT: Lazy<Font<'static>> = Lazy::new(|| {
     let bytes: &[u8] = include_bytes!("../../res/Roboto-Regular.ttf");
-    let font_collection = FontCollection::from_bytes(bytes).expect("Error loading font collection");
-    font_collection.font_at(0).expect("load font")
+    Font::try_from_bytes(bytes).expect("Error loading font collection")
 });
 
 // todo svg format? compose with svg and render with resvg
@@ -266,7 +264,7 @@ impl BuildContext<'_> {
                     + v_metrics.ascent,
             );
 
-            for glyph in self.font.layout(&text, scale, offset).collect::<Vec<_>>() {
+            for glyph in self.font.layout(&text, scale, offset) {
                 self.overlay_glyph(&glyph);
             }
         }
