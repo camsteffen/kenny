@@ -139,12 +139,11 @@ impl PuzzleContext<'_> {
     }
 
     fn save_image(&self) -> Result<()> {
-        let mut builder = PuzzleImageBuilder::new(self.puzzle());
-        if let Some(image_width) = self.options().image_width {
-            builder.image_width(image_width);
-        }
+        let builder = PuzzleImageBuilder::new(self.puzzle());
         let image = builder.build();
-        self.folder_builder().unwrap().write_puzzle_image(&image)?;
+        self.folder_builder()
+            .unwrap()
+            .write_puzzle_image(image.to_string())?;
         Ok(())
     }
 
@@ -169,13 +168,10 @@ impl PuzzleContext<'_> {
         if solve_options.save_image {
             let mut builder = PuzzleImageBuilder::new(self.puzzle());
             builder.solution(solution);
-            if let Some(image_width) = self.options().image_width {
-                builder.image_width(image_width);
-            }
             let image = builder.build();
             self.folder_builder()
                 .unwrap()
-                .write_solved_puzzle_image(&image)?;
+                .write_solved_puzzle_image(image.to_string())?;
         }
         Ok(())
     }
@@ -186,9 +182,6 @@ impl PuzzleContext<'_> {
             let path = self.folder_builder().unwrap().steps_path();
             fs::create_dir(&path)?;
             solver.save_steps(&path);
-        }
-        if let Some(image_width) = self.options().image_width {
-            solver.steps_image_width(image_width);
         }
         Ok(solver)
     }

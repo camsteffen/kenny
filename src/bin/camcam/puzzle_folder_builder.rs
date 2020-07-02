@@ -3,10 +3,10 @@ use std::{fs, io};
 
 use anyhow::{Context, Result};
 use camcam::puzzle::Puzzle;
-use image::RgbImage;
+
 use tempfile::{tempdir, TempDir};
 
-const IMG_EXT: &str = "jpg";
+const IMG_EXT: &str = "svg";
 
 pub(crate) struct PuzzleFolderBuilder {
     temp_dir: TempDir,
@@ -39,20 +39,24 @@ impl PuzzleFolderBuilder {
         Ok(())
     }
 
-    pub fn write_puzzle_image(&self, image: &RgbImage) -> Result<()> {
+    pub fn write_puzzle_image<I>(&self, image: I) -> Result<()>
+    where
+        I: AsRef<[u8]>,
+    {
         let path = self.temp_dir.path().join(format!("image.{}", IMG_EXT));
-        image.save(&path).context("error saving puzzle image")?;
+        fs::write(path, image).context("error saving puzzle image")?;
         Ok(())
     }
 
-    pub fn write_solved_puzzle_image(&self, image: &RgbImage) -> Result<()> {
+    pub fn write_solved_puzzle_image<I>(&self, image: I) -> Result<()>
+    where
+        I: AsRef<[u8]>,
+    {
         let path = self
             .temp_dir
             .path()
             .join(format!("image_solved.{}", IMG_EXT));
-        image
-            .save(&path)
-            .context("error saving solved puzzle image")?;
+        fs::write(path, image).context("error saving solved puzzle image")?;
         Ok(())
     }
 }

@@ -8,7 +8,6 @@ const DEFAULT_PATH: &str = "output";
 
 #[derive(Clone)]
 pub(crate) struct Options {
-    pub image_width: Option<u32>,
     output_path: Option<PathBuf>,
     source: Source,
     solve: Option<Solve>,
@@ -23,9 +22,6 @@ impl Options {
     fn from_arg_matches(matches: &ArgMatches<'_>) -> Result<Self> {
         let save_all = matches.is_present("save_all");
         let mut options = Self {
-            image_width: matches
-                .value_of("image_width")
-                .map(|s| s.parse().expect("invalid image width")),
             output_path: None,
             source: if let Some(path) = matches.value_of("input") {
                 Source::File(path.into())
@@ -247,12 +243,5 @@ fn clap_app() -> clap::App<'static, 'static> {
             Arg::with_name("save_step_images")
                 .long("save-step-images")
                 .help("save an image of the puzzle at each step of the solving process"),
-        )
-        .arg(
-            Arg::with_name("image_width")
-                .long("image-width")
-                .takes_value(true)
-                .value_name("PIXELS")
-                .help("sets the approx. width of saved images in pixels"),
         )
 }

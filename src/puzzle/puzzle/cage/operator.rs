@@ -10,6 +10,18 @@ pub enum Operator {
 }
 
 impl Operator {
+    /// Retrieve the unicode character representation of the symbol
+    pub fn display_symbol(self) -> Option<char> {
+        let symbol = match self {
+            Operator::Add => '+',
+            Operator::Subtract => '−',
+            Operator::Multiply => '×',
+            Operator::Divide => '÷',
+            Operator::Nop => return None,
+        };
+        Some(symbol)
+    }
+
     /// Retrieve the character representation of the symbol
     pub fn symbol(self) -> Option<char> {
         let symbol = match self {

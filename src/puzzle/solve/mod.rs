@@ -66,15 +66,9 @@ impl<'a> PuzzleSolver<'a> {
 
     pub fn save_steps(&mut self, path: &Path) -> &mut Self {
         let steps_context = StepsContext {
-            image_width: None,
             path: path.to_path_buf(),
         };
         self.steps = Some(steps_context);
-        self
-    }
-
-    pub fn steps_image_width(&mut self, image_width: u32) -> &mut Self {
-        self.steps.as_mut().unwrap().image_width = Some(image_width);
         self
     }
 
@@ -127,15 +121,12 @@ impl<'a> PuzzleSolver<'a> {
             None => return None,
             Some(ref steps) => steps,
         };
-        let mut builder = StepWriterBuilder::new(self.puzzle, &steps.path);
-        if let Some(image_width) = steps.image_width {
-            builder.image_width(image_width);
-        }
+        let builder = StepWriterBuilder::new(self.puzzle, &steps.path);
         Some(builder.build())
     }
 }
 
+// todo remove
 struct StepsContext {
-    image_width: Option<u32>,
     path: PathBuf,
 }

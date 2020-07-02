@@ -1,28 +1,38 @@
 use crate::collections::square::{Dimension, Vector};
 use std::fmt;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 /// Cartesian coordinates
 #[derive(Clone, Copy, PartialEq)]
-pub struct Coord([usize; 2]);
+pub struct Coord<T: Copy = usize>([T; 2]);
 
-impl Coord {
-    pub fn new(col: usize, row: usize) -> Self {
+impl<T: Copy> Coord<T> {
+    pub fn new(col: T, row: T) -> Self {
         Self([col, row])
     }
 
-    pub fn col(self) -> usize {
+    pub fn col(self) -> T {
         self.0[0]
     }
 
-    pub fn row(self) -> usize {
+    pub fn row(self) -> T {
         self.0[1]
     }
 
-    pub fn get(self, dimension: Dimension) -> usize {
+    pub fn get(self, dimension: Dimension) -> T {
         self.0[dimension as usize]
     }
 
+    pub fn as_tuple(self) -> (T, T) {
+        self.into()
+    }
+
+    pub fn transpose(self) -> Coord<T> {
+        Coord([self.0[1], self.0[0]])
+    }
+}
+
+impl Coord<usize> {
     pub fn vectors(self) -> [Vector; 2] {
         let col = Vector::col(self.col());
         let row = Vector::row(self.row());
@@ -30,9 +40,18 @@ impl Coord {
     }
 }
 
-impl Debug for Coord {
+impl<T> Debug for Coord<T>
+where
+    T: Copy + Display,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "({}, {})", self.col(), self.row())
+    }
+}
+
+impl<T: Copy> From<Coord<T>> for (T, T) {
+    fn from(coord: Coord<T>) -> Self {
+        (coord.0[0], coord.0[1])
     }
 }
 
