@@ -16,25 +16,27 @@ use svg::node::element::Style;
 use svg::node::element::Text;
 use svg::node::Node;
 
+// colors
 const COLOR_CAGE_BORDER: &str = "black";
 const COLOR_CELL_BORDER: &str = "#CDCDCD";
 const COLOR_HIGHLIGHT: &str = "#FFFFC8";
 const COLOR_DOMAIN_SLASH: &str = "red";
 
+// dimensions
 const CELL_WIDTH: i32 = 100;
 const BORDER_WIDTH_CELL: i32 = 2;
 const BORDER_WIDTH_CAGE: i32 = 4;
 const BORDER_WIDTH_OUTER: i32 = 6;
 const OUTER_PAD: i32 = BORDER_WIDTH_OUTER - BORDER_WIDTH_CELL / 2;
-const DOMAIN_SLASH_WIDTH: &str = "1.4";
-
-const CAGE_SPEC_FONT_SIZE: i32 = CELL_WIDTH / 4;
-const CELL_SOLUTION_FONT_SIZE: i32 = 80;
-const DOMAIN_FONT_SIZE: i32 = 20;
-const DOMAIN_DX: i32 = 15;
-const DOMAIN_PAD: i32 = 5;
-
 const CAGE_SPEC_PAD: i32 = BORDER_WIDTH_CELL + CELL_WIDTH / 16;
+const DOMAIN_SLASH_WIDTH: &str = "1.4";
+const DOMAIN_PAD: i32 = 5;
+const DOMAIN_DX: i32 = 15;
+
+// font sizes
+const FONT_SIZE_SOLUTION: i32 = 80;
+const FONT_SIZE_CAGE_SPEC: i32 = 25;
+const FONT_SIZE_DOMAIN: i32 = 20;
 
 static STYLE: Lazy<String> = Lazy::new(|| {
     format!(
@@ -53,6 +55,9 @@ static STYLE: Lazy<String> = Lazy::new(|| {
            font-size:{solution_font_size}px;\
            text-anchor:middle;\
          }}\
+         .new-solution{{\
+           fill:green;\
+         }}\
          .domain{{\
            font-size:{domain_font_size}px;\
          }}\
@@ -62,9 +67,9 @@ static STYLE: Lazy<String> = Lazy::new(|| {
            stroke-linecap:round;\
          }}",
         cell_width = CELL_WIDTH,
-        cage_spec_font_size = CAGE_SPEC_FONT_SIZE,
-        domain_font_size = DOMAIN_FONT_SIZE,
-        solution_font_size = CELL_SOLUTION_FONT_SIZE,
+        cage_spec_font_size = FONT_SIZE_CAGE_SPEC,
+        domain_font_size = FONT_SIZE_DOMAIN,
+        solution_font_size = FONT_SIZE_SOLUTION,
         color_highlight = COLOR_HIGHLIGHT,
         color_domain_slash = COLOR_DOMAIN_SLASH,
         domain_slash_width = DOMAIN_SLASH_WIDTH,
@@ -151,9 +156,9 @@ impl<'a> BuildContext<'a> {
         self.outer_border();
         self.cage_spec();
         if let Some(cell_variables) = self.cell_variables {
-            self.draw_markup(cell_variables);
+            self.markup(cell_variables);
         } else if let Some(solution) = self.solution {
-            self.draw_solution(solution);
+            self.solution(solution);
         }
         self.document
     }
@@ -272,56 +277,54 @@ impl<'a> BuildContext<'a> {
         }
     }
 
-    fn draw_markup(&mut self, cell_variables: &Square<CellVariable>) {
+    fn markup(&mut self, cell_variables: &Square<CellVariable>) {
         for (id, cell) in cell_variables.iter().enumerate() {
             let cell_change = self
                 .cell_changes
                 .and_then(|cell_changes| cell_changes.get(id));
-            let domain_removals: Option<(&ValueSet, AHashSet<i32>)> = match cell {
-                CellVariable::Unsolved(domain) => {
-                    let removals = match cell_change {
-                        Some(CellChange::DomainRemovals(ref values)) => {
-                            values.iter().copied().collect()
-                        }
-                        Some(&CellChange::Solution(value)) => {
-                            domain.iter().filter(|&v| v != value).collect()
-                        }
-                        _ => AHashSet::default(),
+            let domain_and_removals: Option<(&ValueSet, AHashSet<i32>)> =
+                if let CellVariable::Unsolved(ref domain) = cell {
+                    let removals = if let Some(CellChange::DomainRemovals(ref values)) = cell_change
+                    {
+                        values.iter().copied().collect()
+                    } else {
+                        AHashSet::default()
                     };
                     Some((domain, removals))
-                }
-                _ => None,
-            };
-            let solution = if let CellVariable::Solved(value) = *cell {
-                Some(value)
+                } else {
+                    None
+                };
+            let solution_and_is_new = if let CellVariable::Solved(value) = *cell {
+                Some((value, false))
             } else if let Some(&CellChange::Solution(value)) = cell_change {
-                Some(value)
+                Some((value, true))
             } else {
-                match domain_removals {
+                match domain_and_removals {
                     Some((ref domain, ref removals)) if domain.len() - removals.len() == 1 => {
                         // since there is one domain value left, show the solution
-                        Some(domain.iter().find(|v| !removals.contains(v)).unwrap())
+                        let value = domain.iter().find(|v| !removals.contains(v)).unwrap();
+                        Some((value, true))
                     }
                     _ => None,
                 }
             };
             let pos = cell_variables.cell(id).coord();
-            if let Some(value) = solution {
-                self.draw_cell_solution(pos, value);
+            if let Some((value, is_new)) = solution_and_is_new {
+                self.cell_solution(pos, value, is_new);
             }
-            if let Some((domain, removals)) = domain_removals {
-                self.draw_domain(pos, &domain, &removals);
+            if let Some((domain, removals)) = domain_and_removals {
+                self.domain(pos, &domain, &removals);
             }
         }
     }
 
-    fn draw_solution(&mut self, solution: &Square<Value>) {
+    fn solution(&mut self, solution: &Square<Value>) {
         for (pos, value) in solution.iter_coord() {
-            self.draw_cell_solution(pos, *value)
+            self.cell_solution(pos, *value, false);
         }
     }
 
-    fn draw_domain(&mut self, pos: Coord, domain: &ValueSet, removals: &AHashSet<i32>) {
+    fn domain(&mut self, pos: Coord, domain: &ValueSet, removals: &AHashSet<i32>) {
         // the maximum number of characters that can fit on one line in a cell
         const MAX_LINE_LEN: i32 = 5;
 
@@ -334,7 +337,7 @@ impl<'a> BuildContext<'a> {
         for n in domain {
             let s = n.to_string();
             let x = coord.col() + DOMAIN_PAD + char_x * DOMAIN_DX;
-            let y = coord.row() + CELL_WIDTH - DOMAIN_PAD - char_y * DOMAIN_FONT_SIZE;
+            let y = coord.row() + CELL_WIDTH - DOMAIN_PAD - char_y * FONT_SIZE_DOMAIN;
             self.document.append(
                 Text::new()
                     .add(node::Text::new(s))
@@ -348,7 +351,7 @@ impl<'a> BuildContext<'a> {
                         "d",
                         Data::new()
                             .move_to((x, y))
-                            .line_by((DOMAIN_FONT_SIZE / 2, -(DOMAIN_FONT_SIZE * 5 / 7))),
+                            .line_by((FONT_SIZE_DOMAIN / 2, -(FONT_SIZE_DOMAIN * 5 / 7))),
                     ),
                 );
             }
@@ -360,12 +363,15 @@ impl<'a> BuildContext<'a> {
         }
     }
 
-    fn draw_cell_solution(&mut self, pos: Coord, value: i32) {
+    fn cell_solution(&mut self, pos: Coord, value: i32, is_new: bool) {
         let coord = cell_coord(pos);
         self.document.append(
             Text::new()
                 .add(node::Text::new(value.to_string()))
-                .set("class", "solution")
+                .set(
+                    "class",
+                    format!("solution{}", if is_new { " new-solution" } else { "" }),
+                )
                 .set("x", coord.col() + CELL_WIDTH / 2)
                 .set("y", coord.row() + CELL_WIDTH / 2)
                 .set("dy", ".35em"),
