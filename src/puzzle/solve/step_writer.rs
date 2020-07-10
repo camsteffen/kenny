@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 
-use crate::puzzle::image::PuzzleImage;
+use crate::puzzle::image::PuzzleImageBuilder;
 use crate::puzzle::solve::markup::{CellChanges, PuzzleMarkup};
 use crate::puzzle::Puzzle;
 
@@ -55,7 +55,7 @@ impl StepWriter<'_> {
     ) -> Result<()> {
         debug!("writing step image: {}", path.display());
         // todo fix builder?
-        let mut builder = PuzzleImage::new(self.puzzle);
+        let mut builder = PuzzleImageBuilder::new(self.puzzle);
         builder
             .cell_variables(Some(&markup.cells()))
             .cell_changes(cell_changes);
