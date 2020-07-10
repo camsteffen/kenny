@@ -13,7 +13,7 @@ use anyhow::Result;
 use itertools::Itertools;
 
 use camcam::puzzle::solve::{PuzzleSolver, SolveResult};
-use camcam::puzzle::{Puzzle, PuzzleImageBuilder, Solution};
+use camcam::puzzle::{Puzzle, PuzzleImage, Solution};
 
 use crate::context::{Context, PuzzleContext};
 use crate::options::Options;
@@ -139,11 +139,8 @@ impl PuzzleContext<'_> {
     }
 
     fn save_image(&self) -> Result<()> {
-        let builder = PuzzleImageBuilder::new(self.puzzle());
-        let image = builder.build();
-        self.folder_builder()
-            .unwrap()
-            .write_puzzle_image(image.to_string())?;
+        let image = PuzzleImage::new(self.puzzle());
+        self.folder_builder().unwrap().write_puzzle_image(&image)?;
         Ok(())
     }
 
@@ -166,12 +163,11 @@ impl PuzzleContext<'_> {
 
     fn save_solved_image(&self, solve_options: &options::Solve, solution: &Solution) -> Result<()> {
         if solve_options.save_image {
-            let mut builder = PuzzleImageBuilder::new(self.puzzle());
-            builder.solution(solution);
-            let image = builder.build();
+            let mut image = PuzzleImage::new(self.puzzle());
+            image.solution(solution);
             self.folder_builder()
                 .unwrap()
-                .write_solved_puzzle_image(image.to_string())?;
+                .write_solved_puzzle_image(&image)?;
         }
         Ok(())
     }

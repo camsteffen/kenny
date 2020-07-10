@@ -1,6 +1,6 @@
 //! KenKen puzzles
 
-pub use self::image::PuzzleImageBuilder;
+pub use self::image::PuzzleImage;
 pub use puzzle::*;
 
 pub mod solve;

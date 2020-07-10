@@ -23,6 +23,10 @@ impl<T: Copy> Coord<T> {
         self.0[dimension as usize]
     }
 
+    pub fn as_array(self) -> [T; 2] {
+        self.0
+    }
+
     pub fn as_tuple(self) -> (T, T) {
         self.into()
     }
