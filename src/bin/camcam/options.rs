@@ -44,7 +44,7 @@ impl Options {
                     save_puzzle: matches.is_present("save_puzzle") || save_all,
                     include_solvable,
                     include_unsolvable,
-                    require_search: matches.is_present("solution_requires_search"),
+                    require_search: matches.is_present("requires_search"),
                 })
             },
             solve: if matches.is_present("solve") {
@@ -199,8 +199,8 @@ fn clap_app() -> clap::App<'static, 'static> {
                 .help("the number of puzzles to generate (and solve)"),
         )
         .arg(
-            Arg::with_name("solution_requires_search")
-                .long("solution-requires-search")
+            Arg::with_name("requires_search")
+                .long("requires-search")
                 .requires("generate")
                 .help("only include puzzles that require backtracking search to solve"),
         )
