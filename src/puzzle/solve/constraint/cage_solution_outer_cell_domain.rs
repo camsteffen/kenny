@@ -1,5 +1,3 @@
-use ahash::{AHashMap, AHashSet};
-
 use std::collections::hash_map::Entry;
 
 use super::Constraint;
@@ -8,6 +6,7 @@ use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::ValueSet;
 use crate::puzzle::{CageId, CellId, Puzzle};
+use crate::{HashMap, HashSet};
 
 /// Summary: A cage solution must not conflict with a cell's domain outside of the cage
 ///
@@ -22,14 +21,13 @@ use crate::puzzle::{CageId, CellId, Puzzle};
 #[derive(Clone)]
 pub(crate) struct CageSolutionOuterCellDomainConstraint<'a> {
     puzzle: &'a Puzzle,
-    cage_vector_cells: AHashMap<(CageId, Vector), AHashSet<CellId>>,
+    cage_vector_cells: HashMap<(CageId, Vector), HashSet<CellId>>,
     dirty_cage_vectors: LinkedAHashSet<(CageId, Vector)>,
 }
 
 impl<'a> CageSolutionOuterCellDomainConstraint<'a> {
     pub fn new(puzzle: &'a Puzzle) -> Self {
-        let mut cage_vector_cells: AHashMap<(CageId, Vector), AHashSet<CellId>> =
-            AHashMap::default();
+        let mut cage_vector_cells: HashMap<(CageId, Vector), HashSet<CellId>> = HashMap::default();
         for cage in puzzle.cages() {
             for cell in cage.cells() {
                 for &v in &cell.vectors() {

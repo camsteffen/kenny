@@ -8,7 +8,7 @@ use crate::puzzle::solve::markup::{CellChange, CellChanges};
 use crate::puzzle::solve::CellVariable;
 use crate::puzzle::solve::ValueSet;
 use crate::puzzle::{CellId, Puzzle, Solution};
-use ahash::AHashSet;
+use crate::HashSet;
 use once_cell::sync::Lazy;
 use std::fmt::{Display, Formatter, Result, Write};
 use std::fs::File;
@@ -149,13 +149,13 @@ impl<'a> PuzzleImageBuilder<'a> {
         let mut domains = VecMap::new();
         for (cell_id, cell) in cell_variables.iter().enumerate() {
             let cell_change = cell_changes.and_then(|cell_changes| cell_changes.get(cell_id));
-            let domain_and_removals: Option<(&ValueSet, AHashSet<i32>)> =
+            let domain_and_removals: Option<(&ValueSet, HashSet<i32>)> =
                 if let CellVariable::Unsolved(ref domain) = cell {
                     let removals = if let Some(CellChange::DomainRemovals(ref values)) = cell_change
                     {
                         values.iter().copied().collect()
                     } else {
-                        AHashSet::default()
+                        HashSet::new()
                     };
                     Some((domain, removals))
                 } else {

@@ -1,12 +1,11 @@
 use std::convert::TryInto;
 
-use ahash::{AHashMap, AHashSet};
-
 use crate::collections::square::IsSquare;
 use crate::collections::square::{Square, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::{CageId, CellId, CellRef, Puzzle, Value};
+use crate::{HashMap, HashSet};
 
 use super::Constraint;
 
@@ -22,7 +21,7 @@ pub(crate) struct CageVectorValueConstraint<'a> {
     dirty_cage_vectors: LinkedAHashSet<(CageId, Vector)>,
     /// A record of values known to be in a certain cage, in a certain vector
     /// This is used to avoid duplicate work
-    known_vector_vals: AHashMap<Vector, AHashSet<Value>>,
+    known_vector_vals: HashMap<Vector, HashSet<Value>>,
 }
 
 impl<'a> CageVectorValueConstraint<'a> {
@@ -31,7 +30,7 @@ impl<'a> CageVectorValueConstraint<'a> {
             puzzle,
             cell_cage_vectors: create_cell_cage_vector_map(puzzle),
             dirty_cage_vectors: LinkedAHashSet::default(),
-            known_vector_vals: AHashMap::default(),
+            known_vector_vals: HashMap::default(),
         }
     }
 }
@@ -125,7 +124,7 @@ impl CageVectorValueConstraint<'_> {
         markup: &PuzzleMarkup<'_>,
         cage_id: CageId,
         vector: Vector,
-    ) -> AHashSet<i32> {
+    ) -> HashSet<i32> {
         // indices within each solution where the cell is in the vector
         let solution_indices: Vec<usize> = markup.cage_solutions().unwrap()[cage_id]
             .cell_ids
@@ -136,7 +135,7 @@ impl CageVectorValueConstraint<'_> {
             .map(|(i, _)| i)
             .collect();
         if solution_indices.len() < 2 {
-            return AHashSet::new();
+            return HashSet::new();
         }
 
         // iterator of solutions with only cells in the vector
@@ -147,7 +146,7 @@ impl CageVectorValueConstraint<'_> {
         let solution = solutions_iter.next().unwrap();
 
         // values in the first solution that are not already a known vector value
-        let mut values: AHashSet<i32> = solution
+        let mut values: HashSet<i32> = solution
             .filter(|n| {
                 self.known_vector_vals
                     .get(&vector)

@@ -1,12 +1,13 @@
-use crate::puzzle::{CageId, CellId, Value};
-use ahash::AHashMap;
+use crate::collections::square::IsSquare;
+use crate::puzzle::{CageId, CellId, Puzzle, Value};
+use crate::HashMap;
 use std::borrow::{Borrow, BorrowMut};
 use std::collections::hash_map;
 
 #[derive(Debug, Default, PartialEq)]
 pub(crate) struct PuzzleMarkupChanges {
     pub cells: CellChanges,
-    pub cage_solution_removals: AHashMap<CageId, Vec<usize>>,
+    pub cage_solution_removals: HashMap<CageId, Vec<usize>>,
 }
 
 impl PuzzleMarkupChanges {
@@ -21,6 +22,16 @@ impl PuzzleMarkupChanges {
             .or_default()
             .push(solution_index);
     }
+
+    pub fn includes_cage(&self, cage_id: CageId, puzzle: &Puzzle) -> bool {
+        self.cells
+            .iter()
+            .any(|(&cell_id, _)| puzzle.cell(cell_id).cage_id() == cage_id)
+            || self
+                .cage_solution_removals
+                .iter()
+                .any(|(&cell_id, _)| puzzle.cell(cell_id).cage_id() == cage_id)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -30,7 +41,7 @@ pub enum CellChange {
 }
 
 #[derive(Debug, Default, PartialEq)]
-pub(crate) struct CellChanges(AHashMap<CellId, CellChange>);
+pub(crate) struct CellChanges(HashMap<CellId, CellChange>);
 
 impl CellChanges {
     pub fn new() -> Self {
@@ -49,7 +60,7 @@ impl CellChanges {
         self.0.get(&cell_id)
     }
 
-    pub fn iter(&self) -> <&AHashMap<CellId, CellChange> as IntoIterator>::IntoIter {
+    pub fn iter(&self) -> <&HashMap<CellId, CellChange> as IntoIterator>::IntoIter {
         self.0.borrow().into_iter()
     }
 
@@ -85,21 +96,21 @@ impl CellChanges {
     }
 }
 
-impl Borrow<AHashMap<CellId, CellChange>> for CellChanges {
-    fn borrow(&self) -> &AHashMap<CellId, CellChange> {
+impl Borrow<HashMap<CellId, CellChange>> for CellChanges {
+    fn borrow(&self) -> &HashMap<CellId, CellChange> {
         &self.0
     }
 }
 
-impl BorrowMut<AHashMap<CellId, CellChange>> for CellChanges {
-    fn borrow_mut(&mut self) -> &mut AHashMap<CellId, CellChange> {
+impl BorrowMut<HashMap<CellId, CellChange>> for CellChanges {
+    fn borrow_mut(&mut self) -> &mut HashMap<CellId, CellChange> {
         &mut self.0
     }
 }
 
 impl<'a> IntoIterator for &'a CellChanges {
-    type Item = <&'a AHashMap<CellId, CellChange> as IntoIterator>::Item;
-    type IntoIter = <&'a AHashMap<CellId, CellChange> as IntoIterator>::IntoIter;
+    type Item = <&'a HashMap<CellId, CellChange> as IntoIterator>::Item;
+    type IntoIter = <&'a HashMap<CellId, CellChange> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
@@ -107,8 +118,8 @@ impl<'a> IntoIterator for &'a CellChanges {
 }
 
 impl<'a> IntoIterator for &'a mut CellChanges {
-    type Item = <&'a mut AHashMap<CellId, CellChange> as IntoIterator>::Item;
-    type IntoIter = <&'a mut AHashMap<CellId, CellChange> as IntoIterator>::IntoIter;
+    type Item = <&'a mut HashMap<CellId, CellChange> as IntoIterator>::Item;
+    type IntoIter = <&'a mut HashMap<CellId, CellChange> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.borrow_mut().into_iter()
@@ -116,8 +127,8 @@ impl<'a> IntoIterator for &'a mut CellChanges {
 }
 
 impl<'a> IntoIterator for CellChanges {
-    type Item = <AHashMap<CellId, CellChange> as IntoIterator>::Item;
-    type IntoIter = <AHashMap<CellId, CellChange> as IntoIterator>::IntoIter;
+    type Item = <HashMap<CellId, CellChange> as IntoIterator>::Item;
+    type IntoIter = <HashMap<CellId, CellChange> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()

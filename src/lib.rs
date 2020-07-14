@@ -21,10 +21,23 @@
 #[macro_use]
 extern crate log;
 
+use ahash::{AHashMap, AHashSet, AHasher};
+use std::hash::BuildHasherDefault;
+
 pub mod collections;
 pub mod puzzle;
 
 // mod experimental;
+
+// enable deterministic hashing for debugging
+#[cfg(debug_assertions)]
+type HashMap<K, V> = AHashMap<K, V, BuildHasherDefault<AHasher>>;
+#[cfg(debug_assertions)]
+type HashSet<T> = AHashSet<T, BuildHasherDefault<AHasher>>;
+#[cfg(not(debug_assertions))]
+type HashMap<K, V> = AHashMap<K, V>;
+#[cfg(not(debug_assertions))]
+type HashSet<T> = AHashSet<T>;
 
 // todo unit tests
 // todo documentation

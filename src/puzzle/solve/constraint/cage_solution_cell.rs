@@ -2,7 +2,7 @@ use crate::collections::square::IsSquare;
 use crate::puzzle::solve::constraint::Constraint;
 use crate::puzzle::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::{CellId, Puzzle};
-use ahash::AHashMap;
+use crate::HashMap;
 use std::collections::hash_map::Entry;
 use vec_map::VecMap;
 
@@ -11,7 +11,7 @@ use vec_map::VecMap;
 pub(crate) struct CageSolutionCellConstraint<'a> {
     puzzle: &'a Puzzle,
     // cage ID -> cell ID -> cell change
-    cage_cell_changes: VecMap<AHashMap<CellId, CellChange>>,
+    cage_cell_changes: VecMap<HashMap<CellId, CellChange>>,
 }
 
 impl<'a> CageSolutionCellConstraint<'a> {

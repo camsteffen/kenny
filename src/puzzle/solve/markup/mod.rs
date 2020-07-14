@@ -67,8 +67,14 @@ impl<'a> PuzzleMarkup<'a> {
             return false;
         }
         if let Some(ref mut cage_solutions_set) = self.cage_solutions_set {
-            if !cage_solutions_set.apply_changes(self.puzzle, changes) {
-                return false;
+            match cage_solutions_set.apply_changes(self.puzzle, changes) {
+                Ok(cell_solutions) => {
+                    for (cell_id, value) in cell_solutions {
+                        changes.cells.solve(cell_id, value);
+                        self.cell_variables[cell_id] = CellVariable::Solved(value);
+                    }
+                }
+                Err(()) => return false,
             }
         }
         self.blank_cell_count -= changes.cells.solutions().count() as u32;
