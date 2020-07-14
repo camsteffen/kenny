@@ -24,7 +24,7 @@ impl<'a> StepWriter<'a> {
         Self {
             puzzle,
             index: 1,
-            path: path,
+            path,
         }
     }
 }
