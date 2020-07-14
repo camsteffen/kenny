@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 
-use crate::puzzle::solve::step_writer::{StepWriter, StepWriterBuilder};
+use crate::puzzle::solve::step_writer::StepWriter;
 use crate::puzzle::{Puzzle, Solution};
 
 use self::constraint::apply_unary_constraints;
@@ -65,10 +65,7 @@ impl<'a> PuzzleSolver<'a> {
     }
 
     pub fn save_steps(&mut self, path: &Path) -> &mut Self {
-        let steps_context = StepsContext {
-            path: path.to_path_buf(),
-        };
-        self.steps_path = Some(steps_context);
+        self.steps_path = Some(path.into());
         self
     }
 
@@ -117,11 +114,8 @@ impl<'a> PuzzleSolver<'a> {
     }
 
     fn start_step_writer(&self) -> Option<StepWriter<'_>> {
-        let path = match self.steps_path {
-            None => return None,
-            Some(ref steps) => steps,
-        };
-        let builder = StepWriterBuilder::new(self.puzzle, &path);
-        Some(builder.build())
+        let path = self.steps_path.as_ref()?;
+        let step_writer = StepWriter::new(self.puzzle, path.into());
+        Some(step_writer)
     }
 }

@@ -11,11 +11,22 @@ use crate::puzzle::Puzzle;
 
 static IMAGE_EXTENSION: &str = "svg";
 
-// todo merge into PuzzleFolderBuilder
+// todo merge into PuzzleFolderBuilder?
+//   need to resolve visibility with solver code
 pub(crate) struct StepWriter<'a> {
     puzzle: &'a Puzzle,
     index: u32,
     path: PathBuf,
+}
+
+impl<'a> StepWriter<'a> {
+    pub fn new(puzzle: &'a Puzzle, path: PathBuf) -> Self {
+        Self {
+            puzzle,
+            index: 1,
+            path: path,
+        }
+    }
 }
 
 impl StepWriter<'_> {
@@ -54,7 +65,6 @@ impl StepWriter<'_> {
         cell_changes: &CellChanges,
     ) -> Result<()> {
         debug!("writing step image: {}", path.display());
-        // todo fix builder?
         let mut builder = PuzzleImageBuilder::new(self.puzzle);
         builder
             .cell_variables(Some(&markup.cells()))
@@ -64,28 +74,5 @@ impl StepWriter<'_> {
             .save_svg(path)
             .with_context(|| format!("Error saving step image to {}", path.display()))?;
         Ok(())
-    }
-}
-
-// todo remove
-pub(crate) struct StepWriterBuilder<'a> {
-    puzzle: &'a Puzzle,
-    path: PathBuf,
-}
-
-impl<'a> StepWriterBuilder<'a> {
-    pub fn new(puzzle: &'a Puzzle, path: &Path) -> Self {
-        Self {
-            puzzle,
-            path: path.to_path_buf(),
-        }
-    }
-
-    pub fn build(&self) -> StepWriter<'a> {
-        StepWriter {
-            puzzle: self.puzzle,
-            index: 1,
-            path: self.path.clone(),
-        }
     }
 }
