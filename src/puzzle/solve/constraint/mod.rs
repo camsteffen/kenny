@@ -27,25 +27,7 @@ pub(crate) trait Constraint<'a>: CloneConstraint<'a> {
         markup: &PuzzleMarkup<'_>,
         changes: &mut PuzzleMarkupChanges,
     ) -> bool;
-
-    // todo is this needed? default implementation?
-    // fn state(&self) -> State {
-    //     State::PENDING
-    // }
 }
-
-/*
-pub enum State {
-    /// There is pending work to determine if this constraint is satisfied.
-    PENDING,
-    /// An inconsistency has been detected with this constraint on the puzzle markup.
-    /// In other words, there are puzzle markup changes ready.
-    INCONSISTENT,
-    /// The constraint is satisfied (with the last seen puzzle markup). No pending work.
-    SATISFIED,
-    // todo unsatisfied?
-}
- */
 
 pub(crate) trait CloneConstraint<'a>: 'a {
     fn clone_constraint(&self) -> Box<dyn Constraint<'a>>;

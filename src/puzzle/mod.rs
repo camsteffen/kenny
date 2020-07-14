@@ -1,15 +1,12 @@
 //! KenKen puzzles
 
-pub use self::image::PuzzleImageBuilder;
 pub use puzzle::*;
 
 pub mod solve;
 
 pub mod error;
-#[macro_use]
-mod xml;
 mod generate;
-mod image;
+pub mod image;
 mod parse;
 mod puzzle;
 

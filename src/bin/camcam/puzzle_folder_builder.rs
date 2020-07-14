@@ -2,8 +2,9 @@ use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 use anyhow::{Context, Result};
-use camcam::puzzle::{Puzzle, PuzzleImage};
+use camcam::puzzle::Puzzle;
 
+use camcam::puzzle::image::PuzzleImage;
 use tempfile::{tempdir, TempDir};
 
 const IMG_EXT: &str = "svg";
@@ -41,7 +42,7 @@ impl PuzzleFolderBuilder {
 
     pub fn write_puzzle_image(&self, image: &PuzzleImage<'_>) -> Result<()> {
         let path = self.temp_dir.path().join(format!("image.{}", IMG_EXT));
-        image.save(&path).context("error saving puzzle image")?;
+        image.save_svg(&path).context("error saving puzzle image")?;
         Ok(())
     }
 
@@ -51,7 +52,7 @@ impl PuzzleFolderBuilder {
             .path()
             .join(format!("image_solved.{}", IMG_EXT));
         image
-            .save(&path)
+            .save_svg(&path)
             .context("error saving solved puzzle image")?;
         Ok(())
     }

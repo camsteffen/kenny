@@ -53,14 +53,14 @@ pub struct SolvedData {
 
 pub struct PuzzleSolver<'a> {
     puzzle: &'a Puzzle,
-    steps: Option<StepsContext>,
+    steps_path: Option<PathBuf>,
 }
 
 impl<'a> PuzzleSolver<'a> {
     pub fn new(puzzle: &'a Puzzle) -> Self {
         Self {
             puzzle,
-            steps: None,
+            steps_path: None,
         }
     }
 
@@ -68,7 +68,7 @@ impl<'a> PuzzleSolver<'a> {
         let steps_context = StepsContext {
             path: path.to_path_buf(),
         };
-        self.steps = Some(steps_context);
+        self.steps_path = Some(steps_context);
         self
     }
 
@@ -117,16 +117,11 @@ impl<'a> PuzzleSolver<'a> {
     }
 
     fn start_step_writer(&self) -> Option<StepWriter<'_>> {
-        let steps = match self.steps {
+        let path = match self.steps_path {
             None => return None,
             Some(ref steps) => steps,
         };
-        let builder = StepWriterBuilder::new(self.puzzle, &steps.path);
+        let builder = StepWriterBuilder::new(self.puzzle, &path);
         Some(builder.build())
     }
-}
-
-// todo remove
-struct StepsContext {
-    path: PathBuf,
 }

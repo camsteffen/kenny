@@ -59,8 +59,9 @@ impl StepWriter<'_> {
         builder
             .cell_variables(Some(&markup.cells()))
             .cell_changes(cell_changes);
-        builder
-            .save(path)
+        let image = builder.build();
+        image
+            .save_svg(path)
             .with_context(|| format!("Error saving step image to {}", path.display()))?;
         Ok(())
     }

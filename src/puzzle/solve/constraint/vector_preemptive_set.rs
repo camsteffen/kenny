@@ -53,57 +53,6 @@ impl<'a> Constraint<'a> for VectorPreemptiveSetConstraint<'a> {
     }
 }
 
-fn unify_domain(
-    cell_variables: &Square<CellVariable>,
-    cells: &[CellId],
-    max_size: usize,
-) -> Option<ValueSet> {
-    let mut domain = ValueSet::new(cell_variables.width());
-    for &cell in cells {
-        for j in cell_variables[cell].unsolved().unwrap() {
-            if domain.insert(j) && domain.len() > max_size {
-                // the domain is too big
-                return None;
-            }
-        }
-    }
-    Some(domain)
-}
-
-fn found_preemptive_set(
-    cell_variables: &Square<CellVariable>,
-    changes: &mut PuzzleMarkupChanges,
-    vector: Vector,
-    cells: &[CellId],
-    values: &ValueSet,
-) -> u32 {
-    debug!(
-        "values {:?} are among cells {:?}",
-        values.iter().collect::<Vec<_>>(),
-        cells
-            .iter()
-            .map(|&i| cell_variables.cell(i).coord())
-            .collect::<Vec<_>>()
-    );
-
-    let mut count = 0;
-
-    let other_cells: Vec<CellId> = cell_variables
-        .vector(vector)
-        .indices()
-        .left_merge(cells.iter().copied())
-        .collect();
-    for cell in other_cells {
-        for value in values {
-            if cell_variables[cell].unsolved_and_contains(value) {
-                changes.cells.remove_domain_value(cell, value);
-                count += 1;
-            }
-        }
-    }
-    count
-}
-
 fn enforce_vector(
     cell_variables: &Square<CellVariable>,
     vector: Vector,
@@ -150,6 +99,57 @@ fn enforce_vector(
             if let Some(domain) = unify_domain(cell_variables, &cells, max_domain_size) {
                 count += found_preemptive_set(cell_variables, change, vector, &cells, &domain);
                 break 'domain_sizes;
+            }
+        }
+    }
+    count
+}
+
+fn unify_domain(
+    cell_variables: &Square<CellVariable>,
+    cells: &[CellId],
+    max_size: usize,
+) -> Option<ValueSet> {
+    let mut domain = ValueSet::new(cell_variables.width());
+    for &cell in cells {
+        for j in cell_variables[cell].unsolved().unwrap() {
+            if domain.insert(j) && domain.len() > max_size {
+                // the domain is too big
+                return None;
+            }
+        }
+    }
+    Some(domain)
+}
+
+fn found_preemptive_set(
+    cell_variables: &Square<CellVariable>,
+    changes: &mut PuzzleMarkupChanges,
+    vector: Vector,
+    cells: &[CellId],
+    values: &ValueSet,
+) -> u32 {
+    debug!(
+        "values {:?} are among cells {:?}",
+        values.iter().collect::<Vec<_>>(),
+        cells
+            .iter()
+            .map(|&i| cell_variables.cell(i).coord())
+            .collect::<Vec<_>>()
+    );
+
+    let mut count = 0;
+
+    let other_cells: Vec<CellId> = cell_variables
+        .vector(vector)
+        .indices()
+        .left_merge(cells.iter().copied())
+        .collect();
+    for cell in other_cells {
+        for value in values {
+            if cell_variables[cell].unsolved_and_contains(value) {
+                changes.cells.remove_domain_value(cell, value);
+                count += 1;
             }
         }
     }

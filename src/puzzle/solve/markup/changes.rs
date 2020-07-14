@@ -49,6 +49,10 @@ impl CellChanges {
         self.0.get(&cell_id)
     }
 
+    pub fn iter(&self) -> <&AHashMap<CellId, CellChange> as IntoIterator>::IntoIter {
+        self.0.borrow().into_iter()
+    }
+
     pub fn domain_removals(&self) -> impl Iterator<Item = (CellId, &[Value])> {
         self.0.iter().filter_map(|(&id, e)| match e {
             CellChange::DomainRemovals(values) => Some((id, values.as_slice())),
@@ -98,7 +102,7 @@ impl<'a> IntoIterator for &'a CellChanges {
     type IntoIter = <&'a AHashMap<CellId, CellChange> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.borrow().into_iter()
+        self.iter()
     }
 }
 
