@@ -94,11 +94,12 @@ fn init_constraints(puzzle: &Puzzle) -> Vec<Box<dyn Constraint<'_> + '_>> {
         Box::new(VectorSolvedCellConstraint::new(puzzle)),
         // if a vector has only one cell with a given value, solve the cell
         Box::new(VectorValueDomainConstraint::new(puzzle)),
+        // When a cell's domain is reduced, remove cage solutions
+        // Note: Other constraints depend on this being checked first
+        Box::new(CageSolutionCellConstraint::new(puzzle)),
         // If no cage solutions have a value in a cell's domain,
         // remove the cell domain value
         Box::new(CellCageSolutionConstraint::new(puzzle)),
-        // When a cell's domain is reduced, remove cage solutions
-        Box::new(CageSolutionCellConstraint::new(puzzle)),
         // If all cage solutions for a cage have a value in a vector,
         // remove the value from other cells in the vector
         Box::new(CageVectorValueConstraint::new(puzzle)),
