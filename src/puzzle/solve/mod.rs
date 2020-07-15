@@ -73,15 +73,16 @@ impl<'a> PuzzleSolver<'a> {
         let mut changes = PuzzleMarkupChanges::default();
         apply_unary_constraints(self.puzzle, &mut changes.cells);
         let mut markup = PuzzleMarkup::new(self.puzzle);
+        let solvable = markup.sync_changes(&mut changes);
+        debug_assert!(solvable);
         let mut step_writer = self.start_step_writer();
         if let Some(ref mut step_writer) = step_writer {
             step_writer.write_step(&markup, &changes.cells)?;
         }
-        let solvable = markup.sync_changes(&mut changes);
-        debug_assert!(solvable);
         markup.init_cage_solutions(self.puzzle);
         let mut constraints = ConstraintSet::new(self.puzzle);
-        constraints.notify_changes(&changes);
+        constraints.notify_changes(&changes, markup.cells());
+        markup.apply_changes(&changes);
         let solution = match constraints.propagate(&mut markup, &mut step_writer.as_mut())? {
             PropagateResult::Solved(solution) => Some(solution),
             PropagateResult::Unsolved => None,

@@ -1,10 +1,11 @@
 //! If all possible solutions for a given value in a given vector are in a given cage, then the cage solution must
 //! contain the given value in the given vector
 
-use crate::collections::square::{IsSquare, Vector};
+use crate::collections::square::{IsSquare, Square, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::constraint::Constraint;
 use crate::puzzle::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
+use crate::puzzle::solve::CellVariable;
 use crate::puzzle::{CellRef, Puzzle, Value};
 use itertools::Itertools;
 
@@ -29,9 +30,13 @@ impl<'a> VectorValueCageConstraint<'a> {
 }
 
 impl<'a> Constraint<'a> for VectorValueCageConstraint<'a> {
-    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
-        for (&id, change) in &changes.cells {
-            let cell = self.puzzle.cell(id);
+    fn notify_changes(
+        &mut self,
+        changes: &PuzzleMarkupChanges,
+        cell_variables: &Square<CellVariable>,
+    ) {
+        for (&cell_id, change) in &changes.cells {
+            let cell = self.puzzle.cell(cell_id);
             match change {
                 CellChange::DomainRemovals(values) => {
                     self.dirty_vector_values.extend(
@@ -41,7 +46,14 @@ impl<'a> Constraint<'a> for VectorValueCageConstraint<'a> {
                     );
                 }
                 &CellChange::Solution(value) => {
-                    for vector in cell.vectors().iter().copied() {
+                    for removed in cell_variables[cell_id].unsolved().unwrap() {
+                        if removed != value {
+                            for &vector in cell.vectors().iter() {
+                                self.dirty_vector_values.insert((vector, removed));
+                            }
+                        }
+                    }
+                    for &vector in cell.vectors().iter() {
                         self.dirty_vector_values.remove(&(vector, value));
                     }
                 }
@@ -107,8 +119,13 @@ impl VectorValueCageConstraint<'_> {
             }
         }
         if count > 0 {
-            debug!("Removed {} cage solutions for cage at {:?} where cage does not have {} in the vector {:?}",
-                   count, self.puzzle.cage(cage).coord(), value, vector)
+            debug!(
+                "Removed {} cage solutions for cage at {:?} where cage does not have {} in {:?}",
+                count,
+                self.puzzle.cage(cage).coord(),
+                value,
+                vector
+            )
         }
         count
     }

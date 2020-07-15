@@ -6,6 +6,7 @@ use crate::puzzle::solve::constraint::PropagateResult;
 use crate::puzzle::solve::markup::{CellChanges, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::step_writer::StepWriter;
 use crate::puzzle::{CellId, Puzzle, Solution, Value};
+use std::borrow::Cow;
 
 pub(crate) enum SearchResult {
     NoSolutions,
@@ -18,98 +19,101 @@ pub(crate) struct SingleSolution {
     pub depth: u32,
 }
 
-pub(crate) fn search_solution(
-    puzzle: &Puzzle,
-    markup: &PuzzleMarkup<'_>,
-    constraints: &ConstraintSet<'_>,
-    step_writer: &mut Option<&mut StepWriter<'_>>,
-) -> Result<SearchResult> {
-    search_next(1, puzzle, markup, constraints, step_writer, false)
-}
-
-fn search_next(
-    depth: u32,
-    puzzle: &Puzzle,
-    markup: &PuzzleMarkup<'_>,
-    constraints: &ConstraintSet<'_>,
-    step_writer: &mut Option<&mut StepWriter<'_>>,
-    mut solved_once: bool,
-) -> Result<SearchResult> {
-    debug!("Backtracking (depth={})", depth);
-    let mut solution = None;
-    for (i, guess) in guesses(markup).enumerate() {
-        debug!(
-            "Guessing with {} at {:?}, guess #: {}",
-            guess.value,
-            puzzle.cell(guess.cell_id).coord(),
-            i + 1
-        );
-        let result = guess_cell(
-            puzzle,
-            markup.clone(),
-            constraints.clone(),
-            step_writer,
-            guess,
-            depth,
-            solved_once,
-        )?;
-        match &result {
-            SearchResult::NoSolutions => debug!("Guess failed"),
-            SearchResult::SingleSolution(_) => {
-                if solved_once {
-                    return Ok(SearchResult::MultipleSolutions);
-                }
-                solution = Some(result);
-                solved_once = true;
-            }
-            SearchResult::MultipleSolutions => return Ok(SearchResult::MultipleSolutions),
-        }
-    }
-    match solution {
-        Some(result) => Ok(result),
-        None => Ok(SearchResult::NoSolutions),
-    }
-}
-
-fn guess_cell(
-    puzzle: &Puzzle,
-    mut markup: PuzzleMarkup<'_>,
-    mut constraints: ConstraintSet<'_>,
-    step_writer: &mut Option<&mut StepWriter<'_>>,
-    guess: Guess,
-    depth: u32,
+struct SearchContext<'a, 'b> {
+    puzzle: &'a Puzzle,
+    markup: Cow<'a, PuzzleMarkup<'b>>,
+    constraints: Cow<'a, ConstraintSet<'b>>,
+    step_writer: &'a mut Option<&'b mut StepWriter<'b>>,
     solved_once: bool,
+    depth: u32,
+}
+
+pub(crate) fn search_solution<'a>(
+    puzzle: &Puzzle,
+    markup: &PuzzleMarkup<'a>,
+    constraints: &ConstraintSet<'a>,
+    step_writer: &mut Option<&'a mut StepWriter<'a>>,
 ) -> Result<SearchResult> {
-    if let Some(ref mut step_writer) = step_writer {
-        let mut changes = CellChanges::new();
-        changes.solve(guess.cell_id, guess.value);
-        step_writer.write_backtrack(&markup, &changes, depth)?;
+    SearchContext {
+        puzzle,
+        markup: Cow::Borrowed(markup),
+        constraints: Cow::Borrowed(constraints),
+        step_writer,
+        solved_once: false,
+        depth: 0,
     }
-    apply_guess(guess, &mut markup, &mut constraints);
-    match constraints.propagate(&mut markup, step_writer)? {
-        PropagateResult::Solved(solution) => {
-            return Ok(SearchResult::SingleSolution(SingleSolution {
-                solution,
-                depth,
-            }));
+    .search_next()
+}
+
+impl SearchContext<'_, '_> {
+    fn search_next(&mut self) -> Result<SearchResult> {
+        let next_depth = self.depth + 1;
+        debug!("Backtracking (depth={})", next_depth);
+        let mut solution = None;
+        for (i, guess) in guesses(self.markup.as_ref()).enumerate() {
+            debug!(
+                "Guessing with {} at {:?}, guess #: {}",
+                guess.value,
+                self.puzzle.cell(guess.cell_id).coord(),
+                i + 1
+            );
+            let mut context = SearchContext {
+                puzzle: self.puzzle,
+                markup: Cow::Borrowed(&self.markup),
+                constraints: Cow::Borrowed(&self.constraints),
+                step_writer: self.step_writer,
+                solved_once: self.solved_once,
+                depth: next_depth,
+            };
+            match context.guess_cell(guess)? {
+                SearchResult::NoSolutions => debug!("Guess failed"),
+                SearchResult::SingleSolution(ss) => {
+                    if self.solved_once {
+                        return Ok(SearchResult::MultipleSolutions);
+                    }
+                    solution = Some(ss);
+                    self.solved_once = true;
+                }
+                SearchResult::MultipleSolutions => return Ok(SearchResult::MultipleSolutions),
+            }
         }
-        PropagateResult::Unsolved => (),
-        PropagateResult::Invalid => {
+        Ok(solution.map_or(SearchResult::NoSolutions, |s| {
+            SearchResult::SingleSolution(s)
+        }))
+    }
+
+    fn guess_cell(&mut self, guess: Guess) -> Result<SearchResult> {
+        let mut changes = PuzzleMarkupChanges::default();
+        changes.cells.solve(guess.cell_id, guess.value);
+        if !self.markup.sync_changes(&mut changes) {
             return Ok(SearchResult::NoSolutions);
         }
-    };
-    // recursive next backtracking call
-    search_next(
-        depth + 1,
-        puzzle,
-        &markup,
-        &constraints,
-        step_writer,
-        solved_once,
-    )
+        if let Some(ref mut step_writer) = self.step_writer {
+            let mut changes = CellChanges::new();
+            changes.solve(guess.cell_id, guess.value);
+            step_writer.write_backtrack(&self.markup, &changes, self.depth)?;
+        }
+        let (markup, constraints) = (self.markup.to_mut(), self.constraints.to_mut());
+        constraints.notify_changes(&changes, markup.cells());
+        markup.apply_changes(&changes);
+        match constraints.propagate(markup, self.step_writer)? {
+            PropagateResult::Solved(solution) => {
+                return Ok(SearchResult::SingleSolution(SingleSolution {
+                    solution,
+                    depth: self.depth,
+                }));
+            }
+            PropagateResult::Unsolved => (),
+            PropagateResult::Invalid => {
+                return Ok(SearchResult::NoSolutions);
+            }
+        };
+        // recursive next backtracking call
+        self.search_next()
+    }
 }
 
-fn guesses<'a, 'b: 'a>(markup: &'b PuzzleMarkup<'a>) -> impl Iterator<Item = Guess> + 'a {
+fn guesses<'a>(markup: &'a PuzzleMarkup<'_>) -> impl Iterator<Item = Guess> + 'a {
     // find one of the cells with the smallest domain
     let (cell_id, domain) = markup
         .cells()
@@ -120,13 +124,6 @@ fn guesses<'a, 'b: 'a>(markup: &'b PuzzleMarkup<'a>) -> impl Iterator<Item = Gue
         .expect("No unsolved cells");
     // guess every value in the domain
     domain.iter().map(move |value| Guess { cell_id, value })
-}
-
-fn apply_guess(guess: Guess, markup: &mut PuzzleMarkup<'_>, constraints: &mut ConstraintSet<'_>) {
-    let mut changes = PuzzleMarkupChanges::default();
-    changes.cells.solve(guess.cell_id, guess.value);
-    markup.sync_changes(&mut changes);
-    constraints.notify_changes(&changes)
 }
 
 #[derive(Clone, Copy)]

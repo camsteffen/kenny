@@ -30,7 +30,11 @@ impl<'a> CellCageSolutionConstraint<'a> {
 }
 
 impl<'a> Constraint<'a> for CellCageSolutionConstraint<'a> {
-    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
+    fn notify_changes(
+        &mut self,
+        changes: &PuzzleMarkupChanges,
+        _cell_variables: &Square<CellVariable>,
+    ) {
         for (id, _) in changes.cells.domain_removals() {
             self.dirty_cages.insert(self.puzzle.cell(id).cage_id());
         }

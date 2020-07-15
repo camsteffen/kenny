@@ -28,7 +28,11 @@ impl<'a> VectorPreemptiveSetConstraint<'a> {
 }
 
 impl<'a> Constraint<'a> for VectorPreemptiveSetConstraint<'a> {
-    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
+    fn notify_changes(
+        &mut self,
+        changes: &PuzzleMarkupChanges,
+        _cell_variables: &Square<CellVariable>,
+    ) {
         for (id, _) in changes.cells.domain_removals() {
             for vector in self.puzzle.cell(id).vectors().iter().copied() {
                 self.dirty_vecs.insert(vector);

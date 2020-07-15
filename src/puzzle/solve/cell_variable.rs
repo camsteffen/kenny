@@ -21,14 +21,6 @@ impl CellVariable {
         matches!(*self, Unsolved(_))
     }
 
-    pub fn solve(&mut self) -> Option<i32> {
-        let solution = self.unsolved().unwrap().single_value();
-        if let Some(solution) = solution {
-            *self = Solved(solution)
-        }
-        solution
-    }
-
     pub fn solved(&self) -> Option<i32> {
         match *self {
             Solved(value) => Some(value),

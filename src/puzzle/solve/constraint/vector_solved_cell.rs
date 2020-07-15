@@ -23,7 +23,11 @@ impl<'a> VectorSolvedCellConstraint<'a> {
 }
 
 impl<'a> Constraint<'a> for VectorSolvedCellConstraint<'a> {
-    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
+    fn notify_changes(
+        &mut self,
+        changes: &PuzzleMarkupChanges,
+        _cell_variables: &Square<CellVariable>,
+    ) {
         for (id, _) in changes.cells.solutions() {
             self.solved_cells.push(id);
         }
@@ -57,7 +61,7 @@ impl VectorSolvedCellConstraint<'_> {
         let count = cell
             .vectors()
             .iter()
-            .flat_map(|&v| self.puzzle.vector_cells(v))
+            .flat_map(|&v| self.puzzle.vector(v).iter())
             .filter(|cell| cell_variables[cell.id()].unsolved_and_contains(value))
             .inspect(|cell| changes.cells.remove_domain_value(cell.id(), value))
             .count() as u32;

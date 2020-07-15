@@ -1,9 +1,10 @@
 use super::Constraint;
 use crate::collections::range_set::RangeSet;
 
-use crate::collections::square::{AsVector, EmptySquare, IsSquare, Vector};
+use crate::collections::square::{AsVector, EmptySquare, IsSquare, Square, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
+use crate::puzzle::solve::CellVariable;
 use crate::puzzle::{CellId, Puzzle, Value};
 use std::ops::{Index, IndexMut};
 
@@ -52,7 +53,11 @@ impl<'a> VectorValueDomainConstraint<'a> {
 }
 
 impl<'a> Constraint<'a> for VectorValueDomainConstraint<'a> {
-    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
+    fn notify_changes(
+        &mut self,
+        changes: &PuzzleMarkupChanges,
+        _cell_variables: &Square<CellVariable>,
+    ) {
         for (&id, change) in &changes.cells {
             let cell = self.puzzle.cell(id);
             match change {

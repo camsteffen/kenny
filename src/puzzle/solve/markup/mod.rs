@@ -5,7 +5,8 @@ pub(crate) use self::changes::{CellChange, CellChanges, PuzzleMarkupChanges};
 use crate::collections::square::{IsSquare, Square};
 use crate::puzzle::solve::cage_solutions::CageSolutionsSet;
 use crate::puzzle::solve::CellVariable;
-use crate::puzzle::Puzzle;
+use crate::puzzle::{CellId, Puzzle};
+use itertools::Itertools;
 use std::convert::TryInto;
 
 /// Markup on a puzzle including possible cell values and cage solutions
@@ -62,49 +63,76 @@ impl<'a> PuzzleMarkup<'a> {
     }
 
     /// Returns true if the puzzle is solved or solvable
-    pub fn sync_changes(&mut self, changes: &mut PuzzleMarkupChanges) -> bool {
+    #[must_use]
+    pub fn sync_changes(&self, changes: &mut PuzzleMarkupChanges) -> bool {
         if !self.sync_cells(changes) {
             return false;
         }
-        if let Some(ref mut cage_solutions_set) = self.cage_solutions_set {
-            match cage_solutions_set.apply_changes(self.puzzle, changes) {
-                Ok(cell_solutions) => {
-                    for (cell_id, value) in cell_solutions {
-                        changes.cells.solve(cell_id, value);
-                        self.cell_variables[cell_id] = CellVariable::Solved(value);
-                    }
-                }
-                Err(()) => return false,
+        if let Some(ref cage_solutions_set) = self.cage_solutions_set {
+            if !cage_solutions_set.sync_changes(self.puzzle, changes) {
+                return false;
             }
         }
-        self.blank_cell_count -= changes.cells.solutions().count() as u32;
         true
     }
 
-    fn sync_cells(&mut self, changes: &mut PuzzleMarkupChanges) -> bool {
+    #[must_use]
+    fn sync_cells(&self, changes: &mut PuzzleMarkupChanges) -> bool {
         for (&id, change) in &mut changes.cells {
-            let cell_variable = &mut self.cell_variables[id];
-            match change {
-                CellChange::DomainRemovals(values) => {
-                    let domain = cell_variable.unsolved_mut().unwrap();
-                    for value in values {
-                        domain.remove(*value);
-                    }
-                    if domain.is_empty() {
+            let cell_variable = &self.cell_variables[id];
+            if let CellChange::DomainRemovals(values) = change {
+                let domain = cell_variable.unsolved().unwrap();
+                match domain.len() - values.len() {
+                    0 => {
                         debug!(
                             "Cell domain at {:?} is empty",
                             self.cell_variables.cell(id).coord()
                         );
                         return false;
-                    } else if let Some(solution) = cell_variable.solve() {
+                    }
+                    1 => {
+                        let solution = domain
+                            .iter()
+                            .filter(|i| !values.contains(i))
+                            .exactly_one()
+                            .ok()
+                            .unwrap();
                         *change = CellChange::Solution(solution);
                     }
-                }
-                CellChange::Solution(value) => {
-                    *cell_variable = CellVariable::Solved(*value);
+                    _ => (),
                 }
             }
         }
         true
+    }
+
+    /// Returns true if the puzzle is solved or solvable
+    pub fn apply_changes(&mut self, changes: &PuzzleMarkupChanges) {
+        self.apply_cell_changes(&changes.cells);
+        if let Some(ref mut cage_solutions_set) = self.cage_solutions_set {
+            cage_solutions_set.apply_changes(self.puzzle, changes);
+        }
+        self.blank_cell_count -= changes.cells.solutions().count() as u32;
+    }
+
+    pub fn apply_cell_changes(&mut self, changes: &CellChanges) {
+        for (&id, change) in changes {
+            self.apply_cell_change(id, change)
+        }
+    }
+
+    pub fn apply_cell_change(&mut self, id: CellId, change: &CellChange) {
+        let cell_variable = &mut self.cell_variables[id];
+        match change {
+            CellChange::DomainRemovals(removals) => {
+                let domain = cell_variable.unsolved_mut().unwrap();
+                for value in removals {
+                    domain.remove(*value);
+                }
+            }
+            CellChange::Solution(value) => {
+                *cell_variable = CellVariable::Solved(*value);
+            }
+        }
     }
 }

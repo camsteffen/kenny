@@ -118,7 +118,9 @@ impl PuzzleContext<'_> {
             _ => return true,
         };
         if let Some(solve) = result.solved() {
-            context.include_solvable && !context.require_search || solve.used_search
+            context.include_solvable
+                && (!context.require_search || solve.used_search)
+                && (!context.no_require_search || !solve.used_search)
         } else {
             context.include_unsolvable
         }

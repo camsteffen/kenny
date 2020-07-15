@@ -1,5 +1,6 @@
 use anyhow::Result;
 
+use crate::collections::square::Square;
 use crate::puzzle::solve::constraint::cage_solution_cell::CageSolutionCellConstraint;
 use crate::puzzle::solve::constraint::cage_solution_outer_cell_domain::CageSolutionOuterCellDomainConstraint;
 use crate::puzzle::solve::constraint::cage_vector_value::CageVectorValueConstraint;
@@ -11,6 +12,7 @@ use crate::puzzle::solve::constraint::vector_value_domain::VectorValueDomainCons
 use crate::puzzle::solve::constraint::Constraint;
 use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::step_writer::StepWriter;
+use crate::puzzle::solve::CellVariable;
 use crate::puzzle::{Puzzle, Solution};
 
 #[derive(Clone)]
@@ -27,9 +29,13 @@ impl<'a> ConstraintSet<'a> {
         }
     }
 
-    pub fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
+    pub fn notify_changes(
+        &mut self,
+        changes: &PuzzleMarkupChanges,
+        cell_variables: &Square<CellVariable>,
+    ) {
         for c in &mut self.constraints {
-            c.notify_changes(changes);
+            c.notify_changes(changes, cell_variables);
         }
     }
 
@@ -48,15 +54,16 @@ impl<'a> ConstraintSet<'a> {
             if !has_changes {
                 break;
             }
+            if !markup.sync_changes(&mut changes) {
+                return Ok(PropagateResult::Invalid);
+            }
             if let Some(step_writer) = step_writer.as_mut() {
                 if !changes.cells.is_empty() {
                     step_writer.write_step(markup, &changes.cells)?;
                 }
             }
-            if !markup.sync_changes(&mut changes) {
-                return Ok(PropagateResult::Invalid);
-            }
-            self.notify_changes(&changes);
+            self.notify_changes(&changes, markup.cells());
+            markup.apply_changes(&changes);
             changes.clear();
             loop_count += 1;
             if markup.is_completed() {

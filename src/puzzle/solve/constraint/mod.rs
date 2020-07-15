@@ -13,12 +13,18 @@ mod vector_value_cage;
 mod vector_value_domain;
 
 use super::markup::PuzzleMarkupChanges;
+use crate::collections::square::Square;
 use crate::puzzle::solve::markup::PuzzleMarkup;
+use crate::puzzle::solve::CellVariable;
 
 pub(crate) trait Constraint<'a>: CloneConstraint<'a> {
     /// Notifies this constraint of changes made to the puzzle markup.
     /// This should be a low-cost method where data is cached for later processing.
-    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges);
+    fn notify_changes(
+        &mut self,
+        changes: &PuzzleMarkupChanges,
+        cell_variables: &Square<CellVariable>,
+    );
 
     /// Partially enforces this constraint on the current puzzle. The constraint will be checked until some
     /// changes are found and added to `changes`. Returns `false` if no changes are found.

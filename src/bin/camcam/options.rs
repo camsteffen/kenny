@@ -44,7 +44,8 @@ impl Options {
                     save_puzzle: matches.is_present("save_puzzle") || save_all,
                     include_solvable,
                     include_unsolvable,
-                    require_search: matches.is_present("requires_search"),
+                    require_search: matches.is_present("require_search"),
+                    no_require_search: matches.is_present("no_require_search"),
                 })
             },
             solve: if matches.is_present("solve") {
@@ -130,6 +131,7 @@ pub(crate) struct Generate {
     pub include_solvable: bool,
     pub include_unsolvable: bool,
     pub require_search: bool,
+    pub no_require_search: bool,
 }
 
 #[derive(Clone)]
@@ -199,9 +201,16 @@ fn clap_app() -> clap::App<'static, 'static> {
                 .help("the number of puzzles to generate (and solve)"),
         )
         .arg(
-            Arg::with_name("requires_search")
-                .long("requires-search")
+            Arg::with_name("require_search")
+                .long("require-search")
                 .requires("generate")
+                .help("only include puzzles that require backtracking search to solve"),
+        )
+        .arg(
+            Arg::with_name("no_require_search")
+                .long("no-require-search")
+                .requires("generate")
+                .conflicts_with("require_search")
                 .help("only include puzzles that require backtracking search to solve"),
         )
         .arg(

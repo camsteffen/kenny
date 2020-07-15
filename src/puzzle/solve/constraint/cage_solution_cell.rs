@@ -1,6 +1,7 @@
-use crate::collections::square::IsSquare;
+use crate::collections::square::{IsSquare, Square};
 use crate::puzzle::solve::constraint::Constraint;
 use crate::puzzle::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
+use crate::puzzle::solve::CellVariable;
 use crate::puzzle::{CellId, Puzzle};
 use crate::HashMap;
 use std::collections::hash_map::Entry;
@@ -24,7 +25,11 @@ impl<'a> CageSolutionCellConstraint<'a> {
 }
 
 impl<'a> Constraint<'a> for CageSolutionCellConstraint<'a> {
-    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
+    fn notify_changes(
+        &mut self,
+        changes: &PuzzleMarkupChanges,
+        _cell_variables: &Square<CellVariable>,
+    ) {
         for (&id, change) in &changes.cells {
             let cell_map = self
                 .cage_cell_changes

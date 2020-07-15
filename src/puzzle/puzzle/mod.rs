@@ -1,6 +1,6 @@
 pub use self::cage::{Cage, Operator};
 
-use crate::collections::square::{Coord, IsSquare, Square, SquareCellRef, SquareVector, Vector};
+use crate::collections::square::{Coord, IsSquare, Square, SquareCellRef, SquareVector};
 use crate::puzzle::error::{InvalidPuzzle, ParsePuzzleError, PuzzleFromFileError};
 use crate::puzzle::generate::generate_untested_puzzle;
 use crate::puzzle::parse::parse_puzzle;
@@ -75,10 +75,6 @@ impl Puzzle {
 
     pub fn cell_cage_indices(&self) -> &Square<usize> {
         &self.cage_id_map
-    }
-
-    pub(crate) fn vector_cells(&self, vector: Vector) -> impl Iterator<Item = CellRef<'_>> {
-        self.vector(vector).indices().map(move |i| self.cell(i))
     }
 
     pub fn verify_solution(&self, solution: &Solution) -> bool {

@@ -8,6 +8,7 @@ use crate::puzzle::{CageId, CellId, CellRef, Puzzle, Value};
 use crate::{HashMap, HashSet};
 
 use super::Constraint;
+use crate::puzzle::solve::CellVariable;
 
 /// If a value exists in every cage solution for a cage, in a given vector, that value must be in that cage-vector.
 /// It must not be in any other cell in the vector, not in that cage.
@@ -36,7 +37,11 @@ impl<'a> CageVectorValueConstraint<'a> {
 }
 
 impl<'a> Constraint<'a> for CageVectorValueConstraint<'a> {
-    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
+    fn notify_changes(
+        &mut self,
+        changes: &PuzzleMarkupChanges,
+        _cell_variables: &Square<CellVariable>,
+    ) {
         for (id, _) in changes.cells.domain_removals() {
             self.notify_change_cell_domain(id);
         }
@@ -99,7 +104,8 @@ impl CageVectorValueConstraint<'_> {
         // cells that are in the vector but not in the cage
         let remove_from = self
             .puzzle
-            .vector_cells(vector)
+            .vector(vector)
+            .iter()
             .filter(|cell| cell.cage_id() != cage_id)
             .map(CellRef::id)
             .collect::<Vec<_>>();

@@ -21,7 +21,10 @@
 #[macro_use]
 extern crate log;
 
-use ahash::{AHashMap, AHashSet, AHasher};
+#[cfg(debug_assertions)]
+use ahash::AHasher;
+use ahash::{AHashMap, AHashSet};
+#[cfg(debug_assertions)]
 use std::hash::BuildHasherDefault;
 
 pub mod collections;
@@ -39,6 +42,7 @@ type HashMap<K, V> = AHashMap<K, V>;
 #[cfg(not(debug_assertions))]
 type HashSet<T> = AHashSet<T>;
 
+// todo sort cages and fix test puzzles
 // todo unit tests
 // todo documentation
 // todo identify constraints that "require" other constraints to be applied first

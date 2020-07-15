@@ -13,10 +13,9 @@ use crate::puzzle::solve::CellVariable::{Solved, Unsolved};
 use crate::puzzle::solve::ValueSet;
 use crate::puzzle::Puzzle;
 use crate::puzzle::{CageId, Operator};
-use crate::puzzle::{CageRef, CellId, Value};
+use crate::puzzle::{CellId, Value};
 use crate::{HashMap, HashSet};
 use itertools::Itertools;
-use std::iter::FromIterator;
 
 #[derive(Clone)]
 pub(crate) struct CageSolutionsSet {
@@ -38,17 +37,77 @@ impl CageSolutionsSet {
         Self { data }
     }
 
+    /// Returns false if a cage is left unsolvable
+    #[must_use]
+    pub fn sync_changes(&self, puzzle: &Puzzle, changes: &mut PuzzleMarkupChanges) -> bool {
+        for cage_id in Self::changed_cage_ids(puzzle, changes) {
+            let solutions = &self.data[cage_id];
+            let result = solutions
+                .solutions
+                .iter()
+                .enumerate()
+                .filter(|&(i, solution)| {
+                    if changes.is_cage_solution_removed(cage_id, i) {
+                        return false;
+                    }
+                    let valid = solution.iter().enumerate().all(|(i, value)| {
+                        match changes.cells.get(solutions.cell_ids[i]) {
+                            Some(CellChange::Solution(cell_solution)) => value == cell_solution,
+                            Some(CellChange::DomainRemovals(removals)) => !removals.contains(value),
+                            None => true,
+                        }
+                    });
+                    if !valid {
+                        // todo remove redundant constraint
+                        changes.remove_cage_solution(cage_id, i);
+                        return false;
+                    }
+                    true
+                })
+                .map(|(_, solution)| solution)
+                .exactly_one();
+            match result {
+                Err(mut it) => {
+                    if it.next().is_none() {
+                        // all solutions removed, bail!
+                        debug!(
+                            "No solutions left for cage at {:?}",
+                            puzzle.cage(cage_id).coord()
+                        );
+                        return false;
+                    }
+                    it.for_each(drop);
+                }
+                Ok(solution) => {
+                    debug!(
+                        "One cage solution remains for cage at {:?}",
+                        puzzle.cage(cage_id).coord()
+                    );
+                    for (i, &value) in solution.iter().enumerate() {
+                        changes.cells.solve(solutions.cell_ids[i], value);
+                    }
+                }
+            }
+        }
+        true
+    }
+
+    fn changed_cage_ids(puzzle: &Puzzle, changes: &mut PuzzleMarkupChanges) -> HashSet<usize> {
+        changes
+            .cells
+            .iter()
+            .map(|(&id, _)| puzzle.cell(id).cage_id())
+            .chain(changes.cage_solution_removals.iter().map(|(&id, _)| id))
+            .collect()
+    }
+
     /// Returns a list of new solutions if a cage is solved
     /// Returns Err if a cage is left with no solutions
-    pub fn apply_changes(
-        &mut self,
-        puzzle: &Puzzle,
-        changes: &PuzzleMarkupChanges,
-    ) -> Result<Vec<(CellId, Value)>, ()> {
+    pub fn apply_changes(&mut self, puzzle: &Puzzle, changes: &PuzzleMarkupChanges) {
         #[derive(Default)]
         struct CageData {
             removed_solution_ids: HashSet<usize>,
-            solved_cells: HashMap<CellId, Value>,
+            solved_cells: HashSet<CellId>,
         }
 
         let mut data: VecMap<CageData> = VecMap::default();
@@ -60,23 +119,15 @@ impl CageSolutionsSet {
                 .extend(values);
         }
 
-        for (id, value) in changes.cells.solutions() {
+        for (id, _value) in changes.cells.solutions() {
             let cage_id = puzzle.cell(id).cage_id();
             let cage_data = data.entry(cage_id).or_default();
-            cage_data.solved_cells.insert(id, value);
+            cage_data.solved_cells.insert(id);
         }
 
-        data.into_iter()
-            .map(|(cage_id, cage_data)| {
-                self[cage_id].apply_changes(
-                    changes,
-                    &cage_data.removed_solution_ids,
-                    &cage_data.solved_cells,
-                    puzzle.cage(cage_id),
-                )
-            })
-            .collect::<Result<Concat<_>, _>>()
-            .map(|concat| concat.0)
+        for (cage_id, cage_data) in data {
+            self[cage_id].apply_changes(&cage_data.removed_solution_ids, &cage_data.solved_cells);
+        }
     }
 }
 
@@ -148,79 +199,37 @@ impl CageSolutions {
     /// cage is now solved. Returns Err if the cage is left unsolvable.
     pub fn apply_changes(
         &mut self,
-        changes: &PuzzleMarkupChanges,
-        // todo just use changes?
         removed_solution_indices: &HashSet<usize>,
-        solved_cells: &HashMap<CellId, Value>,
-        cage: CageRef<'_>,
-    ) -> Result<Vec<(CellId, Value)>, ()> {
+        solved_cells: &HashSet<CellId>,
+    ) {
         let cell_ids_len = self.cell_ids.len() - solved_cells.len();
         if cell_ids_len == 0 {
             // all the cells in the cage have been solved
             self.clear();
-            return Ok(Vec::new());
+            return;
         }
         let solutions_len = self.solutions.len() - removed_solution_indices.len();
-        if solutions_len == 0 {
-            // all solutions removed, bail!
-            debug!("No solutions left for cage at {:?}", cage.coord());
-            return Err(());
-        }
+        debug_assert!(solutions_len > 0);
 
         let keep_indices: Vec<usize> = self
             .cell_ids
             .iter()
             .enumerate()
-            .filter(|&(_, id)| !solved_cells.contains_key(id))
+            .filter(|&(_, id)| !solved_cells.contains(id))
             .map(|(i, _)| i)
             .collect_into(Vec::with_capacity(cell_ids_len));
         self.solutions = mem::take(&mut self.solutions)
             .into_iter()
             .enumerate()
             .filter(|(i, _)| !removed_solution_indices.contains(i))
-            // todo remove redundant constraint
-            .filter(|(_, solution)| {
-                solved_cells
-                    .iter()
-                    .all(|(cell_id, &v)| solution[self.index_map[cell_id]] == v)
-            })
-            .filter_map(|(_, solution)| {
-                keep_indices
-                    .iter()
-                    .map(|&i| {
-                        let value = solution[i];
-                        match changes.cells.get(self.cell_ids[i]) {
-                            // todo change to set
-                            // todo remove redundant constraint
-                            Some(&CellChange::DomainRemovals(ref values))
-                                if values.contains(&value) =>
-                            {
-                                Err(())
-                            }
-                            _ => Ok(value),
-                        }
-                    })
-                    .collect::<Result<_, _>>()
-                    .ok()
-            })
+            .map(|(_, solution)| keep_indices.iter().map(|&i| solution[i]).collect())
             .dedup()
             .collect_into(Vec::with_capacity(solutions_len));
 
         self.cell_ids = keep_indices.iter().map(|&i| self.cell_ids[i]).collect();
         debug_assert_eq!(self.cell_ids.len(), cell_ids_len);
 
-        if self.solutions.len() == 1 {
-            self.index_map.clear();
-            let solution = mem::take(&mut self.solutions).into_iter().next().unwrap();
-            let cell_solutions = mem::take(&mut self.cell_ids)
-                .into_iter()
-                .zip(solution)
-                .collect();
-            return Ok(cell_solutions);
-        }
-
         self.reset_index_map();
-        Ok(Vec::new())
     }
 
     pub fn vector_view<T: IsSquare>(&self, vector: SquareVector<'_, T>) -> CageSolutionsView<'_> {
@@ -513,13 +522,5 @@ impl<'a> CageSolutionsView<'a> {
             .solutions
             .iter()
             .map(move |solution| self.indices.iter().map(|&i| solution[i]).collect())
-    }
-}
-
-struct Concat<T>(Vec<T>);
-
-impl<T> FromIterator<Vec<T>> for Concat<T> {
-    fn from_iter<I: IntoIterator<Item = Vec<T>>>(iter: I) -> Self {
-        Concat(iter.into_iter().flatten().collect())
     }
 }

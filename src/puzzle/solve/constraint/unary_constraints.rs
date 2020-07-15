@@ -189,7 +189,7 @@ fn group_sequence_min_max(group_sequence: &[usize], puzzle_width: usize) -> (i32
 #[cfg(test)]
 mod test {
     use crate::puzzle::solve::constraint::apply_unary_constraints;
-    use crate::puzzle::solve::markup::{CellChanges};
+    use crate::puzzle::solve::markup::CellChanges;
     use crate::puzzle::Puzzle;
 
     #[test]

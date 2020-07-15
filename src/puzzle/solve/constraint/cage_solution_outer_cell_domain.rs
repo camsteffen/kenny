@@ -1,10 +1,10 @@
 use std::collections::hash_map::Entry;
 
 use super::Constraint;
-use crate::collections::square::{IsSquare, Vector};
+use crate::collections::square::{IsSquare, Square, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
-use crate::puzzle::solve::ValueSet;
+use crate::puzzle::solve::{CellVariable, ValueSet};
 use crate::puzzle::{CageId, CellId, Puzzle};
 use crate::{HashMap, HashSet};
 
@@ -51,7 +51,11 @@ impl<'a> CageSolutionOuterCellDomainConstraint<'a> {
 }
 
 impl<'a> Constraint<'a> for CageSolutionOuterCellDomainConstraint<'a> {
-    fn notify_changes(&mut self, changes: &PuzzleMarkupChanges) {
+    fn notify_changes(
+        &mut self,
+        changes: &PuzzleMarkupChanges,
+        _cell_variables: &Square<CellVariable>,
+    ) {
         for (&id, change) in &changes.cells {
             match change {
                 CellChange::DomainRemovals(_) => self.notify_cell_domain_removal(id),
@@ -59,6 +63,7 @@ impl<'a> Constraint<'a> for CageSolutionOuterCellDomainConstraint<'a> {
             }
         }
     }
+
     fn enforce_partial(
         &mut self,
         markup: &PuzzleMarkup<'_>,
@@ -77,10 +82,19 @@ impl<'a> Constraint<'a> for CageSolutionOuterCellDomainConstraint<'a> {
 impl CageSolutionOuterCellDomainConstraint<'_> {
     fn notify_cell_domain_removal(&mut self, cell_id: CellId) {
         let cell = self.puzzle.cell(cell_id);
-        for &v in &cell.vectors() {
-            let key = (cell.cage_id(), v);
-            if self.cage_vector_cells.contains_key(&key) {
-                self.dirty_cage_vectors.insert(key);
+        for &vector in &cell.vectors() {
+            let mut set = HashSet::new();
+            let cage_ids = self
+                .puzzle
+                .vector(vector)
+                .iter()
+                .map(|cell| cell.cage_id())
+                .filter(move |&i| set.insert(i));
+            for cage_id in cage_ids {
+                let key = (cage_id, vector);
+                if self.cage_vector_cells.contains_key(&key) {
+                    self.dirty_cage_vectors.insert(key);
+                }
             }
         }
     }
@@ -121,11 +135,14 @@ impl CageSolutionOuterCellDomainConstraint<'_> {
         // cell domains in the vector, outside the cage, where domain size <= solution size
         let outside_domains: Vec<(CellId, &ValueSet)> = self
             .puzzle
-            .vector_cells(vector)
+            .vector(vector)
+            .iter()
             .filter(|cell| cell.cage_id() != cage_id)
-            .filter_map(|cell| match markup.cells()[cell.id()].unsolved() {
-                Some(domain) if domain.len() <= view.len() => Some((cell.id(), domain)),
-                _ => None,
+            .filter_map(|cell| {
+                markup.cells()[cell.id()]
+                    .unsolved()
+                    .filter(|domain| domain.len() <= view.len())
+                    .map(|domain| (cell.id(), domain))
             })
             .collect();
         if outside_domains.is_empty() {

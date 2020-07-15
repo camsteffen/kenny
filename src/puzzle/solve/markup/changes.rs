@@ -1,8 +1,8 @@
-use crate::collections::square::IsSquare;
-use crate::puzzle::{CageId, CellId, Puzzle, Value};
-use crate::HashMap;
 use std::borrow::{Borrow, BorrowMut};
 use std::collections::hash_map;
+
+use crate::puzzle::{CageId, CellId, Value};
+use crate::{HashMap, HashSet};
 
 #[derive(Debug, Default, PartialEq)]
 pub(crate) struct PuzzleMarkupChanges {
@@ -16,27 +16,21 @@ impl PuzzleMarkupChanges {
         self.cage_solution_removals.clear();
     }
 
+    pub fn is_cage_solution_removed(&self, cage_id: CageId, solution_index: usize) -> bool {
+        matches!(self.cage_solution_removals.get(&cage_id), Some(values) if values.contains(&solution_index))
+    }
+
     pub fn remove_cage_solution(&mut self, cage_id: CageId, solution_index: usize) {
         self.cage_solution_removals
             .entry(cage_id)
             .or_default()
             .push(solution_index);
     }
-
-    pub fn includes_cage(&self, cage_id: CageId, puzzle: &Puzzle) -> bool {
-        self.cells
-            .iter()
-            .any(|(&cell_id, _)| puzzle.cell(cell_id).cage_id() == cage_id)
-            || self
-                .cage_solution_removals
-                .iter()
-                .any(|(&cell_id, _)| puzzle.cell(cell_id).cage_id() == cage_id)
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CellChange {
-    DomainRemovals(Vec<Value>),
+    DomainRemovals(HashSet<Value>),
     Solution(Value),
 }
 
@@ -64,9 +58,9 @@ impl CellChanges {
         self.0.borrow().into_iter()
     }
 
-    pub fn domain_removals(&self) -> impl Iterator<Item = (CellId, &[Value])> {
+    pub fn domain_removals(&self) -> impl Iterator<Item = (CellId, &HashSet<Value>)> {
         self.0.iter().filter_map(|(&id, e)| match e {
-            CellChange::DomainRemovals(values) => Some((id, values.as_slice())),
+            CellChange::DomainRemovals(values) => Some((id, values)),
             _ => None,
         })
     }
@@ -76,10 +70,14 @@ impl CellChanges {
             hash_map::Entry::Occupied(mut entry) => match entry.get_mut() {
                 // already solved, ignore
                 CellChange::Solution(_) => (),
-                CellChange::DomainRemovals(values) => values.push(value),
+                CellChange::DomainRemovals(values) => {
+                    values.insert(value);
+                }
             },
             hash_map::Entry::Vacant(entry) => {
-                entry.insert(CellChange::DomainRemovals(vec![value]));
+                entry.insert(CellChange::DomainRemovals(
+                    [value].iter().copied().collect(),
+                ));
             }
         };
     }

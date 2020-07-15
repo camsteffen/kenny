@@ -40,11 +40,6 @@ impl ValueSet {
     pub fn remove(&mut self, n: i32) -> bool {
         self.0.remove(n as usize)
     }
-
-    pub fn single_value(&self) -> Option<i32> {
-        let value = self.0.single_value()?;
-        Some(value as i32)
-    }
 }
 
 impl Extend<i32> for ValueSet {
