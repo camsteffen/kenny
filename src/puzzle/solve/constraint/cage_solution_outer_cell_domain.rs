@@ -7,8 +7,9 @@ use crate::collections::iterator_ext::IteratorExt;
 use crate::collections::square::{IsSquare, Square, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
-use crate::puzzle::solve::{CellVariable, ValueSet};
-use crate::puzzle::{CageId, CellId, Puzzle};
+use crate::puzzle::solve::CellVariable;
+use crate::puzzle::{CageId, CellId, Puzzle, Value};
+use crate::HashSet;
 
 /// Summary: A cage solution must not conflict with a cell's domain outside of the cage
 ///
@@ -103,30 +104,29 @@ impl CageSolutionOuterCellDomainConstraint<'_> {
         markup: &PuzzleMarkup<'_>,
         changes: &mut PuzzleMarkupChanges,
     ) -> u32 {
-        let cell = self.puzzle.cell(cell_id);
-        let cage = self.puzzle.cage(cage_id);
         let cage_solutions = &markup.cage_solutions().unwrap()[cage_id];
         if cage_solutions.cell_ids.is_empty() {
             // cage is solved
             return 0;
         }
-        let view = cage_solutions.vector_view(self.puzzle.vector(vector));
-        let domain = markup.cells()[cell.id()].unsolved().unwrap();
-        if view.len() < domain.len() {
+        let cage_solutions_view = cage_solutions.vector_view(self.puzzle.vector(vector));
+        let domain = markup.cells()[cell_id].unsolved().unwrap();
+        if cage_solutions_view.len() < domain.len() {
             return 0;
         }
 
+        let cell = self.puzzle.cell(cell_id);
+        let cage = self.puzzle.cage(cage_id);
         let mut count = 0;
-        for (solution_index, solution) in view.solutions().enumerate() {
+        for (solution_index, solution) in cage_solutions_view.solutions().enumerate() {
             // solution values for cells in cage and vector
-            let mut solution_values = ValueSet::new(self.puzzle.width());
-            solution_values.extend(solution.iter().copied());
-            if domain.iter().all(|value| solution_values.contains(value)) {
+            let solution_values: HashSet<Value> = solution.iter().copied().collect();
+            if domain.iter().all(|value| solution_values.contains(&value)) {
                 debug!(
                     "solution {:?} for cage at {:?} conflicts with cell domain at {:?}",
                     solution,
                     cage.coord(),
-                    self.puzzle.cell(cell_id).coord()
+                    cell.coord()
                 );
                 changes.remove_cage_solution(cage.id(), solution_index);
                 count += 1;
