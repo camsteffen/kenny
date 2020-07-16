@@ -1,12 +1,15 @@
 use std::collections::hash_map::Entry;
 
 use super::Constraint;
+use crate::collections::iterator_ext::IteratorExt;
 use crate::collections::square::{IsSquare, Square, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::{CellVariable, ValueSet};
 use crate::puzzle::{CageId, CellId, Puzzle};
 use crate::{HashMap, HashSet};
+use ahash::AHasher;
+use std::hash::BuildHasherDefault;
 
 /// Summary: A cage solution must not conflict with a cell's domain outside of the cage
 ///
@@ -83,13 +86,12 @@ impl CageSolutionOuterCellDomainConstraint<'_> {
     fn notify_cell_domain_removal(&mut self, cell_id: CellId) {
         let cell = self.puzzle.cell(cell_id);
         for &vector in &cell.vectors() {
-            let mut set = HashSet::new();
             let cage_ids = self
                 .puzzle
                 .vector(vector)
                 .iter()
                 .map(|cell| cell.cage_id())
-                .filter(move |&i| set.insert(i));
+                .unique_default::<BuildHasherDefault<AHasher>>();
             for cage_id in cage_ids {
                 let key = (cage_id, vector);
                 if self.cage_vector_cells.contains_key(&key) {

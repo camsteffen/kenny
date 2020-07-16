@@ -1,4 +1,7 @@
 use std::cmp;
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
+use std::hash::{BuildHasher, Hash};
 use std::iter::Peekable;
 
 pub(crate) trait IteratorExt: Iterator + Sized {
@@ -41,7 +44,21 @@ pub(crate) trait IteratorExt: Iterator + Sized {
     {
         right.into_iter().left_merge(self)
     }
+
+    /// Same as itertools but uses AHashSet
+    fn unique_default<S>(self) -> Unique<Self, S>
+    where
+        Self::Item: Clone + Eq + Hash,
+        S: BuildHasher + Default,
+    {
+        Unique {
+            iter: self,
+            map: HashMap::default(),
+        }
+    }
 }
+
+impl<T: Iterator> IteratorExt for T {}
 
 pub(crate) struct LeftMerge<L, R>
 where
@@ -85,7 +102,34 @@ where
     }
 }
 
-impl<T: Iterator> IteratorExt for T {}
+pub(crate) struct Unique<I, S>
+where
+    I: Iterator,
+    I::Item: Clone + Eq + Hash,
+    S: BuildHasher,
+{
+    iter: I,
+    map: HashMap<I::Item, (), S>,
+}
+
+impl<I, S> Iterator for Unique<I, S>
+where
+    I: Iterator,
+    I::Item: Clone + Eq + Hash,
+    S: BuildHasher,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let Entry::Vacant(entry) = self.map.entry(self.iter.next()?) {
+                let item = entry.key().clone();
+                entry.insert(());
+                return Some(item);
+            }
+        }
+    }
+}
 
 #[cfg(test)]
 mod test {
