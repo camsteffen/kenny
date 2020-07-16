@@ -1,7 +1,6 @@
 use anyhow::Result;
 
 use crate::collections::square::Square;
-use crate::puzzle::solve::constraint::cage_solution_cell::CageSolutionCellConstraint;
 use crate::puzzle::solve::constraint::cage_solution_outer_cell_domain::CageSolutionOuterCellDomainConstraint;
 use crate::puzzle::solve::constraint::cage_vector_value::CageVectorValueConstraint;
 use crate::puzzle::solve::constraint::cell_cage_solution::CellCageSolutionConstraint;
@@ -101,9 +100,6 @@ fn init_constraints(puzzle: &Puzzle) -> Vec<Box<dyn Constraint<'_> + '_>> {
         Box::new(VectorSolvedCellConstraint::new(puzzle)),
         // if a vector has only one cell with a given value, solve the cell
         Box::new(VectorValueDomainConstraint::new(puzzle)),
-        // When a cell's domain is reduced, remove cage solutions
-        // Note: Other constraints depend on this being checked first
-        Box::new(CageSolutionCellConstraint::new(puzzle)),
         // If no cage solutions have a value in a cell's domain,
         // remove the cell domain value
         Box::new(CellCageSolutionConstraint::new(puzzle)),

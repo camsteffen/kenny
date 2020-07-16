@@ -6,7 +6,6 @@ use crate::puzzle::solve::CellVariable;
 pub(crate) use self::constraint_set::{ConstraintSet, PropagateResult};
 pub(crate) use self::unary_constraints::apply_unary_constraints;
 
-mod cage_solution_cell;
 mod cage_solution_outer_cell_domain;
 mod cage_vector_value;
 mod cell_cage_solution;
