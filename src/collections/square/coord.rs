@@ -1,6 +1,7 @@
-use crate::collections::square::{Dimension, Vector};
 use std::fmt;
 use std::fmt::{Debug, Display};
+
+use crate::collections::square::{Dimension, Vector};
 
 /// Cartesian coordinates
 #[derive(Clone, Copy, PartialEq)]

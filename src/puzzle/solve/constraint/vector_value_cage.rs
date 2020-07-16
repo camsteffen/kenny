@@ -1,13 +1,14 @@
 //! If all possible solutions for a given value in a given vector are in a given cage, then the cage solution must
 //! contain the given value in the given vector
 
+use itertools::Itertools;
+
 use crate::collections::square::{IsSquare, Square, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::constraint::Constraint;
 use crate::puzzle::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::CellVariable;
 use crate::puzzle::{CellRef, Puzzle, Value};
-use itertools::Itertools;
 
 /// If a value is known to be in a cage-vector, cage solutions must include the value in the vector.
 #[derive(Clone)]

@@ -2,6 +2,7 @@ use std::mem;
 use std::ops::Deref;
 use std::ops::DerefMut;
 
+use itertools::Itertools;
 use vec_map::VecMap;
 
 use super::markup::PuzzleMarkupChanges;
@@ -15,7 +16,6 @@ use crate::puzzle::Puzzle;
 use crate::puzzle::{CageId, Operator};
 use crate::puzzle::{CellId, Value};
 use crate::{HashMap, HashSet};
-use itertools::Itertools;
 
 #[derive(Clone)]
 pub(crate) struct CageSolutionsSet {

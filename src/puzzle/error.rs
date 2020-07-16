@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 use std::{fmt, io};
+
 use thiserror::Error;
 
 #[derive(thiserror::Error, Debug)]

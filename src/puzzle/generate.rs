@@ -1,12 +1,14 @@
+use std::collections::VecDeque;
+use std::convert::TryInto;
+use std::mem;
+
+use rand::seq::SliceRandom;
+use rand::{thread_rng, Rng};
+
 use crate::collections::square::Square;
 use crate::puzzle::Operator;
 use crate::puzzle::Puzzle;
 use crate::puzzle::{Cage, CellId, Solution, Value};
-use rand::seq::SliceRandom;
-use rand::{thread_rng, Rng};
-use std::collections::VecDeque;
-use std::convert::TryInto;
-use std::mem;
 
 const MAX_CAGE_SIZE: usize = 4;
 const MAX_AVG_CAGE_SIZE: f32 = 2.2;

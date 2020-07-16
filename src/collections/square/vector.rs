@@ -1,9 +1,10 @@
 //! Module for rows and columns of a `Square`
 
-use self::Dimension::{Col, Row};
-use super::Coord;
 use std::fmt;
 use std::fmt::Debug;
+
+use self::Dimension::{Col, Row};
+use super::Coord;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Dimension {

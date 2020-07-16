@@ -1,7 +1,15 @@
 //! Generate images for unsolved or solved puzzles
 
-#[macro_use]
-mod xml;
+use std::borrow::Cow;
+use std::fmt::{Display, Formatter, Result, Write};
+use std::fs::File;
+use std::io;
+use std::io::{BufWriter, Write as ioWrite};
+use std::path::Path;
+
+use once_cell::sync::Lazy;
+use vec_map::VecMap;
+use xml::Xml;
 
 use crate::collections::square::{Coord, IsSquare, Square};
 use crate::puzzle::solve::markup::{CellChange, CellChanges};
@@ -9,15 +17,9 @@ use crate::puzzle::solve::CellVariable;
 use crate::puzzle::solve::ValueSet;
 use crate::puzzle::{CellId, Puzzle, Solution};
 use crate::HashSet;
-use once_cell::sync::Lazy;
-use std::borrow::Cow;
-use std::fmt::{Display, Formatter, Result, Write};
-use std::fs::File;
-use std::io;
-use std::io::{BufWriter, Write as ioWrite};
-use std::path::Path;
-use vec_map::VecMap;
-use xml::Xml;
+
+#[macro_use]
+mod xml;
 
 // colors
 const COLOR_CAGE_BORDER: &str = "black";

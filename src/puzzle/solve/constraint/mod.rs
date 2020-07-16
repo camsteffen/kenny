@@ -1,3 +1,8 @@
+use super::markup::PuzzleMarkupChanges;
+use crate::collections::square::Square;
+use crate::puzzle::solve::markup::PuzzleMarkup;
+use crate::puzzle::solve::CellVariable;
+
 pub(crate) use self::constraint_set::{ConstraintSet, PropagateResult};
 pub(crate) use self::unary_constraints::apply_unary_constraints;
 
@@ -11,11 +16,6 @@ mod vector_preemptive_set;
 mod vector_solved_cell;
 mod vector_value_cage;
 mod vector_value_domain;
-
-use super::markup::PuzzleMarkupChanges;
-use crate::collections::square::Square;
-use crate::puzzle::solve::markup::PuzzleMarkup;
-use crate::puzzle::solve::CellVariable;
 
 pub(crate) trait Constraint<'a>: CloneConstraint<'a> {
     /// Notifies this constraint of changes made to the puzzle markup.

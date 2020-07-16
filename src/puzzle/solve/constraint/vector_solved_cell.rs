@@ -1,5 +1,4 @@
 use super::Constraint;
-
 use crate::collections::square::{IsSquare, Square};
 use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::CellVariable;

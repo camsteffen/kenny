@@ -1,4 +1,9 @@
-pub use self::cage::{Cage, Operator};
+use std::borrow::Borrow;
+use std::convert::TryInto;
+use std::fmt::Display;
+use std::ops::Deref;
+use std::path::Path;
+use std::{fmt, fs, mem};
 
 use crate::collections::square::{Coord, IsSquare, Square, SquareCellRef, SquareVector};
 use crate::puzzle::error::{InvalidPuzzle, ParsePuzzleError, PuzzleFromFileError};
@@ -6,12 +11,8 @@ use crate::puzzle::generate::generate_untested_puzzle;
 use crate::puzzle::parse::parse_puzzle;
 use crate::puzzle::solve::ValueSet;
 use crate::puzzle::{CageId, CellId, Solution};
-use std::borrow::Borrow;
-use std::convert::TryInto;
-use std::fmt::Display;
-use std::ops::Deref;
-use std::path::Path;
-use std::{fmt, fs, mem};
+
+pub use self::cage::{Cage, Operator};
 
 mod cage;
 

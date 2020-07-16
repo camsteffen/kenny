@@ -2,7 +2,6 @@ use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 use anyhow::{Context, Result};
-
 use camcam::puzzle::image::PuzzleImage;
 use camcam::puzzle::Puzzle;
 use tempfile::{tempdir, TempDir};

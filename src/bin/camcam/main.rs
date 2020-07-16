@@ -10,14 +10,13 @@ use std::fs;
 use std::panic::{catch_unwind, resume_unwind};
 
 use anyhow::Result;
-use itertools::Itertools;
-
+use camcam::puzzle::image::PuzzleImageBuilder;
 use camcam::puzzle::solve::{PuzzleSolver, SolveResult};
 use camcam::puzzle::{Puzzle, Solution};
+use itertools::Itertools;
 
 use crate::context::{Context, PuzzleContext};
 use crate::options::Options;
-use camcam::puzzle::image::PuzzleImageBuilder;
 
 mod context;
 mod options;

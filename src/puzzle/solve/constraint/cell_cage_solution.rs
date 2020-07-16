@@ -1,5 +1,4 @@
 use super::Constraint;
-
 use crate::collections::square::{IsSquare, Square};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::cage_solutions::CageSolutions;

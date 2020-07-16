@@ -1,13 +1,13 @@
-mod changes;
-
-pub(crate) use self::changes::{CellChange, CellChanges, PuzzleMarkupChanges};
-
 use crate::collections::square::{IsSquare, Square};
 use crate::puzzle::solve::cage_solutions::CageSolutionsSet;
 use crate::puzzle::solve::CellVariable;
 use crate::puzzle::{CellId, Puzzle};
 use itertools::Itertools;
 use std::convert::TryInto;
+
+pub(crate) use self::changes::{CellChange, CellChanges, PuzzleMarkupChanges};
+
+mod changes;
 
 /// Markup on a puzzle including possible cell values and cage solutions
 #[derive(Clone)]

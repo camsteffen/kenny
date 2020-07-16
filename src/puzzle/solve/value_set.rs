@@ -1,6 +1,7 @@
+use std::iter::Map;
+
 use crate::collections::range_set;
 use crate::collections::range_set::RangeSet;
-use std::iter::Map;
 
 /// A small abstraction over `RangeSet` for puzzle values
 #[derive(Clone)]

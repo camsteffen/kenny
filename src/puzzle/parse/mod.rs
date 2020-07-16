@@ -1,8 +1,7 @@
 //! Parse puzzles from text
 
-pub(crate) use token::Token;
-
 use std::collections::BTreeMap;
+use std::fmt::Display;
 use std::str;
 
 use crate::collections::square::SquareIndex;
@@ -13,8 +12,9 @@ use crate::puzzle::parse::token_iterator::IndexedToken;
 use crate::puzzle::Cage;
 use crate::puzzle::Operator;
 use crate::puzzle::Puzzle;
-use std::fmt::Display;
 use token_iterator::TokenIterator;
+
+pub(crate) use token::Token;
 
 mod token;
 mod token_iterator;

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use anyhow::Result;
 
 use super::constraint::ConstraintSet;
@@ -6,7 +8,6 @@ use crate::puzzle::solve::constraint::PropagateResult;
 use crate::puzzle::solve::markup::{CellChanges, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::step_writer::StepWriter;
 use crate::puzzle::{CellId, Puzzle, Solution, Value};
-use std::borrow::Cow;
 
 pub(crate) enum SearchResult {
     NoSolutions,

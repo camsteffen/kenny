@@ -1,12 +1,12 @@
-pub(crate) use self::coord::Coord;
-pub(crate) use self::vector::{AsVector, Dimension, Vector};
-
 use std::cmp::Ord;
 use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 use std::iter::{Chain, Map, StepBy};
 use std::ops::{Deref, Index, IndexMut, Range};
+
+pub(crate) use self::coord::Coord;
+pub(crate) use self::vector::{AsVector, Dimension, Vector};
 
 mod coord;
 mod vector;

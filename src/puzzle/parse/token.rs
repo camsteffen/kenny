@@ -1,5 +1,6 @@
-use crate::puzzle::Operator;
 use std::fmt;
+
+use crate::puzzle::Operator;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Token {

@@ -1,14 +1,14 @@
+use itertools::Itertools;
+
 use super::Constraint;
 use crate::collections::iterator_ext::IteratorExt;
 use crate::collections::square::Square;
-
 use crate::collections::square::{IsSquare, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::CellVariable;
 use crate::puzzle::solve::ValueSet;
 use crate::puzzle::{CellId, Puzzle};
-use itertools::Itertools;
 
 /// If there is a set of cells within a vector where the size of the union of their domains is less than or equal to
 /// the number of cells, then all of the values in the unified domain must be in that set of cells.

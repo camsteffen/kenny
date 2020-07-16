@@ -11,7 +11,6 @@ use num::Integer;
 
 use crate::collections::iterator_ext::IteratorExt;
 use crate::collections::square::IsSquare;
-
 use crate::puzzle::solve::markup::CellChanges;
 use crate::puzzle::solve::ValueSet;
 use crate::puzzle::{CageRef, CellId, Operator};

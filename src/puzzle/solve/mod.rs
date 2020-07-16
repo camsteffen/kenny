@@ -1,20 +1,19 @@
 //! solve KenKen puzzles
 
-pub(crate) use self::cell_variable::CellVariable;
-pub(crate) use self::value_set::ValueSet;
-
 use std::path::Path;
 use std::path::PathBuf;
 
 use anyhow::Result;
 
-use crate::puzzle::solve::step_writer::StepWriter;
-use crate::puzzle::{Puzzle, Solution};
-
 use self::constraint::apply_unary_constraints;
 use self::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::constraint::{ConstraintSet, PropagateResult};
 use crate::puzzle::solve::search::{search_solution, SearchResult};
+use crate::puzzle::solve::step_writer::StepWriter;
+use crate::puzzle::{Puzzle, Solution};
+
+pub(crate) use self::cell_variable::CellVariable;
+pub(crate) use self::value_set::ValueSet;
 
 mod cage_solutions;
 mod cell_variable;

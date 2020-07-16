@@ -1,14 +1,13 @@
 use std::convert::TryInto;
 
+use super::Constraint;
 use crate::collections::square::IsSquare;
 use crate::collections::square::{Square, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
+use crate::puzzle::solve::CellVariable;
 use crate::puzzle::{CageId, CellId, CellRef, Puzzle, Value};
 use crate::{HashMap, HashSet};
-
-use super::Constraint;
-use crate::puzzle::solve::CellVariable;
 
 /// If a value exists in every cage solution for a cage, in a given vector, that value must be in that cage-vector.
 /// It must not be in any other cell in the vector, not in that cage.
