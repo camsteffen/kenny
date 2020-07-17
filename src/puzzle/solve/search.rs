@@ -2,11 +2,11 @@ use std::borrow::Cow;
 
 use anyhow::Result;
 
-use super::constraint::ConstraintSet;
 use crate::collections::square::IsSquare;
-use crate::puzzle::solve::constraint::PropagateResult;
+use crate::puzzle::solve::constraint::ConstraintList;
 use crate::puzzle::solve::markup::{CellChanges, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::step_writer::StepWriter;
+use crate::puzzle::solve::{propagate_constraints, PropagateResult};
 use crate::puzzle::{CellId, Puzzle, Solution, Value};
 
 pub(crate) enum SearchResult {
@@ -23,7 +23,7 @@ pub(crate) struct SingleSolution {
 struct SearchContext<'a, 'b> {
     puzzle: &'a Puzzle,
     markup: Cow<'a, PuzzleMarkup<'b>>,
-    constraints: Cow<'a, ConstraintSet<'b>>,
+    constraints: Cow<'a, ConstraintList<'b>>,
     step_writer: &'a mut Option<&'b mut StepWriter<'b>>,
     solved_once: bool,
     depth: u32,
@@ -32,7 +32,7 @@ struct SearchContext<'a, 'b> {
 pub(crate) fn search_solution<'a>(
     puzzle: &Puzzle,
     markup: &PuzzleMarkup<'a>,
-    constraints: &ConstraintSet<'a>,
+    constraints: &ConstraintList<'a>,
     step_writer: &mut Option<&'a mut StepWriter<'a>>,
 ) -> Result<SearchResult> {
     SearchContext {
@@ -97,7 +97,7 @@ impl SearchContext<'_, '_> {
         let (markup, constraints) = (self.markup.to_mut(), self.constraints.to_mut());
         constraints.notify_changes(&changes, markup.cells());
         markup.apply_changes(&changes);
-        match constraints.propagate(markup, self.step_writer)? {
+        match propagate_constraints(self.puzzle, constraints, markup, self.step_writer)? {
             PropagateResult::Solved(solution) => {
                 return Ok(SearchResult::SingleSolution(SingleSolution {
                     solution,

@@ -7,7 +7,8 @@ use anyhow::Result;
 
 use self::constraint::apply_unary_constraints;
 use self::markup::{PuzzleMarkup, PuzzleMarkupChanges};
-use crate::puzzle::solve::constraint::{ConstraintSet, PropagateResult};
+use crate::puzzle::solve::constraint::Constraint;
+use crate::puzzle::solve::constraint::{init_constraints, ConstraintList};
 use crate::puzzle::solve::search::{search_solution, SearchResult};
 use crate::puzzle::solve::step_writer::StepWriter;
 use crate::puzzle::{Puzzle, Solution};
@@ -79,10 +80,15 @@ impl<'a> PuzzleSolver<'a> {
             step_writer.write_step(&markup, &changes.cells)?;
         }
         markup.init_cage_solutions(self.puzzle);
-        let mut constraints = ConstraintSet::new(self.puzzle);
+        let mut constraints = init_constraints(self.puzzle);
         constraints.notify_changes(&changes, markup.cells());
         markup.apply_changes(&changes);
-        let solution = match constraints.propagate(&mut markup, &mut step_writer.as_mut())? {
+        let solution = match propagate_constraints(
+            self.puzzle,
+            &mut constraints,
+            &mut markup,
+            &mut step_writer.as_mut(),
+        )? {
             PropagateResult::Solved(solution) => Some(solution),
             PropagateResult::Unsolved => None,
             PropagateResult::Invalid => return Ok(SolveResult::Unsolvable),
@@ -118,4 +124,59 @@ impl<'a> PuzzleSolver<'a> {
         let step_writer = StepWriter::new(self.puzzle, path.into());
         Some(step_writer)
     }
+}
+
+pub(crate) fn propagate_constraints(
+    puzzle: &Puzzle,
+    constraints: &mut ConstraintList<'_>,
+    markup: &mut PuzzleMarkup<'_>,
+    step_writer: &mut Option<&mut StepWriter<'_>>,
+) -> Result<PropagateResult> {
+    let mut changes = PuzzleMarkupChanges::default();
+    let mut loop_count = 0;
+    loop {
+        let has_changes = constraints
+            .iter_mut()
+            .any(|constraint| constraint.enforce_partial(markup, &mut changes));
+        if !has_changes {
+            break;
+        }
+        if !markup.sync_changes(&mut changes) {
+            return Ok(PropagateResult::Invalid);
+        }
+        if let Some(step_writer) = step_writer.as_mut() {
+            if !changes.cells.is_empty() {
+                step_writer.write_step(markup, &changes.cells)?;
+            }
+        }
+        constraints.notify_changes(&changes, markup.cells());
+        markup.apply_changes(&changes);
+        changes.clear();
+        loop_count += 1;
+        if markup.is_completed() {
+            break;
+        }
+    }
+    debug!(
+        "constraint propagation finished after {} iterations, solved={}",
+        loop_count,
+        markup.is_completed()
+    );
+    let result = match markup.completed_values() {
+        None => PropagateResult::Unsolved,
+        Some(values) => {
+            if puzzle.verify_solution(&values) {
+                PropagateResult::Solved(values)
+            } else {
+                PropagateResult::Invalid
+            }
+        }
+    };
+    Ok(result)
+}
+
+pub(crate) enum PropagateResult {
+    Solved(Solution),
+    Unsolved,
+    Invalid,
 }

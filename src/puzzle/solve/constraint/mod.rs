@@ -11,14 +11,13 @@ use crate::puzzle::solve::constraint::vector_value_cage::VectorValueCageConstrai
 use crate::puzzle::solve::constraint::vector_value_domain::VectorValueDomainConstraint;
 use crate::puzzle::solve::markup::PuzzleMarkup;
 use crate::puzzle::solve::CellVariable;
+use crate::puzzle::Puzzle;
 
-pub(crate) use self::constraint_set::{ConstraintSet, PropagateResult};
 pub(crate) use self::unary_constraints::apply_unary_constraints;
 
 mod cage_solution_outer_cell_domain;
 mod cage_vector_value;
 mod cell_cage_solution;
-mod constraint_set;
 mod unary_constraints;
 mod vector_preemptive_set;
 mod vector_solved_cell;
@@ -44,16 +43,17 @@ pub(crate) trait Constraint {
     ) -> bool;
 }
 
+// contribute to library? - https://gitlab.com/antonok/enum_dispatch/-/issues/25
 macro_rules! enum_dispatch {
     {
         $(#[$meta:meta])*
-        enum $name:ident$(<$($lt:lifetime),+>)?: $trait:ty {
+        $vis:vis enum $name:ident$(<$($lt:lifetime),+>)?: $trait:ident $(+ $add_trait:ident)* {
             $($ty:ident$(<$($item_lt:lifetime)+>)?),*$(,)?
         }
     } => {
-        #[enum_dispatch($trait)]
+        #[enum_dispatch($trait$(, $add_trait)*)]
         $(#[$meta])*
-        enum $name$(<$($lt),+>)? {
+        $vis enum $name$(<$($lt),+>)? {
             $($ty($ty$(<$($item_lt)*>)?),)*
         }
     }
@@ -61,7 +61,7 @@ macro_rules! enum_dispatch {
 
 enum_dispatch! {
     #[derive(Clone)]
-    enum ConstraintItem<'a>: Constraint {
+    pub(crate) enum ConstraintItem<'a>: Constraint {
         VectorSolvedCellConstraint<'a>,
         VectorValueDomainConstraint<'a>,
         CellCageSolutionConstraint<'a>,
@@ -69,5 +69,46 @@ enum_dispatch! {
         VectorPreemptiveSetConstraint<'a>,
         VectorValueCageConstraint<'a>,
         CageSolutionOuterCellDomainConstraint<'a>,
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct ConstraintList<'a>([ConstraintItem<'a>; 7]);
+
+pub(crate) fn init_constraints(puzzle: &Puzzle) -> ConstraintList<'_> {
+    ConstraintList([
+        // when a cell is solved, remove the value from other cells in the same vector
+        VectorSolvedCellConstraint::new(puzzle).into(),
+        // if a vector has only one cell with a given value, solve the cell
+        VectorValueDomainConstraint::new(puzzle).into(),
+        // If no cage solutions have a value in a cell's domain,
+        // remove the cell domain value
+        CellCageSolutionConstraint::new(puzzle).into(),
+        // If all cage solutions for a cage have a value in a vector,
+        // remove the value from other cells in the vector
+        CageVectorValueConstraint::new(puzzle).into(),
+        // Find a set of cells in a vector that must contain a set of values
+        VectorPreemptiveSetConstraint::new(puzzle).into(),
+        // If, within a vector, a value is known to be in a certain cage,
+        // remove cage solutions without the value in the vector
+        VectorValueCageConstraint::new(puzzle).into(),
+        // Remove cage solutions that conflict with a cell's entire domain outside of the cage
+        CageSolutionOuterCellDomainConstraint::new(puzzle).into(),
+    ])
+}
+
+impl<'a> ConstraintList<'a> {
+    pub fn iter_mut(&mut self) -> core::slice::IterMut<'_, ConstraintItem<'a>> {
+        self.0.iter_mut()
+    }
+
+    pub fn notify_changes(
+        &mut self,
+        changes: &PuzzleMarkupChanges,
+        cell_variables: &Square<CellVariable>,
+    ) {
+        for c in &mut self.0 {
+            c.notify_changes(changes, cell_variables);
+        }
     }
 }
