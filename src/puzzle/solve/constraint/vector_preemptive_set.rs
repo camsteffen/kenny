@@ -27,7 +27,7 @@ impl<'a> VectorPreemptiveSetConstraint<'a> {
     }
 }
 
-impl<'a> Constraint<'a> for VectorPreemptiveSetConstraint<'a> {
+impl<'a> Constraint for VectorPreemptiveSetConstraint<'a> {
     fn notify_changes(
         &mut self,
         changes: &PuzzleMarkupChanges,

@@ -28,7 +28,7 @@ impl<'a> CellCageSolutionConstraint<'a> {
     }
 }
 
-impl<'a> Constraint<'a> for CellCageSolutionConstraint<'a> {
+impl<'a> Constraint for CellCageSolutionConstraint<'a> {
     fn notify_changes(
         &mut self,
         changes: &PuzzleMarkupChanges,

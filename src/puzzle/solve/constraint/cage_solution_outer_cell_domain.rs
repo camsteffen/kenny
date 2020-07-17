@@ -36,7 +36,7 @@ impl<'a> CageSolutionOuterCellDomainConstraint<'a> {
     }
 }
 
-impl<'a> Constraint<'a> for CageSolutionOuterCellDomainConstraint<'a> {
+impl<'a> Constraint for CageSolutionOuterCellDomainConstraint<'a> {
     fn notify_changes(
         &mut self,
         changes: &PuzzleMarkupChanges,

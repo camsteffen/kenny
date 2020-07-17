@@ -35,7 +35,7 @@ impl<'a> CageVectorValueConstraint<'a> {
     }
 }
 
-impl<'a> Constraint<'a> for CageVectorValueConstraint<'a> {
+impl<'a> Constraint for CageVectorValueConstraint<'a> {
     fn notify_changes(
         &mut self,
         changes: &PuzzleMarkupChanges,

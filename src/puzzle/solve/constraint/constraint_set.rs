@@ -8,7 +8,7 @@ use crate::puzzle::solve::constraint::vector_preemptive_set::VectorPreemptiveSet
 use crate::puzzle::solve::constraint::vector_solved_cell::VectorSolvedCellConstraint;
 use crate::puzzle::solve::constraint::vector_value_cage::VectorValueCageConstraint;
 use crate::puzzle::solve::constraint::vector_value_domain::VectorValueDomainConstraint;
-use crate::puzzle::solve::constraint::Constraint;
+use crate::puzzle::solve::constraint::{Constraint, ConstraintItem};
 use crate::puzzle::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::solve::step_writer::StepWriter;
 use crate::puzzle::solve::CellVariable;
@@ -17,7 +17,7 @@ use crate::puzzle::{Puzzle, Solution};
 #[derive(Clone)]
 pub(crate) struct ConstraintSet<'a> {
     puzzle: &'a Puzzle,
-    constraints: Vec<Box<dyn Constraint<'a>>>,
+    constraints: ConstraintList<'a>,
 }
 
 impl<'a> ConstraintSet<'a> {
@@ -94,24 +94,26 @@ pub enum PropagateResult {
     Invalid,
 }
 
-fn init_constraints(puzzle: &Puzzle) -> Vec<Box<dyn Constraint<'_> + '_>> {
-    vec![
+type ConstraintList<'a> = [ConstraintItem<'a>; 7];
+
+fn init_constraints(puzzle: &Puzzle) -> ConstraintList<'_> {
+    [
         // when a cell is solved, remove the value from other cells in the same vector
-        Box::new(VectorSolvedCellConstraint::new(puzzle)),
+        VectorSolvedCellConstraint::new(puzzle).into(),
         // if a vector has only one cell with a given value, solve the cell
-        Box::new(VectorValueDomainConstraint::new(puzzle)),
+        VectorValueDomainConstraint::new(puzzle).into(),
         // If no cage solutions have a value in a cell's domain,
         // remove the cell domain value
-        Box::new(CellCageSolutionConstraint::new(puzzle)),
+        CellCageSolutionConstraint::new(puzzle).into(),
         // If all cage solutions for a cage have a value in a vector,
         // remove the value from other cells in the vector
-        Box::new(CageVectorValueConstraint::new(puzzle)),
+        CageVectorValueConstraint::new(puzzle).into(),
         // Find a set of cells in a vector that must contain a set of values
-        Box::new(VectorPreemptiveSetConstraint::new(puzzle)),
+        VectorPreemptiveSetConstraint::new(puzzle).into(),
         // If, within a vector, a value is known to be in a certain cage,
         // remove cage solutions without the value in the vector
-        Box::new(VectorValueCageConstraint::new(puzzle)),
+        VectorValueCageConstraint::new(puzzle).into(),
         // Remove cage solutions that conflict with a cell's entire domain outside of the cage
-        Box::new(CageSolutionOuterCellDomainConstraint::new(puzzle)),
+        CageSolutionOuterCellDomainConstraint::new(puzzle).into(),
     ]
 }

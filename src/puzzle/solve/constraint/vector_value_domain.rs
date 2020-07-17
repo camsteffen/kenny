@@ -52,7 +52,7 @@ impl<'a> VectorValueDomainConstraint<'a> {
     }
 }
 
-impl<'a> Constraint<'a> for VectorValueDomainConstraint<'a> {
+impl<'a> Constraint for VectorValueDomainConstraint<'a> {
     fn notify_changes(
         &mut self,
         changes: &PuzzleMarkupChanges,

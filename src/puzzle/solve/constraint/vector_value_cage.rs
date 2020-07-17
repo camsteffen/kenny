@@ -30,7 +30,7 @@ impl<'a> VectorValueCageConstraint<'a> {
     }
 }
 
-impl<'a> Constraint<'a> for VectorValueCageConstraint<'a> {
+impl<'a> Constraint for VectorValueCageConstraint<'a> {
     fn notify_changes(
         &mut self,
         changes: &PuzzleMarkupChanges,

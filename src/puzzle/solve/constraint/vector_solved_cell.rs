@@ -21,7 +21,7 @@ impl<'a> VectorSolvedCellConstraint<'a> {
     }
 }
 
-impl<'a> Constraint<'a> for VectorSolvedCellConstraint<'a> {
+impl<'a> Constraint for VectorSolvedCellConstraint<'a> {
     fn notify_changes(
         &mut self,
         changes: &PuzzleMarkupChanges,
