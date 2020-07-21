@@ -30,9 +30,7 @@ use std::hash::BuildHasherDefault;
 pub mod collections;
 pub mod puzzle;
 
-// mod experimental;
-
-// enable deterministic hashing for debugging
+// enable default hasher for debugging to remove randomness
 #[cfg(debug_assertions)]
 type HashMap<K, V> = AHashMap<K, V, BuildHasherDefault<AHasher>>;
 #[cfg(debug_assertions)]
@@ -42,10 +40,7 @@ type HashMap<K, V> = AHashMap<K, V>;
 #[cfg(not(debug_assertions))]
 type HashSet<T> = AHashSet<T>;
 
-// todo sort cages and fix test puzzles
-// todo unit tests
 // todo documentation
-// todo identify constraints that "require" other constraints to be applied first
 // todo consider making cage solutions "lazy" or somehow prevent recording too many cage solutions, maybe start with smaller cages or those with fewer unsolved cells or fewer vectors
 // todo prioritize and re_order constraint set by usage data
 // todo add test cases for puzzles with and without backtracking required
