@@ -85,30 +85,32 @@ impl PuzzleContext<'_> {
     fn on_puzzle_sourced(&mut self) -> Result<bool> {
         log_puzzle(self.puzzle());
         self.save_puzzle()?;
-        let solve_options = match self.options().solve() {
-            None => return Ok(true),
-            Some(solve_options) => solve_options,
+        let unwind_result = self.options().solve().map(|solve_options| {
+            // catch a panic to save puzzle output
+            catch_unwind(|| self.on_solve_puzzle(solve_options))
+        });
+        let save_folder = match unwind_result {
+            Some(Ok(Ok(ref result))) => self.should_include(result),
+            None | Some(Err(_)) | Some(Ok(Err(_))) => true,
         };
-
-        // catch a panic to save puzzle output
-        let result = catch_unwind(|| self.on_solve_puzzle(solve_options));
-        let include = match result {
-            Ok(Ok(ref result)) => self.should_include(result),
-            // if any errors occurred, save output anyways
-            _ => true,
+        let save_result = if save_folder {
+            Some(self.save_folder_if_present())
+        } else {
+            None
         };
-        if include {
-            match self.save_folder_if_present() {
-                // propagate the error only if there are no other errors
-                Err(e) if matches!(result, Ok(Ok(_))) => return Err(e),
-                _ => (),
+        if let Some(unwind_result) = unwind_result {
+            match unwind_result {
+                Err(e) => resume_unwind(e),
+                Ok(solve_result) => {
+                    solve_result?;
+                }
             }
         }
-        match result {
-            Err(e) => resume_unwind(e),
-            Ok(result) => result?,
-        };
-        Ok(include)
+        if let Some(result) = save_result {
+            // propagate save error after checking for other errors
+            result?;
+        }
+        Ok(save_folder)
     }
 
     fn should_include(&self, result: &SolveResult) -> bool {
@@ -126,12 +128,7 @@ impl PuzzleContext<'_> {
     }
 
     fn save_puzzle(&self) -> Result<()> {
-        if self
-            .options()
-            .source()
-            .generate()
-            .map_or(false, |g| g.save_puzzle)
-        {
+        if self.options().save_puzzle() {
             self.folder_builder().unwrap().write_puzzle(self.puzzle())?;
         }
         if self.options().save_image() {

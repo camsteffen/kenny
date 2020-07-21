@@ -30,7 +30,8 @@ pub struct Puzzle {
 
 impl Puzzle {
     /// creates a puzzle with a specified width and set of cages
-    pub fn new(width: usize, cages: Vec<Cage>) -> Result<Self, InvalidPuzzle> {
+    pub fn new(width: usize, mut cages: Vec<Cage>) -> Result<Self, InvalidPuzzle> {
+        cages.sort_unstable_by_key(|cage| cage.cell_ids()[0]);
         let cage_id_map = cage_id_map(width, &cages)?;
         let puzzle = Self {
             width,

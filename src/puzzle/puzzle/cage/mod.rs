@@ -24,10 +24,11 @@ pub struct Cage {
 
 impl Cage {
     pub fn new(
-        cell_ids: Vec<CellId>,
+        mut cell_ids: Vec<CellId>,
         operator: Operator,
         target: i32,
     ) -> Result<Self, InvalidPuzzle> {
+        cell_ids.sort_unstable();
         let cage = Self {
             cell_ids,
             operator,

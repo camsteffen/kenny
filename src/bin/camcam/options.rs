@@ -12,6 +12,7 @@ pub(crate) struct Options {
     source: Source,
     solve: Option<Solve>,
     save_image: bool,
+    save_puzzle: bool,
 }
 
 impl Options {
@@ -41,7 +42,6 @@ impl Options {
                     width: matches.value_of("width").map_or(DEFAULT_PUZZLE_WIDTH, |s| {
                         s.parse::<usize>().expect("invalid width")
                     }),
-                    save_puzzle: matches.is_present("save_puzzle") || save_all,
                     include_solvable,
                     include_unsolvable,
                     require_search: matches.is_present("require_search"),
@@ -57,6 +57,7 @@ impl Options {
                 None
             },
             save_image: matches.is_present("save_image") || save_all,
+            save_puzzle: matches.is_present("save_puzzle") || save_all,
         };
         if options.save_any() {
             options.output_path = Some(matches.value_of("output_path").unwrap().into())
@@ -68,13 +69,8 @@ impl Options {
 
     /// returns true if any files are to be saved
     pub fn save_any(&self) -> bool {
-        if self.save_image {
+        if self.save_image || self.save_puzzle {
             return true;
-        }
-        if let Source::Generate(ref gc) = &self.source {
-            if gc.save_puzzle {
-                return true;
-            }
         }
         if let Some(ref sc) = &self.solve {
             if sc.save_image || sc.save_step_images {
@@ -99,6 +95,10 @@ impl Options {
     pub fn save_image(&self) -> bool {
         self.save_image
     }
+
+    pub fn save_puzzle(&self) -> bool {
+        self.save_puzzle
+    }
 }
 
 #[derive(Clone)]
@@ -114,20 +114,12 @@ impl Source {
             _ => None,
         }
     }
-
-    pub fn generate(&self) -> Option<&Generate> {
-        match self {
-            Source::Generate(g) => Some(g),
-            _ => None,
-        }
-    }
 }
 
 #[derive(Clone)]
 pub(crate) struct Generate {
     pub count: u32,
     pub width: usize,
-    pub save_puzzle: bool,
     pub include_solvable: bool,
     pub include_unsolvable: bool,
     pub require_search: bool,
@@ -234,7 +226,6 @@ fn clap_app() -> clap::App<'static, 'static> {
         .arg(
             Arg::with_name("save_puzzle")
                 .long("save-puzzle")
-                .requires("generate")
                 .help("save the puzzle to a file"),
         )
         .arg(

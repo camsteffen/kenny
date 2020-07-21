@@ -58,7 +58,6 @@ impl CageSolutionsSet {
                         }
                     });
                     if !valid {
-                        // todo remove redundant constraint
                         changes.remove_cage_solution(cage_id, i);
                         return false;
                     }
