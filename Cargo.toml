@@ -26,3 +26,6 @@ vec_map = { git = "https://github.com/camsteffen/vec-map.git" }
 [[bin]]
 name = "camcam"
 path = "src/bin/camcam/main.rs"
+
+[dev-dependencies]
+puzzle_tests = { path = "puzzle_tests" }
