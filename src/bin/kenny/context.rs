@@ -1,6 +1,6 @@
 use std::fs;
 use std::ops::{Deref, DerefMut};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context as _, Result};
 use kenny::puzzle::Puzzle;
@@ -18,7 +18,7 @@ impl Context {
         if let Some(path) = options.output_path() {
             if !path.exists() {
                 if let Some(parent) = path.parent() {
-                    if !parent.exists() {
+                    if !parent.exists() && parent != Path::new("") {
                         bail!("Path does not exist: {}", parent.display());
                     }
                 }
