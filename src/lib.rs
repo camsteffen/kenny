@@ -27,14 +27,18 @@ use ahash::{AHashMap, AHashSet};
 #[cfg(debug_assertions)]
 use std::hash::BuildHasherDefault;
 
+pub mod coord;
 pub mod error;
 pub mod image;
 pub mod puzzle;
 pub mod solve;
+pub mod square;
 
 mod collections;
 mod generate;
 mod parse;
+
+pub use coord::Coord;
 
 // enable default hasher for debugging to remove randomness
 #[cfg(debug_assertions)]

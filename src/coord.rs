@@ -1,7 +1,7 @@
 use std::fmt;
 use std::fmt::{Debug, Display};
 
-use crate::collections::square::{Dimension, Vector};
+use crate::square::{Dimension, Vector};
 
 /// Cartesian coordinates
 #[derive(Clone, Copy, PartialEq)]
@@ -62,7 +62,8 @@ impl<T: Copy> From<Coord<T>> for (T, T) {
 
 #[cfg(test)]
 mod tests {
-    use crate::collections::square::{Coord, Vector};
+    use crate::coord::Coord;
+    use crate::square::Vector;
 
     #[test]
     fn test() {

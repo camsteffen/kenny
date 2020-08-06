@@ -4,7 +4,7 @@ use std::fmt;
 use std::fmt::Debug;
 
 use self::Dimension::{Col, Row};
-use super::Coord;
+use crate::Coord;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Dimension {
@@ -72,8 +72,8 @@ impl Debug for Vector {
 
 #[cfg(test)]
 mod tests {
-    use crate::collections::square::vector::Dimension::{Col, Row};
-    use crate::collections::square::{AsVector, Coord, Vector};
+    use crate::square::vector::Dimension::{Col, Row};
+    use crate::square::{AsVector, Coord, Vector};
 
     #[test]
     fn col() {

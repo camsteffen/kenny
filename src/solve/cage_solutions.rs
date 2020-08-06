@@ -6,7 +6,6 @@ use vec_map::VecMap;
 use super::markup::PuzzleMarkupChanges;
 use super::CellVariable;
 use crate::collections::iterator_ext::IteratorExt;
-use crate::collections::square::{IsSquare, Square, SquareVector};
 use crate::collections::vec_ext::VecExt;
 use crate::puzzle::Puzzle;
 use crate::puzzle::{CageId, Operator};
@@ -14,6 +13,7 @@ use crate::puzzle::{CellId, Value};
 use crate::solve::markup::CellChange;
 use crate::solve::CellVariable::{Solved, Unsolved};
 use crate::solve::ValueSet;
+use crate::square::{IsSquare, Square, SquareVector};
 use crate::{HashMap, HashSet};
 
 #[derive(Clone)]

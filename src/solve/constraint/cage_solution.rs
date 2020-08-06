@@ -1,11 +1,11 @@
 use linked_hash_set::LinkedHashSet;
 
 use super::Constraint;
-use crate::collections::square::Square;
 use crate::puzzle::{CageId, Puzzle};
 use crate::solve::cage_solutions::CageSolutions;
 use crate::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::solve::CellVariable;
+use crate::square::Square;
 
 /// If a cage has one remaining cage solution, solve the cage
 #[derive(Clone)]

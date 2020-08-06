@@ -7,11 +7,12 @@ use std::ops::Deref;
 use std::path::Path;
 use std::{fmt, fs, mem};
 
-use crate::collections::square::{Coord, IsSquare, Square, SquareCellRef, SquareVector};
 use crate::error::{InvalidPuzzle, ParsePuzzleError, PuzzleFromFileError};
 use crate::generate::generate_untested_puzzle;
 use crate::parse::parse_puzzle;
 use crate::solve::ValueSet;
+use crate::square::{AsSquareIndex, IsSquare, Square, SquareCellRef, SquareVector};
+use crate::Coord;
 
 pub use self::cage::{Cage, Operator};
 
@@ -77,12 +78,16 @@ impl Puzzle {
         self.len()
     }
 
-    pub(crate) fn cells(&self) -> impl Iterator<Item = CellRef<'_>> {
+    pub fn cells(&self) -> impl Iterator<Item = CellRef<'_>> {
         (0..self.len()).map(move |i| self.cell(i))
     }
 
     pub fn cell_cage_indices(&self) -> &Square<usize> {
         &self.cage_id_map
+    }
+
+    pub fn is_cage_border(&self, cell_a: impl AsSquareIndex, cell_b: impl AsSquareIndex) -> bool {
+        self.cell(cell_a).cage_id() != self.cell(cell_b).cage_id()
     }
 
     pub fn verify_solution(&self, solution: &Solution) -> bool {

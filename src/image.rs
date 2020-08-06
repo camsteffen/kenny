@@ -12,13 +12,13 @@ use once_cell::sync::Lazy;
 use vec_map::VecMap;
 use xml::Xml;
 
-use crate::collections::square::{Coord, IsSquare, Square};
 use crate::image::xml::XmlProducer;
 use crate::puzzle::{CellId, Puzzle, Solution};
 use crate::solve::markup::{CellChange, CellChanges};
 use crate::solve::CellVariable;
 use crate::solve::ValueSet;
-use crate::HashSet;
+use crate::square::{IsSquare, Square};
+use crate::{Coord, HashSet};
 
 #[macro_use]
 mod xml;
@@ -379,11 +379,7 @@ impl PuzzleSvgContext<'_, '_, '_> {
             for i in 0..puzzle.width() - 1 {
                 let lines = (0..puzzle.width())
                     // if the two adjacent cells have different cages, draw a line
-                    .filter(|&j| {
-                        let (a, b) = (coord_a(i, j), coord_b(i, j));
-                        let (cell_a, cell_b) = (puzzle.cell(a), puzzle.cell(b));
-                        cell_a.cage_id() != cell_b.cage_id()
-                    })
+                    .filter(|&j| puzzle.is_cage_border(coord_a(i, j), coord_b(i, j)))
                     // line start position and line length in cells
                     .map(|j| (j, 1))
                     // combine connected line segments

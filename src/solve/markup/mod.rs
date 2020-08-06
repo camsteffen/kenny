@@ -1,9 +1,11 @@
-use crate::collections::square::{IsSquare, Square};
+use std::convert::TryInto;
+
+use itertools::Itertools;
+
 use crate::puzzle::{CellId, Puzzle};
 use crate::solve::cage_solutions::CageSolutionsSet;
 use crate::solve::CellVariable;
-use itertools::Itertools;
-use std::convert::TryInto;
+use crate::square::{IsSquare, Square};
 
 pub(crate) use self::changes::{CellChange, CellChanges, PuzzleMarkupChanges};
 

@@ -8,11 +8,11 @@
 use std::cmp::Reverse;
 
 use crate::collections::iterator_ext::IteratorExt;
-use crate::collections::square::IsSquare;
 use crate::puzzle::{CageRef, CellId, Operator};
 use crate::puzzle::{Puzzle, Value};
 use crate::solve::markup::CellChanges;
 use crate::solve::ValueSet;
+use crate::square::IsSquare;
 
 /// Applies all unary constraints to cell domains. Returns a list of all affected cells by index.
 pub(crate) fn apply_unary_constraints(puzzle: &Puzzle, changes: &mut CellChanges) {

@@ -1,5 +1,4 @@
 use super::Constraint;
-use crate::collections::square::{IsSquare, Square};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::Puzzle;
 use crate::puzzle::{CageId, CageRef, Operator};
@@ -7,6 +6,7 @@ use crate::solve::cage_solutions::CageSolutions;
 use crate::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::solve::CellVariable;
 use crate::solve::ValueSet;
+use crate::square::{IsSquare, Square};
 
 /// A cell domain value must have at least one corresponding cage solution value
 #[derive(Clone)]

@@ -2,12 +2,12 @@ use std::borrow::Cow;
 
 use anyhow::Result;
 
-use crate::collections::square::IsSquare;
 use crate::puzzle::{CellId, Puzzle, Solution, Value};
 use crate::solve::constraint::ConstraintList;
 use crate::solve::markup::{CellChanges, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::solve::step_writer::StepWriter;
 use crate::solve::{propagate_constraints, PropagateResult};
+use crate::square::IsSquare;
 
 pub(crate) enum SearchResult {
     NoSolutions,

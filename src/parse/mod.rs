@@ -4,7 +4,6 @@ use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::str;
 
-use crate::collections::square::SquareIndex;
 use crate::error::{
     ParseError, ParsePuzzleError, ParsePuzzleErrorType, ParsePuzzleErrorType::*, UNEXPECTED_END,
 };
@@ -12,6 +11,7 @@ use crate::parse::token_iterator::IndexedToken;
 use crate::puzzle::Cage;
 use crate::puzzle::Operator;
 use crate::puzzle::Puzzle;
+use crate::square::SquareIndex;
 use token_iterator::TokenIterator;
 
 pub(crate) use token::Token;

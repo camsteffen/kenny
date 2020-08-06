@@ -1,7 +1,6 @@
 use enum_dispatch::enum_dispatch;
 
 use super::markup::PuzzleMarkupChanges;
-use crate::collections::square::Square;
 use crate::puzzle::Puzzle;
 use crate::solve::constraint::cage_solution::CageSolutionConstraint;
 use crate::solve::constraint::cage_solution_outer_cell_domain::CageSolutionOuterCellDomainConstraint;
@@ -13,6 +12,7 @@ use crate::solve::constraint::vector_value_cage::VectorValueCageConstraint;
 use crate::solve::constraint::vector_value_domain::VectorValueDomainConstraint;
 use crate::solve::markup::PuzzleMarkup;
 use crate::solve::CellVariable;
+use crate::square::Square;
 
 pub(crate) use self::unary_constraints::apply_unary_constraints;
 

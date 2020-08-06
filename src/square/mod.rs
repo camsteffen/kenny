@@ -5,17 +5,17 @@ use std::fmt::{Debug, Display, Formatter};
 use std::iter::{Chain, Map, StepBy};
 use std::ops::{Deref, Index, IndexMut, Range};
 
-pub(crate) use self::coord::Coord;
+use crate::Coord;
+
 pub(crate) use self::vector::{AsVector, Dimension, Vector};
 
-mod coord;
 mod vector;
 
 type VectorsInner = Map<Range<usize>, fn(usize) -> Vector>;
 type Vectors = Chain<VectorsInner, VectorsInner>;
 type VectorIndices = StepBy<Range<SquareIndex>>;
 
-pub(crate) trait IsSquare {
+pub trait IsSquare {
     fn len(&self) -> usize {
         let width = self.width();
         width * width
@@ -78,7 +78,7 @@ pub(crate) trait IsSquare {
     fn width(&self) -> usize;
 }
 
-pub(crate) struct SquareCellRef<'a, S: IsSquare> {
+pub struct SquareCellRef<'a, S: IsSquare> {
     square: &'a S,
     index: usize,
 }
@@ -132,7 +132,7 @@ impl<'a, S: IsSquare> SquareCellRef<'a, S> {
     }
 }
 
-pub(crate) struct SquareVectorsIter<'a, S> {
+pub struct SquareVectorsIter<'a, S> {
     square: &'a S,
     vectors: Vectors,
 }
@@ -188,7 +188,7 @@ impl AsSquareIndex for Coord {
     }
 }
 
-pub(crate) struct SquareVector<'a, T> {
+pub struct SquareVector<'a, T> {
     pub(crate) square: &'a T,
     vector: Vector,
 }
@@ -396,8 +396,7 @@ impl<T> TryFrom<Vec<T>> for Square<T> {
 mod tests {
     use std::convert::TryFrom;
 
-    use crate::collections::square::NonSquareLength;
-    use crate::collections::square::Square;
+    use crate::square::{NonSquareLength, Square};
 
     #[test]
     fn try_from_vec() {
@@ -410,7 +409,7 @@ mod tests {
     }
 
     mod is_square {
-        use crate::collections::square::{Coord, EmptySquare, IsSquare, Vector};
+        use crate::square::{Coord, EmptySquare, IsSquare, Vector};
         use itertools::assert_equal;
 
         #[test]
@@ -490,7 +489,7 @@ mod tests {
     }
 
     mod vector {
-        use crate::collections::square::{EmptySquare, IsSquare, Vector};
+        use crate::square::{EmptySquare, IsSquare, Vector};
         use itertools::assert_equal;
 
         #[test]

@@ -1,8 +1,8 @@
 use super::Constraint;
-use crate::collections::square::{IsSquare, Square};
 use crate::puzzle::{CellId, Puzzle};
 use crate::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::solve::CellVariable;
+use crate::square::{IsSquare, Square};
 
 /// If a cell is solved in a vector, other cells in that vector must not have the same value.
 #[derive(Clone)]

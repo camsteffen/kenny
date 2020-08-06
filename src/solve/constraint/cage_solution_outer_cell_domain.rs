@@ -4,11 +4,11 @@ use ahash::AHasher;
 
 use super::Constraint;
 use crate::collections::iterator_ext::IteratorExt;
-use crate::collections::square::{IsSquare, Square, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::{CageId, CellId, Puzzle, Value};
 use crate::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::solve::CellVariable;
+use crate::square::{IsSquare, Square, Vector};
 use crate::HashSet;
 
 /// Summary: A cage solution must not conflict with a cell's domain outside of the cage

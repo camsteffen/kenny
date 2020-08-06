@@ -2,11 +2,11 @@ use std::ops::{Index, IndexMut};
 
 use super::Constraint;
 use crate::collections::range_set::RangeSet;
-use crate::collections::square::{AsVector, EmptySquare, IsSquare, Square, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::{CellId, Puzzle, Value};
 use crate::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::solve::CellVariable;
+use crate::square::{AsVector, EmptySquare, IsSquare, Square, Vector};
 
 /// If only one cell in a vector has a given value in its domain, then the cell has that value.
 #[derive(Clone)]
