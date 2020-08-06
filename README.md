@@ -2,6 +2,8 @@
 
 *A KenKen puzzle generator and solver.*
 
+![Alt Text](solve-demo.gif)
+
 ## Features
 
 * Generate KenKen puzzles
