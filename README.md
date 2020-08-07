@@ -2,7 +2,7 @@
 
 *A KenKen puzzle generator and solver.*
 
-![Alt Text](solve-demo.gif)
+<img src="solve-demo.gif" alt="puzzle" width="350"/>
 
 ## Features
 
