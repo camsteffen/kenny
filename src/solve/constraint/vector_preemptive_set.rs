@@ -10,7 +10,7 @@ use crate::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::solve::CellVariable;
 use crate::solve::ValueSet;
 
-/// If there is a set of cells within a vector where the size of the union of their domains is less than or equal to
+/// If there is a set of cells within a vector where the size of the union of their domains is equal to
 /// the number of cells, then all of the values in the unified domain must be in that set of cells.
 #[derive(Clone)]
 pub(crate) struct VectorPreemptiveSetConstraint<'a> {
@@ -87,7 +87,7 @@ fn enforce_vector(
 
     // TODO can this be optimized?
 
-    // find a set of cells where the union of their domains is less than the number of cells
+    // find a set of cells where the size of the union of their domains is equal to the number of cells
     let mut cells: Vec<CellId> = Vec::with_capacity(cell_variables.width() - 1);
     'domain_sizes: for (i, cells2) in cells_by_domain_size.into_iter().enumerate() {
         if cells2.is_empty() {
@@ -112,17 +112,18 @@ fn enforce_vector(
 fn unify_domain(
     cell_variables: &Square<CellVariable>,
     cells: &[CellId],
-    max_size: usize,
+    target_size: usize,
 ) -> Option<ValueSet> {
     let mut domain = ValueSet::new(cell_variables.width());
     for &cell in cells {
         for j in cell_variables[cell].unsolved().unwrap() {
-            if domain.insert(j) && domain.len() > max_size {
+            if domain.insert(j) && domain.len() > target_size {
                 // the domain is too big
                 return None;
             }
         }
     }
+    debug_assert_eq!(domain.len(), target_size);
     Some(domain)
 }
 
