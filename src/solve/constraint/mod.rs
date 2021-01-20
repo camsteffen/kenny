@@ -61,46 +61,47 @@ macro_rules! enum_dispatch {
     }
 }
 
-enum_dispatch! {
-    #[derive(Clone)]
-    pub(crate) enum ConstraintItem<'a>: Constraint {
-        VectorSolvedCellConstraint<'a>,
-        CageSolutionConstraint<'a>,
-        VectorValueDomainConstraint<'a>,
-        CellCageSolutionConstraint<'a>,
-        CageVectorValueConstraint<'a>,
-        VectorPreemptiveSetConstraint<'a>,
-        VectorValueCageConstraint<'a>,
-        CageSolutionOuterCellDomainConstraint<'a>,
+macro_rules! constraint_list {
+    ($($name:ident),* $(,)?) => {
+        const CONSTRAINT_COUNT: usize = count_tts::count_tts!($($name)*);
+
+        enum_dispatch! {
+            #[derive(Clone)]
+            pub(crate) enum ConstraintItem<'a>: Constraint {
+                $($name<'a>),*
+            }
+        }
+
+        pub(crate) fn init_constraints(puzzle: &Puzzle) -> ConstraintList<'_> {
+            ConstraintList(Box::new([$($name::new(puzzle).into()),*]))
+        }
     }
 }
 
-#[derive(Clone)]
-pub(crate) struct ConstraintList<'a>(Vec<ConstraintItem<'a>>);
-
-pub(crate) fn init_constraints(puzzle: &Puzzle) -> ConstraintList<'_> {
-    ConstraintList(vec![
-        // when a cell is solved, remove the value from other cells in the same vector
-        VectorSolvedCellConstraint::new(puzzle).into(),
-        // if one cage solution remains for a cage, solve the cage
-        CageSolutionConstraint::new(puzzle).into(),
-        // if a vector has only one cell with a given value, solve the cell
-        VectorValueDomainConstraint::new(puzzle).into(),
-        // If no cage solutions have a value in a cell's domain,
-        // remove the cell domain value
-        CellCageSolutionConstraint::new(puzzle).into(),
-        // If all cage solutions for a cage have a value in a vector,
-        // remove the value from other cells in the vector
-        CageVectorValueConstraint::new(puzzle).into(),
-        // Find a set of cells in a vector that must contain a set of values
-        VectorPreemptiveSetConstraint::new(puzzle).into(),
-        // If, within a vector, a value is known to be in a certain cage,
-        // remove cage solutions without the value in the vector
-        VectorValueCageConstraint::new(puzzle).into(),
-        // Remove cage solutions that conflict with a cell's entire domain outside of the cage
-        CageSolutionOuterCellDomainConstraint::new(puzzle).into(),
-    ])
+constraint_list! {
+    // when a cell is solved, remove the value from other cells in the same vector
+    VectorSolvedCellConstraint,
+    // if one cage solution remains for a cage, solve the cage
+    CageSolutionConstraint,
+    // if a vector has only one cell with a given value, solve the cell
+    VectorValueDomainConstraint,
+    // If no cage solutions have a value in a cell's domain,
+    // remove the cell domain value
+    CellCageSolutionConstraint,
+    // If all cage solutions for a cage have a value in a vector,
+    // remove the value from other cells in the vector
+    CageVectorValueConstraint,
+    // Find a set of cells in a vector that must contain a set of values
+    VectorPreemptiveSetConstraint,
+    // If, within a vector, a value is known to be in a certain cage,
+    // remove cage solutions without the value in the vector
+    VectorValueCageConstraint,
+    // Remove cage solutions that conflict with a cell's entire domain outside of the cage
+    CageSolutionOuterCellDomainConstraint,
 }
+
+#[derive(Clone)]
+pub(crate) struct ConstraintList<'a>(Box<[ConstraintItem<'a>; CONSTRAINT_COUNT]>);
 
 impl<'a> ConstraintList<'a> {
     pub fn iter_mut(&mut self) -> core::slice::IterMut<'_, ConstraintItem<'a>> {
@@ -112,7 +113,7 @@ impl<'a> ConstraintList<'a> {
         changes: &PuzzleMarkupChanges,
         cell_variables: &Square<CellVariable>,
     ) {
-        for c in &mut self.0 {
+        for c in self.0.deref_mut() {
             c.notify_changes(changes, cell_variables);
         }
     }

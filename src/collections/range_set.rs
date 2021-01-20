@@ -125,7 +125,7 @@ mod tests {
         set.insert(3);
         set.insert(1);
         let vec: Vec<_> = set.iter().collect();
-        assert_eq!(vec![1_usize, 3], vec);
+        assert_eq!(vec![1usize, 3], vec);
     }
 
     #[test]

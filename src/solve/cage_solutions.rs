@@ -242,7 +242,7 @@ impl CageSolutions {
         let cage = puzzle.cage(cage_id);
         let mut indices = Vec::new();
         let mut cell_domains = Vec::new();
-        let mut solved_sum = 0_i32;
+        let mut solved_sum = 0i32;
         for (i, &cell_variable) in cell_variables.iter().enumerate() {
             match cell_variable {
                 &Solved(v) => solved_sum += v,

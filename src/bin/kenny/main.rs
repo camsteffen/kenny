@@ -194,12 +194,12 @@ impl PuzzleContext<'_> {
 mod print_puzzle {
     use std::io::Write;
 
-    use ahash::AHashMap;
-    use once_cell::sync::Lazy;
-
     use kenny::puzzle::Puzzle;
     use kenny::square::IsSquare;
     use kenny::Coord;
+
+    use self::box_draw::*;
+    use std::convert::TryFrom;
 
     pub fn print_puzzle(puzzle: &Puzzle, w: &mut impl Write) -> std::io::Result<()> {
         const CELL_INNER_WIDTH: usize = 4;
@@ -222,34 +222,40 @@ mod print_puzzle {
                 let left_down = Coord::new(cell_left, cell_down);
                 let right_down = Coord::new(cell_right, cell_down);
                 let up = if top_edge {
-                    0
+                    None
                 } else if left_edge || right_edge || puzzle.is_cage_border(left_up, right_up) {
-                    UP_HEAVY
+                    Some(UP_HEAVY)
                 } else {
-                    UP
+                    Some(UP)
                 };
                 let down = if bottom_edge {
-                    0
+                    None
                 } else if left_edge || right_edge || puzzle.is_cage_border(left_down, right_down) {
-                    DOWN_HEAVY
+                    Some(DOWN_HEAVY)
                 } else {
-                    DOWN
+                    Some(DOWN)
                 };
                 let left = if left_edge {
-                    0
+                    None
                 } else if top_edge || bottom_edge || puzzle.is_cage_border(left_up, left_down) {
-                    LEFT_HEAVY
+                    Some(LEFT_HEAVY)
                 } else {
-                    LEFT
+                    Some(LEFT)
                 };
                 let right = if right_edge {
-                    0
+                    None
                 } else if top_edge || bottom_edge || puzzle.is_cage_border(right_up, right_down) {
-                    RIGHT_HEAVY
+                    Some(RIGHT_HEAVY)
                 } else {
-                    RIGHT
+                    Some(RIGHT)
                 };
-                write!(w, "{}", box_char(up | down | left | right))?;
+                let c = [up, down, left, right]
+                    .iter()
+                    .flatten()
+                    .copied()
+                    .collect::<Option<BoxCharId>>()
+                    .unwrap();
+                write!(w, "{}", char::try_from(c).unwrap())?;
             } else if i & 1 == 1 {
                 // edge
                 if i / width & 1 == 0 {
@@ -265,7 +271,14 @@ mod print_puzzle {
                         } else {
                             LEFT | RIGHT
                         };
-                    write!(w, "{}", box_char(v).to_string().repeat(CELL_INNER_WIDTH))?;
+                    write!(
+                        w,
+                        "{}",
+                        char::try_from(v)
+                            .unwrap()
+                            .to_string()
+                            .repeat(CELL_INNER_WIDTH)
+                    )?;
                 } else {
                     // vertical edge
                     let row = i / width / 2;
@@ -281,7 +294,7 @@ mod print_puzzle {
                     } else {
                         UP | DOWN
                     };
-                    write!(w, "{}", box_char(v))?;
+                    write!(w, "{}", char::try_from(v).unwrap())?;
                 };
             } else {
                 // cell
@@ -309,59 +322,92 @@ mod print_puzzle {
         Ok(())
     }
 
-    const UP: u8 = 1 << 0;
-    const DOWN: u8 = 1 << 1;
-    const LEFT: u8 = 1 << 2;
-    const RIGHT: u8 = 1 << 3;
-    const UP_HEAVY: u8 = 1 << 4;
-    const DOWN_HEAVY: u8 = 1 << 5;
-    const LEFT_HEAVY: u8 = 1 << 6;
-    const RIGHT_HEAVY: u8 = 1 << 7;
+    mod box_draw {
+        use std::convert::TryFrom;
+        use std::ops::BitOr;
 
-    // only contains needed characters
-    const BOX_CHAR_MAP: Lazy<AHashMap<u8, char>> = Lazy::new(|| {
-        let mut map = AHashMap::new();
-        // use space instead of light lines to make cages easier to see
-        map.insert(UP | DOWN, ' ');
-        map.insert(LEFT | RIGHT, ' ');
+        use std::iter::FromIterator;
+        use switch_statement::switch;
 
-        // cage edges
-        map.insert(UP_HEAVY | DOWN_HEAVY, '┃');
-        map.insert(LEFT_HEAVY | RIGHT_HEAVY, '━');
+        #[derive(Clone, Copy, PartialEq)]
+        pub struct BoxCharId(u8);
 
-        // corners
-        map.insert(UP_HEAVY | RIGHT_HEAVY, '┗');
-        map.insert(DOWN_HEAVY | RIGHT_HEAVY, '┏');
-        map.insert(DOWN_HEAVY | LEFT_HEAVY, '┓');
-        map.insert(UP_HEAVY | LEFT_HEAVY, '┛');
-        map.insert(UP_HEAVY | DOWN_HEAVY | LEFT, '┨');
-        map.insert(UP_HEAVY | DOWN_HEAVY | RIGHT, '┠');
-        map.insert(UP | LEFT_HEAVY | RIGHT_HEAVY, '┷');
-        map.insert(DOWN | LEFT_HEAVY | RIGHT_HEAVY, '┯');
-        map.insert(UP_HEAVY | DOWN_HEAVY | LEFT_HEAVY, '┫');
-        map.insert(UP_HEAVY | DOWN_HEAVY | RIGHT_HEAVY, '┣');
-        map.insert(UP_HEAVY | LEFT_HEAVY | RIGHT_HEAVY, '┻');
-        map.insert(DOWN_HEAVY | LEFT_HEAVY | RIGHT_HEAVY, '┳');
-        map.insert(UP | DOWN | LEFT | RIGHT, '┼');
-        map.insert(UP_HEAVY | DOWN | LEFT | RIGHT, '╀');
-        map.insert(UP | DOWN_HEAVY | LEFT | RIGHT, '╁');
-        map.insert(UP | DOWN | LEFT_HEAVY | RIGHT_HEAVY, '┿');
-        map.insert(UP_HEAVY | DOWN_HEAVY | LEFT | RIGHT, '╂');
-        map.insert(UP | DOWN_HEAVY | LEFT | RIGHT_HEAVY, '╆');
-        map.insert(UP | DOWN_HEAVY | LEFT_HEAVY | RIGHT, '╅');
-        map.insert(UP_HEAVY | DOWN | LEFT_HEAVY | RIGHT, '╃');
-        map.insert(UP_HEAVY | DOWN | LEFT | RIGHT_HEAVY, '╄');
-        map.insert(UP | DOWN_HEAVY | LEFT_HEAVY | RIGHT_HEAVY, '╈');
-        map.insert(UP_HEAVY | DOWN | LEFT_HEAVY | RIGHT_HEAVY, '╇');
-        map.insert(UP_HEAVY | DOWN_HEAVY | LEFT | RIGHT_HEAVY, '╊');
-        map.insert(UP_HEAVY | DOWN_HEAVY | LEFT_HEAVY | RIGHT, '╉');
-        map.insert(UP_HEAVY | DOWN_HEAVY | LEFT_HEAVY | RIGHT_HEAVY, '╋');
-        map
-    });
+        macro_rules! box_char_ids {
+            ($($name:ident: $i:literal;)*) => {
+               $(pub const $name: BoxCharId = BoxCharId(1 << $i);)*
+            };
+        }
 
-    pub fn box_char(id: u8) -> char {
-        *BOX_CHAR_MAP
-            .get(&id)
-            .unwrap_or_else(|| panic!("no box char for {:b}", id))
+        box_char_ids! {
+            UP: 0;
+            DOWN: 1;
+            LEFT: 2;
+            RIGHT: 3;
+            UP_HEAVY: 4;
+            DOWN_HEAVY: 5;
+            LEFT_HEAVY: 6;
+            RIGHT_HEAVY: 7;
+        }
+
+        impl BitOr for BoxCharId {
+            type Output = BoxCharId;
+
+            fn bitor(self, rhs: Self) -> Self::Output {
+                BoxCharId(self.0 | rhs.0)
+            }
+        }
+
+        impl FromIterator<BoxCharId> for Option<BoxCharId> {
+            fn from_iter<T: IntoIterator<Item = BoxCharId>>(iter: T) -> Self {
+                iter.into_iter()
+                    .fold(None, |a, b| Some(a.map_or(b, |a| a | b)))
+            }
+        }
+
+        impl TryFrom<BoxCharId> for char {
+            type Error = ();
+
+            fn try_from(value: BoxCharId) -> Result<Self, Self::Error> {
+                let out = switch! { value;
+                    // use space instead of light lines to make cages easier to see
+                    UP | DOWN => ' ',
+                    LEFT | RIGHT => ' ',
+
+                    // cage edges
+                    UP_HEAVY | DOWN_HEAVY => '┃',
+                    LEFT_HEAVY | RIGHT_HEAVY => '━',
+
+                    // corners
+                    UP_HEAVY | RIGHT_HEAVY => '┗',
+                    DOWN_HEAVY | RIGHT_HEAVY => '┏',
+                    DOWN_HEAVY | LEFT_HEAVY => '┓',
+                    UP_HEAVY | LEFT_HEAVY => '┛',
+                    UP_HEAVY | DOWN_HEAVY | LEFT => '┨',
+                    UP_HEAVY | DOWN_HEAVY | RIGHT => '┠',
+                    UP | LEFT_HEAVY | RIGHT_HEAVY => '┷',
+                    DOWN | LEFT_HEAVY | RIGHT_HEAVY => '┯',
+                    UP_HEAVY | DOWN_HEAVY | LEFT_HEAVY => '┫',
+                    UP_HEAVY | DOWN_HEAVY | RIGHT_HEAVY => '┣',
+                    UP_HEAVY | LEFT_HEAVY | RIGHT_HEAVY => '┻',
+                    DOWN_HEAVY | LEFT_HEAVY | RIGHT_HEAVY => '┳',
+                    UP | DOWN | LEFT | RIGHT => '┼',
+                    UP_HEAVY | DOWN | LEFT | RIGHT => '╀',
+                    UP | DOWN_HEAVY | LEFT | RIGHT => '╁',
+                    UP | DOWN | LEFT_HEAVY | RIGHT_HEAVY => '┿',
+                    UP_HEAVY | DOWN_HEAVY | LEFT | RIGHT => '╂',
+                    UP | DOWN_HEAVY | LEFT | RIGHT_HEAVY => '╆',
+                    UP | DOWN_HEAVY | LEFT_HEAVY | RIGHT => '╅',
+                    UP_HEAVY | DOWN | LEFT_HEAVY | RIGHT => '╃',
+                    UP_HEAVY | DOWN | LEFT | RIGHT_HEAVY => '╄',
+                    UP | DOWN_HEAVY | LEFT_HEAVY | RIGHT_HEAVY => '╈',
+                    UP_HEAVY | DOWN | LEFT_HEAVY | RIGHT_HEAVY => '╇',
+                    UP_HEAVY | DOWN_HEAVY | LEFT | RIGHT_HEAVY => '╊',
+                    UP_HEAVY | DOWN_HEAVY | LEFT_HEAVY | RIGHT => '╉',
+                    UP_HEAVY | DOWN_HEAVY | LEFT_HEAVY | RIGHT_HEAVY => '╋',
+                    _ => return Err(())
+                };
+                Ok(out)
+            }
+        }
     }
 }

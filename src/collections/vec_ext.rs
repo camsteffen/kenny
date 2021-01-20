@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 pub(crate) trait VecExt<T> {
     /// Appends a default element to the back of a collection
     /// and returns a mutable reference to the value.
@@ -38,51 +40,47 @@ impl<T> VecExt<T> for Vec<T> {
     }
 
     fn remove_indices(&mut self, indices: &[usize]) {
-        if indices.is_empty() {
-            return;
-        }
-        let len = self.len();
-        let v = &mut **self;
-        let mut iter = indices[1..].iter().peekable();
-        let mut del = 1;
-        for i in (indices[0] + 1)..len {
-            if iter.peek() == Some(&&i) {
-                del += 1;
-                iter.next();
+        let (first, mut index_iter) = match indices.split_first() {
+            None => return,
+            Some((&first, tail)) => (first, tail.iter().copied().peekable()),
+        };
+        let slice = Cell::from_mut(self.as_mut_slice()).as_slice_of_cells();
+        let mut put_iter = slice[first..].iter();
+        for (i, cell) in slice.iter().enumerate().skip(first + 1) {
+            if index_iter.peek() == Some(&i) {
+                index_iter.next();
             } else {
-                v.swap(i - del, i);
+                put_iter.next().unwrap().swap(cell);
             }
         }
-        assert_eq!(iter.next(), None);
-        self.truncate(len - indices.len());
+        assert_eq!(index_iter.next(), None);
+        self.truncate(self.len() - indices.len());
     }
 
     fn remove_indices_copy(&mut self, indices: &[usize])
     where
         T: Copy,
     {
-        if indices.is_empty() {
-            return;
-        }
-        let len = self.len();
-        let v = &mut **self;
-        let mut iter = indices[1..].iter().peekable();
-        let mut del = 1;
-        for i in (indices[0] + 1)..len {
-            if iter.peek() == Some(&&i) {
-                del += 1;
-                iter.next();
+        let (first, mut index_iter) = match indices.split_first() {
+            None => return,
+            Some((&first, tail)) => (first, tail.iter().copied().peekable()),
+        };
+        let slice = Cell::from_mut(self.as_mut_slice()).as_slice_of_cells();
+        let mut put_iter = slice[first..].iter();
+        for (i, cell) in slice.iter().enumerate().skip(first + 1) {
+            if index_iter.peek() == Some(&i) {
+                index_iter.next();
             } else {
-                v[i - del] = v[i];
+                put_iter.next().unwrap().set(cell.get());
             }
         }
-        assert_eq!(iter.next(), None);
-        self.truncate(len - indices.len());
+        assert_eq!(index_iter.next(), None);
+        self.truncate(self.len() - indices.len());
     }
 
     fn retain_indexed(&mut self, mut f: impl FnMut(usize, &mut T) -> bool) {
         let mut kept = 0;
-        let v = &mut **self;
+        let v = self.as_mut_slice();
         let len = v.len();
         for i in 0..len {
             if f(i, &mut v[i]) {
@@ -98,15 +96,13 @@ impl<T> VecExt<T> for Vec<T> {
     }
 
     fn retain_indices(&mut self, indices: &[usize]) {
-        let v = &mut **self;
-        for (i, j) in indices
+        let v = self.as_mut_slice();
+        indices
             .iter()
             .copied()
             .enumerate()
             .skip_while(|&(i, j)| i == j)
-        {
-            v.swap(i, j);
-        }
+            .for_each(|(i, j)| v.swap(i, j));
         if indices.len() < self.len() {
             self.truncate(indices.len());
         }
@@ -116,15 +112,13 @@ impl<T> VecExt<T> for Vec<T> {
     where
         T: Copy,
     {
-        let v = &mut **self;
-        for (i, j) in indices
+        let v = self.as_mut_slice();
+        indices
             .iter()
             .copied()
             .enumerate()
             .skip_while(|&(i, j)| i == j)
-        {
-            v[i] = v[j];
-        }
+            .for_each(|(i, j)| v[i] = v[j]);
         if indices.len() < self.len() {
             self.truncate(indices.len());
         }
@@ -161,6 +155,9 @@ mod tests {
         fn test(values: &[usize], indices: &[usize], expected: &[usize]) {
             let mut v = Vec::from(values);
             v.remove_indices(indices);
+            assert_eq!(v, Vec::from(expected));
+            let mut v = Vec::from(values);
+            v.remove_indices_copy(indices);
             assert_eq!(v, Vec::from(expected));
         }
         test(&[1, 2, 3], &[], &[1, 2, 3]);

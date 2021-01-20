@@ -34,6 +34,8 @@ pub mod puzzle;
 pub mod solve;
 pub mod square;
 
+#[macro_use]
+pub mod maplit;
 mod collections;
 mod generate;
 mod parse;
