@@ -9,16 +9,15 @@ use std::path::Path;
 
 use itertools::Itertools;
 use once_cell::sync::Lazy;
-use vec_map::VecMap;
 use xml::Xml;
 
-use crate::collections::square::{Coord, IsSquare, Square, SquareValue};
+use crate::collections::square::{Coord, IsSquare, Square, SquareIndex, SquareValue};
 use crate::image::xml::XmlProducer;
 use crate::puzzle::{CellId, Puzzle, Solution};
 use crate::solve::markup::{CellChange, CellChanges};
 use crate::solve::CellVariable;
 use crate::solve::ValueSet;
-use crate::HashSet;
+use crate::{HashMap, HashSet};
 
 #[macro_use]
 mod xml;
@@ -134,7 +133,7 @@ impl<'a> PuzzleImageBuilder<'a> {
             } else {
                 Vec::new()
             };
-            (solutions, VecMap::new())
+            (solutions, HashMap::default())
         };
         let changed_cells = if let Some(cell_changes) = self.cell_changes {
             cell_changes.keys().copied().collect()
@@ -154,9 +153,9 @@ impl<'a> PuzzleImageBuilder<'a> {
     fn solutions_domains(
         cell_variables: &Square<CellVariable>,
         cell_changes: Option<&'a CellChanges>,
-    ) -> (Vec<SolutionValue>, VecMap<Vec<DomainValue>>) {
+    ) -> (Vec<SolutionValue>, HashMap<SquareIndex, Vec<DomainValue>>) {
         let mut solutions = Vec::new();
-        let mut domains = VecMap::new();
+        let mut domains = HashMap::default();
         for (cell_id, cell) in cell_variables.iter().enumerate() {
             let cell_change = cell_changes.and_then(|cell_changes| cell_changes.get(cell_id));
             let domain_and_removals: Option<(&ValueSet, Cow<'_, HashSet<i32>>)> =
@@ -210,7 +209,7 @@ impl<'a> PuzzleImageBuilder<'a> {
 pub struct PuzzleImage<'a> {
     puzzle: &'a Puzzle,
     solutions: Vec<SolutionValue>,
-    domains: VecMap<Vec<DomainValue>>,
+    domains: HashMap<SquareIndex, Vec<DomainValue>>,
     changed_cells: Vec<CellId>,
     width: i32,
     cells_width: i32,
@@ -451,7 +450,7 @@ impl PuzzleSvgContext<'_, '_, '_> {
 
         let mut removals = Vec::new();
 
-        for (cell_id, domain) in &self.image.domains {
+        for (&cell_id, domain) in &self.image.domains {
             if domain.len() as i32 > MAX_DOMAIN_LINE_LEN * 2 {
                 // domain is too long to show
                 continue;

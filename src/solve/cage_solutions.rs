@@ -1,8 +1,6 @@
 use std::ops::Deref;
 use std::ops::DerefMut;
 
-use vec_map::VecMap;
-
 use super::markup::PuzzleMarkupChanges;
 use super::CellVariable;
 use crate::collections::iterator_ext::IteratorExt;
@@ -91,23 +89,33 @@ impl CageSolutionsSet {
             solved_cells: HashSet<CellId>,
         }
 
-        let mut data: VecMap<CageData> = VecMap::default();
+        let mut data: Box<[Option<CageData>]> = std::iter::repeat_with(|| None)
+            .take(puzzle.cage_count())
+            .collect();
 
         for (&cage_id, values) in &changes.cage_solution_removals {
-            data.entry(cage_id)
-                .or_default()
+            data[cage_id]
+                .get_or_insert_with(Default::default)
                 .removed_solution_ids
                 .extend(values);
         }
 
         for (id, _value) in changes.cells.solutions() {
             let cage_id = puzzle.cell(id).cage_id();
-            let cage_data = data.entry(cage_id).or_default();
-            cage_data.solved_cells.insert(id);
+            data[cage_id]
+                .get_or_insert_with(Default::default)
+                .solved_cells
+                .insert(id);
         }
 
-        for (cage_id, cage_data) in data {
-            self[cage_id].apply_changes(&cage_data.removed_solution_ids, &cage_data.solved_cells);
+        for (cage_id, cage_data) in data.into_iter().enumerate() {
+            if let Some(CageData {
+                removed_solution_ids,
+                solved_cells,
+            }) = cage_data
+            {
+                self[cage_id].apply_changes(&removed_solution_ids, &solved_cells);
+            }
         }
     }
 }
@@ -183,8 +191,6 @@ impl CageSolutions {
         removed_solution_indices: &HashSet<usize>,
         solved_cells: &HashSet<CellId>,
     ) {
-        debug_assert!(!removed_solution_indices.is_empty() || !solved_cells.is_empty());
-
         if solved_cells.len() == self.cell_ids.len() {
             // all the cells in the cage have been solved
             self.clear();

@@ -70,7 +70,7 @@ dependencies = [
  "strsim",
  "textwrap",
  "unicode-width",
- "vec_map 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "vec_map",
 ]
 
 [[package]]
@@ -143,7 +143,6 @@ dependencies = [
  "rand",
  "tempfile",
  "thiserror",
- "vec_map 0.8.2 (git+https://github.com/camsteffen/vec-map.git)",
 ]
 
 [[package]]
@@ -389,11 +388,6 @@ name = "vec_map"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
-
-[[package]]
-name = "vec_map"
-version = "0.8.2"
-source = "git+https://github.com/camsteffen/vec-map.git#e00fb23016d9f2e80394c77a2c2571fb1e12d115"
 
 [[package]]
 name = "version_check"
