@@ -260,7 +260,7 @@ impl<'a, T> SquareVector<'a, Square<T>> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Square<T> {
     width: SquareValue,
-    elements: Vec<T>,
+    elements: Box<[T]>,
 }
 
 impl<T> Square<T> {
@@ -271,7 +271,7 @@ impl<T> Square<T> {
     {
         Self {
             width,
-            elements: vec![Default::default(); (width as usize).pow(2)],
+            elements: vec![Default::default(); (width as usize).pow(2)].into_boxed_slice(),
         }
     }
 
@@ -282,7 +282,7 @@ impl<T> Square<T> {
     {
         Square {
             width,
-            elements: vec![val; (width as usize).pow(2)],
+            elements: vec![val; (width as usize).pow(2)].into_boxed_slice(),
         }
     }
 
@@ -312,7 +312,7 @@ impl<T> Square<T> {
 }
 
 impl<T> Deref for Square<T> {
-    type Target = Vec<T>;
+    type Target = [T];
 
     fn deref(&self) -> &Self::Target {
         &self.elements
@@ -393,6 +393,7 @@ impl<T> TryFrom<Vec<T>> for Square<T> {
         if elements.len() != (width as usize).pow(2) {
             return Err(NonSquareLength(elements.len()));
         }
+        let elements = elements.into_boxed_slice();
         Ok(Self { width, elements })
     }
 }
