@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 use super::Constraint;
 use crate::collections::square::IsSquare;
 use crate::collections::square::{Square, Vector};
@@ -176,21 +174,17 @@ impl CageVectorValueConstraint<'_> {
 }
 
 fn create_cell_cage_vector_map(puzzle: &Puzzle) -> Square<Vec<Vector>> {
-    puzzle
-        .cells()
-        .map(|cell| {
-            cell.vectors()
-                .iter()
-                .copied()
-                // include vector if there are other cells in the same cage in the same vector
-                .filter(|&vector| {
-                    cell.cage().cells().any(|cage_cell| {
-                        cage_cell.id() != cell.id() && cage_cell.is_in_vector(vector)
-                    })
-                })
-                .collect()
-        })
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap()
+    Square::from_iter(puzzle.cells().map(|cell| {
+        cell.vectors()
+            .iter()
+            .copied()
+            // include vector if there are other cells in the same cage in the same vector
+            .filter(|&vector| {
+                cell.cage()
+                    .cells()
+                    .any(|cage_cell| cage_cell.id() != cell.id() && cage_cell.is_in_vector(vector))
+            })
+            .collect()
+    }))
+    .unwrap()
 }

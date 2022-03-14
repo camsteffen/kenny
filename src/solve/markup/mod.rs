@@ -3,7 +3,6 @@ use crate::puzzle::{CellId, Puzzle};
 use crate::solve::cage_solutions::CageSolutionsSet;
 use crate::solve::CellVariable;
 use itertools::Itertools;
-use std::convert::TryInto;
 
 pub(crate) use self::changes::{CellChange, CellChanges, PuzzleMarkupChanges};
 
@@ -52,13 +51,7 @@ impl<'a> PuzzleMarkup<'a> {
         if !self.is_completed() {
             return None;
         }
-        let values = self
-            .cell_variables
-            .iter()
-            .map(|v| v.solved().unwrap())
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
+        let values = self.cell_variables.map(|v| v.solved().unwrap());
         Some(values)
     }
 

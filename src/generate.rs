@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::convert::TryInto;
 use std::mem;
 
 use rand::seq::SliceRandom;
@@ -78,7 +77,7 @@ fn cells_touching_border(square_width: SquareValue, border_id: BorderId) -> (Cel
 
 fn generate_cage_cells(puzzle_width: SquareValue, rng: &mut impl Rng) -> Vec<Vec<CellId>> {
     let num_cells = (puzzle_width as usize).pow(2);
-    let mut cage_map: Square<CageId> = (0..num_cells).collect::<Vec<_>>().try_into().unwrap();
+    let mut cage_map = Square::<CageId>::from_iter(0..num_cells).unwrap();
     let mut cages: Vec<Vec<CellId>> = (0..num_cells).map(|i| vec![i]).collect();
     let min_cage_count = (num_cells as f32 / MAX_AVG_CAGE_SIZE) as usize;
     let mut borders = VecDeque::from(shuffled_inner_borders(puzzle_width, rng));

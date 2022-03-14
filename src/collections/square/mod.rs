@@ -265,25 +265,36 @@ pub struct Square<T> {
 
 impl<T> Square<T> {
     /// Creates a new square with a specified width and fill with the default value
-    pub fn with_width(width: SquareValue) -> Square<T>
+    pub fn with_width(width: SquareValue) -> Self
     where
-        T: Clone + Default,
+        T: Default,
     {
-        Self {
-            width,
-            elements: vec![Default::default(); (width as usize).pow(2)].into_boxed_slice(),
-        }
+        Self::from_fn(width, Default::default)
     }
 
     /// Create a new `Square` of a specified width and fill with a specified value
-    pub fn with_width_and_value(width: SquareValue, val: T) -> Square<T>
+    pub fn with_width_and_value(width: SquareValue, val: T) -> Self
     where
         T: Clone,
     {
-        Square {
+        Self {
             width,
             elements: vec![val; (width as usize).pow(2)].into_boxed_slice(),
         }
+    }
+
+    /// Create a new `Square` of a specified width and fill with `f`
+    pub fn from_fn(width: SquareValue, f: impl Fn() -> T) -> Self {
+        Self {
+            width,
+            elements: std::iter::repeat_with(f)
+                .take((width as usize).pow(2))
+                .collect(),
+        }
+    }
+
+    pub fn from_iter(iter: impl IntoIterator<Item = T>) -> Result<Self, NonSquareLength> {
+        iter.into_iter().collect::<Vec<T>>().try_into()
     }
 
     /// Returns an iterator over the rows of the square
@@ -308,6 +319,14 @@ impl<T> Square<T> {
             .iter()
             .enumerate()
             .map(move |(i, e)| (self.cell(i).coord(), e))
+    }
+
+    pub fn map<U>(&self, f: impl Fn(&T) -> U) -> Square<U> {
+        let elements = self.elements.iter().map(f).collect();
+        Square {
+            width: self.width,
+            elements,
+        }
     }
 }
 
