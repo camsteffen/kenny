@@ -3,11 +3,10 @@ use std::convert::TryInto;
 use super::Constraint;
 use crate::collections::square::IsSquare;
 use crate::collections::square::{Square, Vector};
-use crate::collections::LinkedAHashSet;
 use crate::puzzle::{CageId, CellId, CellRef, Puzzle, Value};
 use crate::solve::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::solve::CellVariable;
-use crate::{HashMap, HashSet};
+use crate::{HashMap, HashSet, LinkedHashSet};
 
 /// If a value exists in every cage solution for a cage, in a given vector, that value must be in that cage-vector.
 /// It must not be in any other cell in the vector, not in that cage.
@@ -18,7 +17,7 @@ pub(crate) struct CageVectorValueConstraint<'a> {
     /// This is used to determine which cage-vector's to check after puzzle markup changes.
     cell_cage_vectors: Square<Vec<Vector>>,
     /// Cage-vectors to be checked due to puzzle markup changes
-    dirty_cage_vectors: LinkedAHashSet<(CageId, Vector)>,
+    dirty_cage_vectors: LinkedHashSet<(CageId, Vector)>,
     /// A record of values known to be in a certain cage, in a certain vector
     /// This is used to avoid duplicate work
     known_vector_vals: HashMap<Vector, HashSet<Value>>,
@@ -29,7 +28,7 @@ impl<'a> CageVectorValueConstraint<'a> {
         Self {
             puzzle,
             cell_cage_vectors: create_cell_cage_vector_map(puzzle),
-            dirty_cage_vectors: LinkedAHashSet::default(),
+            dirty_cage_vectors: LinkedHashSet::default(),
             known_vector_vals: HashMap::default(),
         }
     }

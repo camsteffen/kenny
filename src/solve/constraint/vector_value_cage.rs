@@ -4,17 +4,17 @@
 use itertools::Itertools;
 
 use crate::collections::square::{IsSquare, Square, Vector};
-use crate::collections::LinkedAHashSet;
 use crate::puzzle::{CellRef, Puzzle, Value};
 use crate::solve::constraint::Constraint;
 use crate::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::solve::CellVariable;
+use crate::LinkedHashSet;
 
 /// If a value is known to be in a cage-vector, cage solutions must include the value in the vector.
 #[derive(Clone)]
 pub(crate) struct VectorValueCageConstraint<'a> {
     puzzle: &'a Puzzle,
-    dirty_vector_values: LinkedAHashSet<(Vector, Value)>,
+    dirty_vector_values: LinkedHashSet<(Vector, Value)>,
 }
 
 impl<'a> VectorValueCageConstraint<'a> {

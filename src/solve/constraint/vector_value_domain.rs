@@ -3,17 +3,17 @@ use std::ops::{Index, IndexMut};
 use super::Constraint;
 use crate::collections::range_set::RangeSet;
 use crate::collections::square::{EmptySquare, IsSquare, Square, SquareValue, Vector};
-use crate::collections::LinkedAHashSet;
 use crate::puzzle::{CellId, Puzzle, Value};
 use crate::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::solve::CellVariable;
+use crate::LinkedHashSet;
 
 /// If only one cell in a vector has a given value in its domain, then the cell has that value.
 #[derive(Clone)]
 pub(crate) struct VectorValueDomainConstraint<'a> {
     puzzle: &'a Puzzle,
     data: VectorValueIndexSet,
-    dirty_vec_vals: LinkedAHashSet<(Vector, i32)>,
+    dirty_vec_vals: LinkedHashSet<(Vector, i32)>,
 }
 
 impl<'a> VectorValueDomainConstraint<'a> {
@@ -21,7 +21,7 @@ impl<'a> VectorValueDomainConstraint<'a> {
         Self {
             puzzle,
             data: VectorValueIndexSet::new(puzzle.width() as usize),
-            dirty_vec_vals: LinkedAHashSet::default(),
+            dirty_vec_vals: LinkedHashSet::default(),
         }
     }
 

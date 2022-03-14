@@ -44,6 +44,7 @@ type DefaultBuildHasher = RandomState;
 type DefaultBuildHasher = BuildHasherDefault<AHasher>;
 type HashMap<K, V> = std::collections::HashMap<K, V, DefaultBuildHasher>;
 type HashSet<T> = std::collections::HashSet<T, DefaultBuildHasher>;
+type LinkedHashSet<T> = linked_hash_set::LinkedHashSet<T, DefaultBuildHasher>;
 
 // todo documentation
 // todo lazily initialize cage solutions as needed, starting with smaller cages

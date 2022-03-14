@@ -5,11 +5,10 @@ use ahash::AHasher;
 use super::Constraint;
 use crate::collections::iterator_ext::IteratorExt;
 use crate::collections::square::{IsSquare, Square, Vector};
-use crate::collections::LinkedAHashSet;
 use crate::puzzle::{CageId, CellId, Puzzle, Value};
 use crate::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
 use crate::solve::CellVariable;
-use crate::HashSet;
+use crate::{HashSet, LinkedHashSet};
 
 /// Summary: A cage solution must not conflict with a cell's domain outside of the cage
 ///
@@ -24,14 +23,14 @@ use crate::HashSet;
 #[derive(Clone)]
 pub(crate) struct CageSolutionOuterCellDomainConstraint<'a> {
     puzzle: &'a Puzzle,
-    dirty_cells: LinkedAHashSet<CellId>,
+    dirty_cells: LinkedHashSet<CellId>,
 }
 
 impl<'a> CageSolutionOuterCellDomainConstraint<'a> {
     pub fn new(puzzle: &'a Puzzle) -> Self {
         Self {
             puzzle,
-            dirty_cells: LinkedAHashSet::default(),
+            dirty_cells: LinkedHashSet::default(),
         }
     }
 }
