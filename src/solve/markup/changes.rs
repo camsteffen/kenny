@@ -79,9 +79,7 @@ impl CellChanges {
                 }
             },
             hash_map::Entry::Vacant(entry) => {
-                entry.insert(CellChange::DomainRemovals(
-                    [value].iter().copied().collect(),
-                ));
+                entry.insert(CellChange::DomainRemovals(HashSet::from_iter([value])));
             }
         };
     }
