@@ -23,7 +23,8 @@ extern crate log;
 
 #[cfg(debug_assertions)]
 use ahash::AHasher;
-use ahash::{AHashMap, AHashSet};
+#[cfg(not(debug_assertions))]
+use ahash::RandomState;
 #[cfg(debug_assertions)]
 use std::hash::BuildHasherDefault;
 
@@ -37,14 +38,12 @@ mod generate;
 mod parse;
 
 // enable default hasher for debugging to remove randomness
-#[cfg(debug_assertions)]
-type HashMap<K, V> = AHashMap<K, V, BuildHasherDefault<AHasher>>;
-#[cfg(debug_assertions)]
-type HashSet<T> = AHashSet<T, BuildHasherDefault<AHasher>>;
 #[cfg(not(debug_assertions))]
-type HashMap<K, V> = AHashMap<K, V>;
-#[cfg(not(debug_assertions))]
-type HashSet<T> = AHashSet<T>;
+type DefaultBuildHasher = RandomState;
+#[cfg(debug_assertions)]
+type DefaultBuildHasher = BuildHasherDefault<AHasher>;
+type HashMap<K, V> = std::collections::HashMap<K, V, DefaultBuildHasher>;
+type HashSet<T> = std::collections::HashSet<T, DefaultBuildHasher>;
 
 // todo documentation
 // todo lazily initialize cage solutions as needed, starting with smaller cages

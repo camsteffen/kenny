@@ -140,7 +140,7 @@ impl CageVectorValueConstraint<'_> {
             .map(|(i, _)| i)
             .collect();
         if solution_indices.len() < 2 {
-            return HashSet::new();
+            return HashSet::default();
         }
 
         // iterator of solutions with only cells in the vector

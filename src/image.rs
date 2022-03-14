@@ -165,7 +165,7 @@ impl<'a> PuzzleImageBuilder<'a> {
                     {
                         Cow::Borrowed(values)
                     } else {
-                        Cow::Owned(HashSet::new())
+                        Cow::Owned(HashSet::default())
                     };
                     Some((domain, removals))
                 } else {
