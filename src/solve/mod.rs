@@ -8,8 +8,7 @@ use anyhow::Result;
 use self::constraint::apply_unary_constraints;
 use self::markup::{PuzzleMarkup, PuzzleMarkupChanges};
 use crate::puzzle::{Puzzle, Solution};
-use crate::solve::constraint::Constraint;
-use crate::solve::constraint::{init_constraints, ConstraintList};
+use crate::solve::constraint::{Constraint, ConstraintList};
 use crate::solve::search::{search_solution, SearchResult};
 use crate::solve::step_writer::StepWriter;
 
@@ -80,7 +79,7 @@ impl<'a> PuzzleSolver<'a> {
             step_writer.write_step(&markup, &changes.cells)?;
         }
         markup.init_cage_solutions(self.puzzle);
-        let mut constraints = init_constraints(self.puzzle);
+        let mut constraints = ConstraintList::new(self.puzzle);
         constraints.notify_changes(&changes, markup.cells());
         markup.apply_changes(&changes);
         let solution = match propagate_constraints(
@@ -135,9 +134,7 @@ pub(crate) fn propagate_constraints(
     let mut changes = PuzzleMarkupChanges::default();
     let mut loop_count = 0;
     loop {
-        let has_changes = constraints
-            .iter_mut()
-            .any(|constraint| constraint.enforce_partial(markup, &mut changes));
+        let has_changes = constraints.enforce_partial(markup, &mut changes);
         if !has_changes {
             break;
         }
