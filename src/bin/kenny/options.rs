@@ -2,8 +2,9 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
 use clap::ArgMatches;
+use kenny::collections::square::SquareValue;
 
-const DEFAULT_PUZZLE_WIDTH: usize = 4;
+const DEFAULT_PUZZLE_WIDTH: SquareValue = 4;
 const DEFAULT_PATH: &str = "output";
 
 #[derive(Clone)]
@@ -40,7 +41,7 @@ impl Options {
                         .value_of("count")
                         .map_or(1, |s| s.parse::<u32>().expect("invalid count")),
                     width: matches.value_of("width").map_or(DEFAULT_PUZZLE_WIDTH, |s| {
-                        s.parse::<usize>().expect("invalid width")
+                        s.parse::<SquareValue>().expect("invalid width")
                     }),
                     include_solvable,
                     include_unsolvable,
@@ -119,7 +120,7 @@ impl Source {
 #[derive(Clone)]
 pub(crate) struct Generate {
     pub count: u32,
-    pub width: usize,
+    pub width: SquareValue,
     pub include_solvable: bool,
     pub include_unsolvable: bool,
     pub require_search: bool,

@@ -8,6 +8,7 @@ use std::panic::{catch_unwind, resume_unwind};
 
 use anyhow::Result;
 use itertools::Itertools;
+use kenny::collections::square::SquareValue;
 use kenny::image::PuzzleImageBuilder;
 use kenny::puzzle::{Puzzle, Solution};
 use kenny::solve::{PuzzleSolver, SolveResult};
@@ -49,7 +50,7 @@ impl Context {
         Ok(())
     }
 
-    fn start_generate(&mut self, count: u32, width: usize) -> Result<()> {
+    fn start_generate(&mut self, count: u32, width: SquareValue) -> Result<()> {
         let mut included_count = 0;
         let mut attempt = 1;
         while included_count < count {

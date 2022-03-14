@@ -2,7 +2,7 @@ use std::ops::{Index, IndexMut};
 
 use super::Constraint;
 use crate::collections::range_set::RangeSet;
-use crate::collections::square::{AsVector, EmptySquare, IsSquare, Square, Vector};
+use crate::collections::square::{AsVector, EmptySquare, IsSquare, Square, SquareValue, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::{CellId, Puzzle, Value};
 use crate::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
@@ -20,7 +20,7 @@ impl<'a> VectorValueDomainConstraint<'a> {
     pub fn new(puzzle: &'a Puzzle) -> Self {
         Self {
             puzzle,
-            data: VectorValueIndexSet::new(puzzle.width()),
+            data: VectorValueIndexSet::new(puzzle.width() as usize),
             dirty_vec_vals: LinkedAHashSet::default(),
         }
     }
@@ -36,7 +36,7 @@ impl<'a> VectorValueDomainConstraint<'a> {
             .as_ref()
             .and_then(RangeSet::single_value)
         {
-            Some(v) => v,
+            Some(v) => v as SquareValue,
             None => return false,
         };
         let cell_id = puzzle.vector(vector).square_index_at(vec_val_pos);
@@ -67,7 +67,7 @@ impl<'a> Constraint for VectorValueDomainConstraint<'a> {
                         for &value in values {
                             if let Some(dom) = vector_data[value as usize - 1].as_mut() {
                                 let vec_pos = cell.dimension_index(vector.dimension());
-                                if dom.remove(vec_pos) {
+                                if dom.remove(vec_pos as usize) {
                                     self.dirty_vec_vals.insert((vector, value));
                                 }
                             };
@@ -116,7 +116,7 @@ impl VectorValueIndexSet {
     }
 
     fn square(&self) -> EmptySquare {
-        EmptySquare::new(self.0.len() / 2)
+        EmptySquare::new((self.0.len() / 2) as SquareValue)
     }
 }
 

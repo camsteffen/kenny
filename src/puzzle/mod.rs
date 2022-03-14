@@ -7,7 +7,9 @@ use std::ops::Deref;
 use std::path::Path;
 use std::{fmt, fs, mem};
 
-use crate::collections::square::{Coord, IsSquare, Square, SquareCellRef, SquareVector};
+use crate::collections::square::{
+    Coord, IsSquare, Square, SquareCellRef, SquareIndex, SquareValue, SquareVector,
+};
 use crate::error::{InvalidPuzzle, ParsePuzzleError, PuzzleFromFileError};
 use crate::generate::generate_untested_puzzle;
 use crate::parse::parse_puzzle;
@@ -17,8 +19,8 @@ pub use self::cage::{Cage, Operator};
 
 mod cage;
 
-pub type CageId = usize;
-pub type CellId = usize;
+pub type CageId = SquareIndex;
+pub type CellId = SquareIndex;
 pub type Value = i32;
 pub type Solution = Square<Value>;
 
@@ -28,7 +30,7 @@ pub(crate) type CellRef<'a> = SquareCellRef<'a, Puzzle>;
 #[derive(Debug, PartialEq)]
 pub struct Puzzle {
     /// the width and height of the puzzle
-    width: usize,
+    width: SquareValue,
     /// contains all cages in the puzzle
     cages: Vec<Cage>,
     cage_id_map: Square<CageId>,
@@ -36,7 +38,7 @@ pub struct Puzzle {
 
 impl Puzzle {
     /// creates a puzzle with a specified width and set of cages
-    pub fn new(width: usize, mut cages: Vec<Cage>) -> Result<Self, InvalidPuzzle> {
+    pub fn new(width: SquareValue, mut cages: Vec<Cage>) -> Result<Self, InvalidPuzzle> {
         cages.sort_unstable_by_key(|cage| cage.cell_ids()[0]);
         let cage_id_map = cage_id_map(width, &cages)?;
         let puzzle = Self {
@@ -53,7 +55,7 @@ impl Puzzle {
         Ok(puzzle)
     }
 
-    pub fn generate_untested(width: usize) -> Puzzle {
+    pub fn generate_untested(width: SquareValue) -> Puzzle {
         generate_untested_puzzle(width)
     }
 
@@ -121,20 +123,20 @@ impl Puzzle {
     }
 
     fn verify_vector<'a>(&'a self, vector: SquareVector<'a, Square<i32>>) -> bool {
-        let mut set = ValueSet::new(self.width());
+        let mut set = ValueSet::new(self.width() as usize);
         vector
             .iter()
             .all(|&i| i >= 1 && i <= self.width() as i32 && set.insert(i))
     }
 
-    pub fn width(&self) -> usize {
+    pub fn width(&self) -> SquareValue {
         self.width
     }
 }
 
 /// Create a square of values where each value represents the index of the cage
 /// containing that position
-fn cage_id_map(width: usize, cages: &[Cage]) -> Result<Square<usize>, InvalidPuzzle> {
+fn cage_id_map(width: SquareValue, cages: &[Cage]) -> Result<Square<usize>, InvalidPuzzle> {
     let mut cage_map = Square::with_width_and_value(width, usize::MAX);
     let mut count = 0;
     for (i, cage) in cages.iter().enumerate() {
@@ -177,7 +179,7 @@ impl Display for Puzzle {
 }
 
 impl<P: Borrow<Puzzle>> IsSquare for P {
-    fn width(&self) -> usize {
+    fn width(&self) -> SquareValue {
         Puzzle::width(self.borrow())
     }
 }

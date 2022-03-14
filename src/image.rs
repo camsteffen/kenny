@@ -12,7 +12,7 @@ use once_cell::sync::Lazy;
 use vec_map::VecMap;
 use xml::Xml;
 
-use crate::collections::square::{Coord, IsSquare, Square};
+use crate::collections::square::{Coord, IsSquare, Square, SquareValue};
 use crate::image::xml::XmlProducer;
 use crate::puzzle::{CellId, Puzzle, Solution};
 use crate::solve::markup::{CellChange, CellChanges};
@@ -349,8 +349,8 @@ impl PuzzleSvgContext<'_, '_, '_> {
 
     fn cages_outline(&mut self) -> Result {
         struct Direction {
-            coord_a: fn(usize, usize) -> Coord,
-            coord_b: fn(usize, usize) -> Coord,
+            coord_a: fn(SquareValue, SquareValue) -> Coord,
+            coord_b: fn(SquareValue, SquareValue) -> Coord,
             draw_char: char,
         }
         const DIRECTIONS: [Direction; 2] = [
@@ -541,7 +541,7 @@ impl PuzzleSvgContext<'_, '_, '_> {
     }
 }
 
-fn cell_coord(coord: Coord<usize>) -> Coord<i32> {
+fn cell_coord(coord: Coord<SquareValue>) -> Coord<i32> {
     Coord::new(
         coord.col() as i32 * CELL_WIDTH + OUTER_PAD,
         coord.row() as i32 * CELL_WIDTH + OUTER_PAD,

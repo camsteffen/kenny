@@ -24,7 +24,7 @@ impl<'a> PuzzleMarkup<'a> {
             puzzle,
             cell_variables: Square::with_width_and_value(
                 puzzle.width(),
-                CellVariable::unsolved_with_all(puzzle.width()),
+                CellVariable::unsolved_with_all(puzzle.width() as usize),
             ),
             cage_solutions_set: None,
             blank_cell_count: puzzle.cell_count() as u32,

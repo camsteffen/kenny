@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::str;
 
-use crate::collections::square::SquareIndex;
+use crate::collections::square::{SquareIndex, SquareValue};
 use crate::error::{
     ParseError, ParsePuzzleError, ParsePuzzleErrorType, ParsePuzzleErrorType::*, UNEXPECTED_END,
 };
@@ -21,7 +21,7 @@ mod token_iterator;
 
 pub type Result<T, E = ParseError> = std::result::Result<T, E>;
 
-const MAX_PUZZLE_SIZE: usize = ((b'Z') - (b'A') + 1) as usize;
+const MAX_PUZZLE_SIZE: SquareValue = ((b'Z') - (b'A') + 1) as SquareValue;
 
 /// parse a `Puzzle` from a string
 pub fn parse_puzzle(s: &str) -> Result<Puzzle, ParsePuzzleError> {
@@ -30,7 +30,7 @@ pub fn parse_puzzle(s: &str) -> Result<Puzzle, ParsePuzzleError> {
         .next_skip_space()?
         .expect_token()?
         .map_or(InvalidSize, Token::number)?
-        .value() as usize;
+        .value();
     if size > MAX_PUZZLE_SIZE {
         return Err(ParseError::from_type(SizeTooBig).into());
     }
@@ -49,9 +49,9 @@ pub fn parse_puzzle(s: &str) -> Result<Puzzle, ParsePuzzleError> {
     Ok(puzzle)
 }
 
-fn read_cage_cells(s: &mut TokenIterator<'_>, size: usize) -> Result<Vec<Vec<SquareIndex>>> {
+fn read_cage_cells(s: &mut TokenIterator<'_>, width: SquareValue) -> Result<Vec<Vec<SquareIndex>>> {
     let mut cage_map: BTreeMap<char, Vec<usize>> = BTreeMap::new();
-    for cell in 0..(size * size) {
+    for cell in 0..(width as SquareIndex).pow(2) {
         let letter = s
             .next_skip_space()?
             .expect_token()?

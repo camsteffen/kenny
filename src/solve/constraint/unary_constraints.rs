@@ -8,7 +8,7 @@
 use std::cmp::Reverse;
 
 use crate::collections::iterator_ext::IteratorExt;
-use crate::collections::square::IsSquare;
+use crate::collections::square::{IsSquare, SquareValue};
 use crate::puzzle::{CageRef, CellId, Operator};
 use crate::puzzle::{Puzzle, Value};
 use crate::solve::markup::CellChanges;
@@ -111,7 +111,7 @@ fn reduce_cage_subtract(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut CellCh
 
 fn reduce_cage_divide(puzzle: &Puzzle, cage: CageRef<'_>, changes: &mut CellChanges) {
     let non_domain = {
-        let mut non_domain = ValueSet::with_all(puzzle.width());
+        let mut non_domain = ValueSet::with_all(puzzle.width() as usize);
         for n in 1..=puzzle.width() as i32 / cage.target() {
             non_domain.remove(n);
             non_domain.remove(n * cage.target());
@@ -175,7 +175,8 @@ fn cell_group_sizes(puzzle: &Puzzle, cells: &[CellId]) -> Vec<usize> {
     sizes
 }
 
-fn group_sequence_min_max(group_sequence: &[usize], puzzle_width: usize) -> (i32, i32) {
+fn group_sequence_min_max(group_sequence: &[usize], puzzle_width: SquareValue) -> (i32, i32) {
+    let puzzle_width = puzzle_width as usize;
     group_sequence
         .iter()
         .enumerate()

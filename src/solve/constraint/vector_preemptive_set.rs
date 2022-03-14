@@ -88,7 +88,7 @@ fn enforce_vector(
     // TODO can this be optimized?
 
     // find a set of cells where the size of the union of their domains is equal to the number of cells
-    let mut cells: Vec<CellId> = Vec::with_capacity(cell_variables.width() - 1);
+    let mut cells: Vec<CellId> = Vec::with_capacity(cell_variables.width() as usize - 1);
     'domain_sizes: for (i, cells2) in cells_by_domain_size.into_iter().enumerate() {
         if cells2.is_empty() {
             continue;
@@ -114,7 +114,7 @@ fn unify_domain(
     cells: &[CellId],
     target_size: usize,
 ) -> Option<ValueSet> {
-    let mut domain = ValueSet::new(cell_variables.width());
+    let mut domain = ValueSet::new(cell_variables.width() as usize);
     for &cell in cells {
         for j in cell_variables[cell].unsolved().unwrap() {
             if domain.insert(j) && domain.len() > target_size {

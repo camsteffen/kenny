@@ -65,7 +65,7 @@ fn enforce_cage(
     changes: &mut PuzzleMarkupChanges,
 ) -> u32 {
     // assemble domain for each unsolved cell from cell solutions
-    let mut soln_domain = vec![ValueSet::new(puzzle.width()); cage_solutions.num_cells()];
+    let mut soln_domain = vec![ValueSet::new(puzzle.width() as usize); cage_solutions.num_cells()];
     for solution in &cage_solutions.solutions {
         for i in 0..cage_solutions.num_cells() {
             soln_domain[i].insert(solution[i]);

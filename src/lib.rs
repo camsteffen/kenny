@@ -27,12 +27,12 @@ use ahash::{AHashMap, AHashSet};
 #[cfg(debug_assertions)]
 use std::hash::BuildHasherDefault;
 
+pub mod collections;
 pub mod error;
 pub mod image;
 pub mod puzzle;
 pub mod solve;
 
-mod collections;
 mod generate;
 mod parse;
 

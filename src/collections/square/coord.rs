@@ -1,11 +1,11 @@
 use std::fmt;
 use std::fmt::{Debug, Display};
 
-use crate::collections::square::{Dimension, Vector};
+use crate::collections::square::{Dimension, SquareValue, Vector};
 
 /// Cartesian coordinates
 #[derive(Clone, Copy, PartialEq)]
-pub struct Coord<T: Copy = usize>([T; 2]);
+pub struct Coord<T: Copy = SquareValue>([T; 2]);
 
 impl<T: Copy> Coord<T> {
     pub fn new(col: T, row: T) -> Self {
@@ -37,7 +37,7 @@ impl<T: Copy> Coord<T> {
     }
 }
 
-impl Coord<usize> {
+impl Coord<SquareValue> {
     pub fn vectors(self) -> [Vector; 2] {
         let col = Vector::col(self.col());
         let row = Vector::row(self.row());

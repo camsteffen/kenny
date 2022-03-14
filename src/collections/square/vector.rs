@@ -4,7 +4,8 @@ use std::fmt;
 use std::fmt::Debug;
 
 use self::Dimension::{Col, Row};
-use super::Coord;
+use super::{Coord, SquareValue};
+use crate::collections::square::SquareIndex;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Dimension {
@@ -14,20 +15,20 @@ pub enum Dimension {
 
 /// A row or column
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Vector(usize);
+pub struct Vector(SquareValue);
 
 impl Vector {
-    pub fn new(dimension: Dimension, index: usize) -> Vector {
-        Vector(index * 2 + dimension as usize)
+    pub fn new(dimension: Dimension, index: SquareValue) -> Vector {
+        Vector(index * 2 + dimension as SquareValue)
     }
 
     /// Creates a column Vector
-    pub fn col(index: usize) -> Vector {
+    pub fn col(index: SquareValue) -> Vector {
         Self::new(Col, index)
     }
 
     /// Creates a row Vector
-    pub fn row(index: usize) -> Vector {
+    pub fn row(index: SquareValue) -> Vector {
         Self::new(Row, index)
     }
 }
@@ -44,8 +45,8 @@ pub(crate) trait AsVector: Copy {
     }
 
     /// Retrieves the index of the vector in its respective dimension
-    fn index(self) -> usize {
-        self.id() / 2
+    fn index(self) -> SquareValue {
+        (self.id() / 2) as SquareValue
     }
 
     fn intersects_coord(self, coord: Coord) -> bool {
@@ -56,7 +57,7 @@ pub(crate) trait AsVector: Copy {
 impl AsVector for Vector {
     #[inline]
     fn id(self) -> usize {
-        self.0
+        self.0 as usize
     }
 }
 

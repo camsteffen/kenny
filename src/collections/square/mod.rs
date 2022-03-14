@@ -11,13 +11,13 @@ pub(crate) use self::vector::{AsVector, Dimension, Vector};
 mod coord;
 mod vector;
 
-type VectorsInner = Map<Range<usize>, fn(usize) -> Vector>;
+type VectorsInner = Map<Range<SquareValue>, fn(SquareValue) -> Vector>;
 type Vectors = Chain<VectorsInner, VectorsInner>;
 type VectorIndices = StepBy<Range<SquareIndex>>;
 
 pub(crate) trait IsSquare {
     fn len(&self) -> usize {
-        let width = self.width();
+        let width = self.width() as usize;
         width * width
     }
 
@@ -36,11 +36,11 @@ pub(crate) trait IsSquare {
     fn shared_vector(&self, a: SquareIndex, b: SquareIndex) -> Option<Vector> {
         self.assert_index(a);
         self.assert_index(b);
-        let width = self.width();
+        let width = self.width() as SquareIndex;
         if a / width == b / width {
-            Some(Vector::row(a / width))
+            Some(Vector::row((a / width) as SquareValue))
         } else if a % width == b % width {
-            Some(Vector::col(a % width))
+            Some(Vector::col((a % width) as SquareValue))
         } else {
             None
         }
@@ -68,19 +68,19 @@ pub(crate) trait IsSquare {
     }
 
     fn vectors(&self) -> Vectors {
-        let as_col: fn(usize) -> Vector = Vector::col;
-        let as_row: fn(usize) -> Vector = Vector::row;
+        let as_col: fn(SquareValue) -> Vector = Vector::col;
+        let as_row: fn(SquareValue) -> Vector = Vector::row;
         let cols = (0..self.width()).map(as_col);
         let rows = (0..self.width()).map(as_row);
         cols.chain(rows)
     }
 
-    fn width(&self) -> usize;
+    fn width(&self) -> SquareValue;
 }
 
 pub(crate) struct SquareCellRef<'a, S: IsSquare> {
     square: &'a S,
-    index: usize,
+    index: SquareIndex,
 }
 
 // Clone and Copy cannot be derived - see https://github.com/rust-lang/rust/issues/26925
@@ -104,19 +104,19 @@ impl<'a, S: IsSquare> SquareCellRef<'a, S> {
         self.index
     }
 
-    pub fn col(self) -> usize {
-        self.index % self.square.width()
+    pub fn col(self) -> SquareValue {
+        (self.index % self.square.width() as SquareIndex) as SquareValue
     }
 
-    pub fn row(self) -> usize {
-        self.index / self.square.width()
+    pub fn row(self) -> SquareValue {
+        (self.index / self.square.width() as SquareIndex) as SquareValue
     }
 
-    pub fn coord(self) -> Coord {
+    pub fn coord(self) -> Coord<SquareValue> {
         Coord::new(self.col(), self.row())
     }
 
-    pub fn dimension_index(self, dimension: Dimension) -> usize {
+    pub fn dimension_index(self, dimension: Dimension) -> SquareValue {
         match dimension {
             Dimension::Col => self.col(),
             Dimension::Row => self.row(),
@@ -168,23 +168,26 @@ impl<T: IsSquare + ?Sized> IsSquarePrivate for T {
 
 pub type SquareIndex = usize;
 
+/// Represents a width or row/column number within a `Square`
+pub type SquareValue = u32;
+
 /// A value that can be converted to a `SquareIndex` given the square size
 pub trait AsSquareIndex: Copy {
-    fn as_square_index(self, width: usize) -> SquareIndex;
+    fn as_square_index(self, width: SquareValue) -> SquareIndex;
 }
 
 impl AsSquareIndex for usize {
     #[inline]
-    fn as_square_index(self, _width: usize) -> SquareIndex {
+    fn as_square_index(self, _width: SquareValue) -> SquareIndex {
         self
     }
 }
 
 impl AsSquareIndex for Coord {
-    fn as_square_index(self, size: usize) -> SquareIndex {
+    fn as_square_index(self, size: SquareValue) -> SquareIndex {
         assert!(self.col() < size);
         assert!(self.row() < size);
-        self.row() * size + self.col()
+        self.row() as SquareIndex * size as SquareIndex + self.col() as SquareIndex
     }
 }
 
@@ -218,15 +221,23 @@ where
     }
 
     pub fn indices(self) -> VectorIndices {
-        let width = self.square.width();
+        let width = self.square.width() as SquareIndex;
         let (start, end, step) = match self.dimension() {
-            Dimension::Row => (width * self.index(), width * (self.index() + 1), 1),
-            Dimension::Col => (self.index(), self.index() + self.square.len(), width),
+            Dimension::Row => (
+                width * self.index() as SquareIndex,
+                width * (self.index() as SquareIndex + 1),
+                1,
+            ),
+            Dimension::Col => (
+                self.index() as SquareIndex,
+                self.index() as SquareIndex + self.square.len(),
+                width,
+            ),
         };
         (start..end).step_by(step)
     }
 
-    pub fn square_index_at(self, index: usize) -> usize {
+    pub fn square_index_at(self, index: SquareValue) -> SquareIndex {
         let coord = match self.vector.dimension() {
             Dimension::Col => Coord::new(self.vector.index(), index),
             Dimension::Row => Coord::new(index, self.vector.index()),
@@ -254,30 +265,30 @@ impl<'a, T> AsVector for SquareVector<'a, T> {
 /// A container of elements represented in a square grid
 #[derive(Clone, Debug, PartialEq)]
 pub struct Square<T> {
-    width: usize,
+    width: SquareValue,
     elements: Vec<T>,
 }
 
 impl<T> Square<T> {
     /// Creates a new square with a specified width and fill with the default value
-    pub fn with_width(width: usize) -> Square<T>
+    pub fn with_width(width: SquareValue) -> Square<T>
     where
         T: Clone + Default,
     {
         Self {
             width,
-            elements: vec![Default::default(); width.pow(2)],
+            elements: vec![Default::default(); (width as usize).pow(2)],
         }
     }
 
     /// Create a new `Square` of a specified width and fill with a specified value
-    pub fn with_width_and_value(width: usize, val: T) -> Square<T>
+    pub fn with_width_and_value(width: SquareValue, val: T) -> Square<T>
     where
         T: Clone,
     {
         Square {
             width,
-            elements: vec![val; width.pow(2)],
+            elements: vec![val; (width as usize).pow(2)],
         }
     }
 
@@ -289,12 +300,12 @@ impl<T> Square<T> {
 
     /// Returns an iterator over the rows of the square
     pub fn rows(&self) -> impl Iterator<Item = &[T]> {
-        self.elements.chunks(self.width)
+        self.elements.chunks(self.width as usize)
     }
 
     /// Returns a mutable iterator over the rows of the square
     pub fn rows_mut(&mut self) -> impl Iterator<Item = &mut [T]> {
-        self.elements.chunks_mut(self.width)
+        self.elements.chunks_mut(self.width as usize)
     }
 
     /// Returns an iterator over every element, paired with its `Coord`
@@ -319,7 +330,7 @@ impl<T> IsSquare for Square<T> {
         self.elements.len()
     }
 
-    fn width(&self) -> usize {
+    fn width(&self) -> SquareValue {
         self.width
     }
 }
@@ -356,17 +367,17 @@ where
 
 #[derive(Clone, Copy)]
 pub(crate) struct EmptySquare {
-    width: usize,
+    width: SquareValue,
 }
 
 impl EmptySquare {
-    pub fn new(width: usize) -> Self {
+    pub fn new(width: SquareValue) -> Self {
         Self { width }
     }
 }
 
 impl IsSquare for EmptySquare {
-    fn width(&self) -> usize {
+    fn width(&self) -> SquareValue {
         self.width
     }
 }
@@ -384,8 +395,8 @@ impl<T> TryFrom<Vec<T>> for Square<T> {
     type Error = NonSquareLength;
 
     fn try_from(elements: Vec<T>) -> Result<Self, Self::Error> {
-        let width = (elements.len() as f32).sqrt() as usize;
-        if elements.len() != width.pow(2) {
+        let width = (elements.len() as f32).sqrt() as SquareValue;
+        if elements.len() != (width as usize).pow(2) {
             return Err(NonSquareLength(elements.len()));
         }
         Ok(Self { width, elements })
