@@ -2,7 +2,7 @@ use std::ops::{Index, IndexMut};
 
 use super::Constraint;
 use crate::collections::range_set::RangeSet;
-use crate::collections::square::{AsVector, EmptySquare, IsSquare, Square, SquareValue, Vector};
+use crate::collections::square::{EmptySquare, IsSquare, Square, SquareValue, Vector};
 use crate::collections::LinkedAHashSet;
 use crate::puzzle::{CellId, Puzzle, Value};
 use crate::solve::markup::{CellChange, PuzzleMarkup, PuzzleMarkupChanges};
@@ -66,7 +66,7 @@ impl<'a> Constraint for VectorValueDomainConstraint<'a> {
                         let vector_data = &mut self.data[vector];
                         for &value in values {
                             if let Some(dom) = vector_data[value as usize - 1].as_mut() {
-                                let vec_pos = cell.dimension_index(vector.dimension());
+                                let vec_pos = cell.dimension_index(vector.dimension);
                                 if dom.remove(vec_pos as usize) {
                                     self.dirty_vec_vals.insert((vector, value));
                                 }

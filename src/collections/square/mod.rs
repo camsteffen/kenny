@@ -6,7 +6,7 @@ use std::iter::{Chain, Map, StepBy};
 use std::ops::{Deref, Index, IndexMut, Range};
 
 pub(crate) use self::coord::Coord;
-pub(crate) use self::vector::{AsVector, Dimension, Vector};
+pub(crate) use self::vector::{Dimension, Vector};
 
 mod coord;
 mod vector;
@@ -162,7 +162,7 @@ impl<T: IsSquare + ?Sized> IsSquarePrivate for T {
 
     #[inline]
     fn assert_vector(&self, vector: Vector) {
-        assert!(vector.index() < self.width());
+        assert!(vector.index < self.width());
     }
 }
 
@@ -213,24 +213,24 @@ where
     T: IsSquare,
 {
     pub fn contains_square_index(&self, index: usize) -> bool {
-        self.vector.index()
+        self.vector.index
             == self
                 .square
                 .cell(index)
-                .dimension_index(self.vector.dimension())
+                .dimension_index(self.vector.dimension)
     }
 
     pub fn indices(self) -> VectorIndices {
         let width = self.square.width() as SquareIndex;
-        let (start, end, step) = match self.dimension() {
+        let (start, end, step) = match self.vector.dimension {
             Dimension::Row => (
-                width * self.index() as SquareIndex,
-                width * (self.index() as SquareIndex + 1),
+                width * self.vector.index as SquareIndex,
+                width * (self.vector.index as SquareIndex + 1),
                 1,
             ),
             Dimension::Col => (
-                self.index() as SquareIndex,
-                self.index() as SquareIndex + self.square.len(),
+                self.vector.index as SquareIndex,
+                self.vector.index as SquareIndex + self.square.len(),
                 width,
             ),
         };
@@ -238,9 +238,9 @@ where
     }
 
     pub fn square_index_at(self, index: SquareValue) -> SquareIndex {
-        let coord = match self.vector.dimension() {
-            Dimension::Col => Coord::new(self.vector.index(), index),
-            Dimension::Row => Coord::new(index, self.vector.index()),
+        let coord = match self.vector.dimension {
+            Dimension::Col => Coord::new(self.vector.index, index),
+            Dimension::Row => Coord::new(index, self.vector.index),
         };
         coord.as_square_index(self.square.width())
     }
@@ -253,12 +253,6 @@ impl<'a, T> SquareVector<'a, Square<T>> {
 
     pub fn iter(self) -> impl Iterator<Item = &'a T> {
         self.indices().map(move |i| &self.square[i])
-    }
-}
-
-impl<'a, T> AsVector for SquareVector<'a, T> {
-    fn id(self) -> usize {
-        self.vector.id()
     }
 }
 
