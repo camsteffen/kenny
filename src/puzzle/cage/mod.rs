@@ -62,24 +62,16 @@ impl Cage {
 }
 
 fn validate(cage: &Cage) -> Result<(), InvalidPuzzle> {
-    match cage.cell_ids().len() {
-        0 => return Err(InvalidPuzzle::new("cage cell_ids must not be empty".into())),
-        1 => match cage.operator {
-            Operator::Nop => (),
-            operator => {
-                return Err(InvalidPuzzle::new(format!(
-                    "cage operator ({}) must have more than one cell",
-                    operator.symbol().unwrap()
-                )))
-            }
-        },
-        _ => {
-            if cage.operator == Operator::Nop {
-                return Err(InvalidPuzzle::new(
-                    "cage with multiple cells must have an operator".into(),
-                ));
-            }
-        }
+    match (cage.operator, cage.cell_ids().len()) {
+        (_, 0) => Err(InvalidPuzzle::new("cage cell_ids must not be empty".into())),
+        (Operator::Nop, 1) => Ok(()),
+        (Operator::Nop, _) => Err(InvalidPuzzle::new(
+            "cage with multiple cells must have an operator".into(),
+        )),
+        (operator, 1) => Err(InvalidPuzzle::new(format!(
+            "cage operator ({}) must have more than one cell",
+            operator.symbol().unwrap()
+        ))),
+        _ => Ok(()),
     }
-    Ok(())
 }
