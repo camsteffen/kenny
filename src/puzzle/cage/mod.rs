@@ -12,7 +12,7 @@ mod operator;
 #[derive(Debug, PartialEq)]
 pub struct Cage {
     /// A list of the positions of the cells in this cage
-    cell_ids: Vec<CellId>,
+    cell_ids: Box<[CellId]>,
 
     /// The math operator that must be used with the numbers in the cage
     /// to produce the target number
@@ -24,18 +24,25 @@ pub struct Cage {
 
 impl Cage {
     pub fn new(
-        mut cell_ids: Vec<CellId>,
+        cell_ids: impl Into<Box<[CellId]>>,
         operator: Operator,
         target: i32,
     ) -> Result<Self, InvalidPuzzle> {
-        cell_ids.sort_unstable();
-        let cage = Self {
-            cell_ids,
-            operator,
-            target,
-        };
-        validate(&cage)?;
-        Ok(cage)
+        fn inner(
+            mut cell_ids: Box<[CellId]>,
+            operator: Operator,
+            target: i32,
+        ) -> Result<Cage, InvalidPuzzle> {
+            cell_ids.sort_unstable();
+            let cage = Cage {
+                cell_ids,
+                operator,
+                target,
+            };
+            validate(&cage)?;
+            Ok(cage)
+        }
+        inner(cell_ids.into(), operator, target)
     }
 
     /// The number on the cage

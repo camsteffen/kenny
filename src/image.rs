@@ -118,9 +118,10 @@ impl<'a> PuzzleImageBuilder<'a> {
         let cells_width = CELL_WIDTH * puzzle.width() as i32;
         let width = cells_width + OUTER_PAD * 2;
         let (solutions, domains) = if let Some(cell_variables) = self.cell_variables {
-            Self::solutions_domains(cell_variables, self.cell_changes)
+            let (solutions, domains) = Self::solutions_domains(cell_variables, self.cell_changes);
+            (solutions.into_boxed_slice(), domains)
         } else {
-            let solutions = if let Some(solution) = self.solution {
+            let solutions = self.solution.map_or_else(Box::default, |solution| {
                 solution
                     .iter()
                     .enumerate()
@@ -130,16 +131,12 @@ impl<'a> PuzzleImageBuilder<'a> {
                         is_new: false,
                     })
                     .collect()
-            } else {
-                Vec::new()
-            };
+            });
             (solutions, HashMap::default())
         };
-        let changed_cells = if let Some(cell_changes) = self.cell_changes {
-            cell_changes.keys().copied().collect()
-        } else {
-            Vec::new()
-        };
+        let changed_cells = self
+            .cell_changes
+            .map_or_else(Box::default, |c| c.keys().copied().collect());
         PuzzleImage {
             puzzle,
             solutions,
@@ -208,9 +205,9 @@ impl<'a> PuzzleImageBuilder<'a> {
 
 pub struct PuzzleImage<'a> {
     puzzle: &'a Puzzle,
-    solutions: Vec<SolutionValue>,
+    solutions: Box<[SolutionValue]>,
     domains: HashMap<SquareIndex, Vec<DomainValue>>,
-    changed_cells: Vec<CellId>,
+    changed_cells: Box<[CellId]>,
     width: i32,
     cells_width: i32,
 }
@@ -287,7 +284,7 @@ impl PuzzleSvgContext<'_, '_, '_> {
             return Ok(());
         }
         xml!(self.xml, open "g", "class" = "highlight");
-        for &cell_id in &self.image.changed_cells {
+        for &cell_id in &*self.image.changed_cells {
             let coord = self.cell_id_coord(cell_id);
             xml! {
                 self.xml,
@@ -511,7 +508,7 @@ impl PuzzleSvgContext<'_, '_, '_> {
             return Ok(());
         }
         xml!(self.xml, open "g", "class" = "solutions");
-        for solution_value in &self.image.solutions {
+        for solution_value in &*self.image.solutions {
             let &SolutionValue {
                 cell_id,
                 value,

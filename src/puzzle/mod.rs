@@ -32,13 +32,13 @@ pub struct Puzzle {
     /// the width and height of the puzzle
     width: SquareValue,
     /// contains all cages in the puzzle
-    cages: Vec<Cage>,
+    cages: Box<[Cage]>,
     cage_id_map: Square<CageId>,
 }
 
 impl Puzzle {
     /// creates a puzzle with a specified width and set of cages
-    pub fn new(width: SquareValue, mut cages: Vec<Cage>) -> Result<Self, InvalidPuzzle> {
+    pub fn new(width: SquareValue, mut cages: Box<[Cage]>) -> Result<Self, InvalidPuzzle> {
         cages.sort_unstable_by_key(|cage| cage.cell_ids()[0]);
         let cage_id_map = cage_id_map(width, &cages)?;
         let puzzle = Self {
@@ -167,7 +167,7 @@ impl Display for Puzzle {
             }
             writeln!(f)?;
         }
-        for cage in &self.cages {
+        for cage in &*self.cages {
             write!(f, "{}", cage.target())?;
             if let Some(s) = cage.operator().symbol() {
                 write!(f, "{}", s)?;

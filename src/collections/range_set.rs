@@ -1,21 +1,21 @@
 #[derive(Clone)]
 pub(crate) struct RangeSet {
     size: usize,
-    domain: Vec<bool>,
+    domain: Box<[bool]>,
 }
 
 impl RangeSet {
     pub fn new(size: usize) -> RangeSet {
         RangeSet {
             size: 0,
-            domain: vec![false; size],
+            domain: vec![false; size].into_boxed_slice(),
         }
     }
 
     pub fn with_all(size: usize) -> RangeSet {
         RangeSet {
             size,
-            domain: vec![true; size],
+            domain: vec![true; size].into_boxed_slice(),
         }
     }
 

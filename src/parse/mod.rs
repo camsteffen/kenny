@@ -40,7 +40,7 @@ pub fn parse_puzzle(s: &str) -> Result<Puzzle, ParsePuzzleError> {
     if let Some((i, t)) = s.next_skip_space()? {
         return Err(ParseError::new(UnexpectedToken, t, i).into());
     }
-    let cages: Vec<Cage> = cage_cells
+    let cages = cage_cells
         .into_iter()
         .zip(cage_targets.into_iter())
         .map(|(cells, (target, operator))| Cage::new(cells, operator, target as i32))
@@ -159,16 +159,17 @@ mod tests {
         DEEF \
         DGHH \
         4+ 2* 6* 4/ 4- 7 3 2-";
-        let cages = vec![
-            Cage::new(vec![0, 1, 4], Operator::Add, 4).unwrap(),
-            Cage::new(vec![2, 3], Operator::Multiply, 2).unwrap(),
-            Cage::new(vec![5, 6, 7], Operator::Multiply, 6).unwrap(),
-            Cage::new(vec![8, 12], Operator::Divide, 4).unwrap(),
-            Cage::new(vec![9, 10], Operator::Subtract, 4).unwrap(),
-            Cage::new(vec![11], Operator::Nop, 7).unwrap(),
-            Cage::new(vec![13], Operator::Nop, 3).unwrap(),
-            Cage::new(vec![14, 15], Operator::Subtract, 2).unwrap(),
-        ];
+        let cages = [
+            Cage::new([0, 1, 4], Operator::Add, 4).unwrap(),
+            Cage::new([2, 3], Operator::Multiply, 2).unwrap(),
+            Cage::new([5, 6, 7], Operator::Multiply, 6).unwrap(),
+            Cage::new([8, 12], Operator::Divide, 4).unwrap(),
+            Cage::new([9, 10], Operator::Subtract, 4).unwrap(),
+            Cage::new([11], Operator::Nop, 7).unwrap(),
+            Cage::new([13], Operator::Nop, 3).unwrap(),
+            Cage::new([14, 15], Operator::Subtract, 2).unwrap(),
+        ]
+        .into();
         let puzzle = Puzzle::new(4, cages).unwrap();
         assert_eq!(puzzle, parse_puzzle(str).unwrap());
     }
