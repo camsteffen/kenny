@@ -3,7 +3,7 @@ use std::{fmt, io};
 
 use thiserror::Error;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(Error, Debug)]
 #[error("invalid puzzle: {}", msg)]
 pub struct InvalidPuzzle {
     msg: String,
