@@ -99,16 +99,13 @@ impl<'a> PuzzleSolver<'a> {
             }
         } else {
             info!("Begin backtracking");
-            let solution = match search_solution(
-                self.puzzle,
-                &markup,
-                &constraints,
-                &mut step_writer.as_mut(),
-            )? {
-                SearchResult::NoSolutions => return Ok(SolveResult::Unsolvable),
-                SearchResult::SingleSolution(s) => s.solution,
-                SearchResult::MultipleSolutions => return Ok(SolveResult::MultipleSolutions),
-            };
+            let solution =
+                match search_solution(self.puzzle, markup, constraints, &mut step_writer.as_mut())?
+                {
+                    SearchResult::NoSolutions => return Ok(SolveResult::Unsolvable),
+                    SearchResult::SingleSolution(solution) => solution,
+                    SearchResult::MultipleSolutions => return Ok(SolveResult::MultipleSolutions),
+                };
             SolvedData {
                 solution,
                 used_search: true,
