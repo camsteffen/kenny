@@ -2,7 +2,7 @@ use self::CellVariable::{Solved, Unsolved};
 use super::ValueSet;
 use crate::puzzle::Value;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum CellVariable {
     Solved(Value),
     Unsolved(ValueSet),

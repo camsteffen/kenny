@@ -1,7 +1,24 @@
+use std::fmt::{Debug, Formatter, Write};
+
 #[derive(Clone)]
 pub(crate) struct RangeSet {
     size: usize,
     domain: Box<[bool]>,
+}
+
+impl Debug for RangeSet {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_char('[')?;
+        let mut iter = self.iter();
+        if let Some(first) = iter.next() {
+            write!(f, "{}", first)?;
+            for next in iter {
+                write!(f, ", {}", next)?;
+            }
+        }
+        f.write_char(']')?;
+        Ok(())
+    }
 }
 
 impl RangeSet {

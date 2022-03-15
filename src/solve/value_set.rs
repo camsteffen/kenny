@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use std::iter::Map;
 
 use crate::collections::range_set;
@@ -6,6 +7,12 @@ use crate::collections::range_set::RangeSet;
 /// A small abstraction over `RangeSet` for puzzle values
 #[derive(Clone)]
 pub(crate) struct ValueSet(RangeSet);
+
+impl Debug for ValueSet {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl ValueSet {
     pub fn new(max: usize) -> Self {
