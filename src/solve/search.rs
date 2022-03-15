@@ -99,9 +99,7 @@ impl SearchContext<'_, '_> {
             return Ok(SearchResult::NoSolutions);
         }
         if let Some(ref mut step_writer) = self.step_writer {
-            let mut changes = CellChanges::new();
-            changes.solve(guess.cell_id, guess.value);
-            step_writer.write_step(&self.markup, &changes)?;
+            step_writer.write_step(&self.markup, &changes.cells)?;
         }
         let (markup, constraints) = (self.markup.to_mut(), self.constraints.to_mut());
         constraints.notify_changes(&changes, markup.cells());
